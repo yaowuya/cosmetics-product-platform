@@ -1,0 +1,11 @@
+{
+  "globalStyle": { "navigationStyle": "custom", "backgroundColor": "#ffffff" },
+  "pages": [
+    { "path": "pages/Home", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/Catalog", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/Cases", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/Contact", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/Product", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/Preview", "style": { "navigationStyle": "custom" } }
+  ]
+}

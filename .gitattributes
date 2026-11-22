@@ -1,0 +1,2 @@
+# The deployment host and the Windows Git Bash smoke tests both interpret these with bash.
+*.sh text eol=lf
