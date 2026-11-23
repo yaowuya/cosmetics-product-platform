@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { message, rows, type Body, type CatalogNode, type Item, type Page, text, withQuery } from '../../../shared/contracts.ts';
 import { draftImage, useEditor } from '../editor.ts';
+import { h5Path } from '../visitor.ts';
 import { request } from '../session.ts';
 import { useRoute, useRouter } from 'vue-router';
 import History from '../panels/History.vue';
@@ -22,8 +23,8 @@ const media=computed(()=>yes.value?[['thumbnail_asset_id','产品方图'],['cove
 const display=computed(()=>text(body.value.name??body.value.product_name, newItem.value?(yes.value?'新增产品':'新增案例'):'未命名草稿'));
 const previewSource=ref<'draft'|'live'>('draft');
 const activePreview=computed(()=>{
-  if(previewSource.value==='live') return item.value?.live_id?withQuery(yes.value?'/products':'/cases/detail',{id:item.value.id}):'';
-  return item.value?.draft?withQuery('/preview',{id:item.value.id,revision:item.value.revision,mode:sidebar.value}):'';
+  if(previewSource.value==='live') return item.value?.live_id?h5Path(withQuery(yes.value?'/products':'/cases/detail',{id:item.value.id})):'';
+  return item.value?.draft?h5Path(withQuery('/preview',{id:item.value.id,revision:item.value.revision,mode:sidebar.value})):'';
 });
 const itemPath=computed(()=>`/api/admin/items/${props.id}`);
 function assign(key:string,event:Event){body.value[key]=(event.currentTarget as HTMLInputElement|HTMLTextAreaElement).value;}

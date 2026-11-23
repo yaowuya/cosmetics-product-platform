@@ -41,8 +41,10 @@ CONFIG_FIELDS = {
     "directory": {"nodes": [{"id": "id", "parent_id": "id", "level": str, "name": str,
                              "icon_asset_id": "id", "enabled": bool, "sort_order": int}]},
     "case_header": {"background_asset_id": "id", "title": str, "intro": str, "filters": [{"key": str, "label": str}]},
-    "services": {"intro": str, "cards": [{"image_asset_id": "id", "title": str, "description": str}]},
-    "business_contact": {"title": str, "intro": str, "qr_asset_id": "id", "wechat_id": str, "phone": str, "email": str},
+    "services": {"page_title": str, "intro": str, "section_title": str, "sample_label": str, "consult_label": str,
+                 "cards": [{"image_asset_id": "id", "title": str, "description": str, "eyebrow": str, "headline": str, "points": str}]},
+    "business_contact": {"title": str, "intro": str, "label": str, "method": str, "description": str, "note": str,
+                         "qr_asset_id": "id", "wechat_id": str, "phone": str, "email": str},
 }
 DIRECTORY_LEVELS = ("board", "category", "subcategory")
 

@@ -18,8 +18,10 @@ def test_directory_keeps_five_boards_and_drops_the_all_button():
 
 
 def test_contact_has_no_qr_or_contact_methods():
-    assert set(CONTACT) == {"title", "intro"}
-    assert "qr" not in CONTACT["intro"]
+    assert {"qr_asset_id", "wechat_id", "phone", "email"}.isdisjoint(CONTACT)
+    assert CONTACT["label"] == "商务合作" and CONTACT["method"] == "扫码添加企业微信"
+    assert CONTACT["description"] == "沟通具体合作需求"
+    assert CONTACT["note"] == "示例预览，不含真实联系方式"
     assert normalize_body("config", "business_contact", CONTACT) == CONTACT
 
 
@@ -34,9 +36,19 @@ def test_case_filters_and_cover_copy():
 
 
 def test_service_cards_stay_text_only():
-    assert all("image_asset_id" not in card for card in SERVICES["cards"])
+    assert SERVICES["page_title"] == "服务与合作" and SERVICES["intro"] == "从产品想法，到成品落地"
+    assert SERVICES["section_title"] == "我们能为你做什么" and SERVICES["sample_label"] == "服务内容示例"
+    assert all("image_asset_id" not in card and card["eyebrow"] and card["headline"] and card["points"] for card in SERVICES["cards"])
     assert len(SERVICES["cards"]) == 3
     assert normalize_body("config", DRAFT_SLOT, SERVICES)["cards"] == SERVICES["cards"]
+
+
+def test_text_only_service_card_can_publish():
+    from app.services.checks import _config_issues
+
+    ready = {"cards": [{"title": "配方研发与打样", "eyebrow": "研发与共创"}]}
+    assert _config_issues("services", ready) == []
+    assert _config_issues("services", {"cards": [{"description": "只有说明"}]})
 
 
 def test_live_slot_is_not_overwritten():

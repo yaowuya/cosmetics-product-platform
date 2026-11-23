@@ -5,6 +5,7 @@ import { ElConfigProvider } from 'element-plus';
 import zhCn from 'element-plus/es/locale/lang/zh-cn';
 import 'element-plus/dist/index.css';
 import { account, signOut } from './session.ts';
+import { h5Path } from './visitor.ts';
 import { message } from '../../shared/contracts.ts';
 
 const route=useRoute(), router=useRouter();
@@ -31,7 +32,7 @@ async function exit(){try{await signOut();await router.replace('/login');}catch(
           <p class="group">{{ group.section }}</p>
           <RouterLink v-for="link in group.links.filter(link=>visible(link.capability))" :key="link.to" :to="link.to" :class="['nav-row',{'nav-current':link.to==='/'?route.path==='/':route.path===link.to||route.path.startsWith(`${link.to}/`)}]"><svg class="nav-glyph" viewBox="0 0 24 24" aria-hidden="true"><path :d="link.symbol"/></svg>{{ link.label }}</RouterLink>
         </div>
-        <a class="rail-preview" href="/" target="_blank" rel="noopener">打开公开 H5 ↗</a>
+        <a class="rail-preview" :href="h5Path('/')" target="_blank" rel="noopener">打开公开 H5 ↗</a>
       </aside>
       <div class="workspace">
         <div class="topbar"><button class="btn mobile-menu" :aria-expanded="menu" @click="menu=!menu">{{ menu?'关闭导航':'菜单' }}</button><span class="crumb">企业产品图册　／　{{crumb}}</span><div class="topbar-right"><span>{{ account.login }}</span><span class="pill">{{ account.can_publish?'发布人员':account.can_edit?'内容编辑':account.can_manage?'账号管理员':'已登录' }}</span><button class="btn link" @click="exit">退出</button></div></div>

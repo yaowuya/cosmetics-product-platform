@@ -40,15 +40,31 @@ def _required(body: dict, fields: tuple[str, ...], path: str = "") -> list[dict]
     return [{"field": f"{path}{field}", "reason": "发布必填项未设置"} for field in fields if field not in body]
 
 
+def _service_card_issues(cards: object) -> list[dict]:
+    """A service card is text. An image is optional; a name or eyebrow is not."""
+    if not isinstance(cards, list):
+        return []
+    issues = []
+    for index, row in enumerate(cards):
+        if not isinstance(row, dict):
+            continue
+        title, eyebrow = row.get("title"), row.get("eyebrow")
+        named = isinstance(title, str) and title.strip() or isinstance(eyebrow, str) and eyebrow.strip()
+        if not named:
+            issues.append({"field": f"cards.{index}.title", "reason": "发布必填项未设置"})
+    return issues
+
+
 def _config_issues(slot: str | None, body: dict) -> list[dict]:
     if slot == "home_posters" and len(set(body.get("poster_asset_ids", []))) < 3:
         return [{"field": "poster_asset_ids", "reason": "至少要有三张正式海报"}]
     if slot == "catalog_cover":
         return _required(body, ("cover_asset_id",))
+    if slot == "services":
+        return _service_card_issues(body.get("cards", []))
     nested = {
         "directory": ("nodes", ("name", "enabled", "sort_order")),
         "case_header": ("filters", ("label",)),
-        "services": ("cards", ("image_asset_id",)),
     }
     if slot not in nested:
         return []

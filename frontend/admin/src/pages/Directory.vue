@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { message, rows, withQuery, type CatalogNode } from '../../../shared/contracts.ts';
 import { draftImage, moveWithinParent, useEditor } from '../editor.ts';
+import { h5Path } from '../visitor.ts';
 import { request } from '../session.ts';
 import History from '../panels/History.vue';
 import Release from '../panels/Release.vue';
@@ -14,7 +15,7 @@ const all=computed(()=>rows(body.value.nodes).map(row=>row as unknown as Catalog
 const byId=computed(()=>new Map(all.value.map(node=>[node.id,node])));
 const selectedParent=computed(()=>byId.value.get(parent.value));
 const previewSource=ref<'draft'|'live'>('draft');
-const preview=computed(()=>previewSource.value==='live'?(item.value?.live_id?'/catalog':''):item.value?.draft?withQuery('/preview',{id:item.value.id,revision:item.value.revision}):'');
+const preview=computed(()=>previewSource.value==='live'?(item.value?.live_id?h5Path('/catalog'):''):item.value?.draft?h5Path(withQuery('/preview',{id:item.value.id,revision:item.value.revision})):'');
 const view=computed(()=>{
   const children=(id:string|null)=>all.value.filter(n=>(n.parent_id||null)===id).sort((a,b)=>a.sort_order-b.sort_order);
   const ordered:{node:CatalogNode;depth:number}[]=[];
