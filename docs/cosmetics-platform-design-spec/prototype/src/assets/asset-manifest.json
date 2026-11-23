@@ -1,0 +1,663 @@
+{
+  "schemaVersion": 1,
+  "notice": "首页轮播海报使用用户提供的原始图片；公司 Logo 沿用既有原型；其他产品封面及案例配图为概念生成图。产品与案例示例不表示真实客户合作、销售成果或医疗注册资料。",
+  "data": {
+    "file": "../catalog-data.json",
+    "source": "catalog-data.json · 用户最终分类清单",
+    "moduleCount": 6,
+    "productCount": 42,
+    "categoryCounts": {
+      "cosmetics": 12,
+      "lyophilized": 9,
+      "medical": 11,
+      "haircare": 4,
+      "export": 7,
+      "cases": 4
+    },
+    "medicalPlaceholderCodes": "空字符串，待正式资料补充；不将展示位编号当作真实配方编号。",
+    "caseCodes": "BC-003、BC-004、BC-006，均为演示案例编号；护肤和洗护案例已移除。",
+    "catalogModuleCount": 5,
+    "casePageCount": 1,
+    "structure": "5个目录模块（护肤、冻干、二类、洗护、外贸）＋1个品牌案例页面；共42条记录。",
+    "categoryCount": 47,
+    "catalogCategoryCount": 43,
+    "classificationPendingCount": 7,
+    "classificationPendingNotice": "7条既有示例保留名称、图片与编号，可在所属板块按名称或编号搜索；资料不足以判定新分类，暂不归类。",
+    "catalogFilters": "用户选定第10张：80px左栏仅名称；右侧细分类与总量同一行，总量固定靠右，细分类必要时水平滚动。",
+    "productCountRule": "右侧当前分类总量仅统计type=product的归类记录，切换细分类不改变分类总数；搜索时隐藏分类计数行，独立显示命中数。placeholder不计数。",
+    "productDetailFields": "28条既有产品均填写明确的示例功效、核心成分、产品亮点、生产状态与长图；isSample=true，详情统一标注示例资料及模拟生产状态。21条已生产、7条未生产均为演示值，不代表实际生产记录。",
+    "productDetailLayout": "16:9封面、产品名称与示例资料标记、功效、核心成分、产品亮点、配方编号（可复制）、是否生产过、单张等比系列摄影示例长图。案例详情保持独立字段。",
+    "homeCarousel": {
+      "slideCount": 4,
+      "layout": "每页仅一张完整原图，width:100%;height:auto；圆点紧接图片，底部导航固定。",
+      "autoplayIntervalMs": 4000,
+      "pauseWhileReading": true,
+      "initialPage": "company",
+      "imageWidth": 1228,
+      "imageHeight": 2048,
+      "source": "用户本轮上传的四张产品海报，按上传展示顺序轮播。",
+      "previewSource": "同尺寸WebP压缩副本，quality=75，仅用于聊天预览。"
+    },
+    "caseFilters": [
+      "精选案例",
+      "冻干案例",
+      "二类案例",
+      "外贸案例"
+    ],
+    "bodyCareCategory": "身体护理（hc_5）已从洗护移至护肤分类末尾；保留原类别ID与筛选结构。"
+  },
+  "totalEncodedBytes": 2246696,
+  "assets": [
+    {
+      "id": "logo",
+      "file": "assets/logo.webp",
+      "demo": false,
+      "source": {
+        "file": "assets/company-logo.png",
+        "context": "沿用既有原型中的微肽生物标识，保留原始画面。",
+        "bytes": 19948,
+        "width": 595,
+        "height": 199,
+        "sha256": "533f1e4204f643c221f52c8c97017434eb6d248cf95f85c865710f53f8919050"
+      },
+      "encoded": {
+        "format": "webp",
+        "bytes": 8688,
+        "width": 595,
+        "height": 199,
+        "lossless": true,
+        "quality": null,
+        "sha256": "7382d2d5ce243e5800c894a45b4c4bd9d34401e7df10f70ee58827f511918a38"
+      },
+      "transform": {
+        "resize": false,
+        "crop": false,
+        "colorEdits": false,
+        "contentEdits": false
+      }
+    },
+    {
+      "id": "hero",
+      "file": "assets/hero.webp",
+      "demo": true,
+      "source": {
+        "file": "assets/hero.png",
+        "context": "沿用既有原型主视觉；概念包装示意，不用于证明真实产品或生产场景。",
+        "bytes": 1783951,
+        "width": 1536,
+        "height": 1024,
+        "sha256": "d2e6b081cdfabc5f91b3e79914f36c3c47ec45b7030a2c9252b3f25921f052bf"
+      },
+      "encoded": {
+        "format": "webp",
+        "bytes": 187680,
+        "width": 1536,
+        "height": 1024,
+        "lossless": false,
+        "quality": 98,
+        "sha256": "d1f37c27f9508fff32be7bf4bb0ad6eeac8a5bc706d693ce51ad2166652a337c"
+      },
+      "transform": {
+        "resize": false,
+        "crop": false,
+        "colorEdits": false,
+        "contentEdits": false
+      }
+    },
+    {
+      "id": "products",
+      "file": "assets/products.webp",
+      "demo": true,
+      "source": {
+        "file": "assets/products.png",
+        "context": "沿用既有原型的四宫格概念包装图，clean / water / emulsion / cream 对应左上 / 右上 / 左下 / 右下。",
+        "bytes": 1529695,
+        "width": 1254,
+        "height": 1254,
+        "sha256": "15bc3486385798387ec7d0edaf250d1598f646a32b23dbe1992990870af95f05"
+      },
+      "encoded": {
+        "format": "webp",
+        "bytes": 79484,
+        "width": 1254,
+        "height": 1254,
+        "lossless": false,
+        "quality": 98,
+        "sha256": "173f60ca07ada15a73fd04f03f4954c65e8acd1187d7745db3f906f232a3fc02"
+      },
+      "transform": {
+        "resize": false,
+        "crop": false,
+        "colorEdits": false,
+        "contentEdits": false
+      }
+    },
+    {
+      "id": "cover",
+      "file": "assets/cover.webp",
+      "demo": true,
+      "source": {
+        "file": "catalog-cover-v1.png",
+        "context": "用户要求将产品目录顶部 Logo 行替换为横版封面。通过 image_gen 新生成白色与浅冰蓝概念包装图，无品牌标识。",
+        "bytes": 1412632,
+        "width": 2172,
+        "height": 724,
+        "sha256": "e26ff6b5f0d63b69e422896830b3ffd8ffc7e992e6db9bfd20890e503fc7af5b"
+      },
+      "encoded": {
+        "format": "webp",
+        "bytes": 34572,
+        "width": 2172,
+        "height": 724,
+        "lossless": false,
+        "quality": 94,
+        "sha256": "a77c98892ba362a14a557c5e7b3b59b61325d72b0d1f2347a3639aeddeddaa56"
+      },
+      "transform": {
+        "resize": false,
+        "crop": false,
+        "colorEdits": false,
+        "contentEdits": false
+      }
+    },
+    {
+      "id": "case-cream",
+      "file": "assets/case-cream.webp",
+      "demo": true,
+      "source": {
+        "method": "built-in image_gen",
+        "reference": "design-references/cases-approved.png",
+        "context": "按用户选定版式生成独立摄影素材，不包含实际品牌或销售数据。"
+      },
+      "encoded": {
+        "format": "webp",
+        "bytes": 18520,
+        "width": 879,
+        "height": 400,
+        "sha256": "c53e8b60eaa18421bf6bfdef48728342aa9e81215951656edd880bbb097bf14d"
+      },
+      "retired": true,
+      "purpose": "历史护肤案例配图；当前品牌案例及构建输出不再使用。"
+    },
+    {
+      "id": "case-export",
+      "file": "assets/case-export.webp",
+      "demo": true,
+      "source": {
+        "method": "built-in image_gen",
+        "reference": "design-references/cases-approved.png",
+        "context": "按用户选定版式生成独立摄影素材，不包含实际品牌或销售数据。"
+      },
+      "encoded": {
+        "format": "webp",
+        "bytes": 16488,
+        "width": 960,
+        "height": 437,
+        "sha256": "b5ec00c4ed87fb6fe142acd3ccf037fcb4dca3db6c476d07125139d50b1ca112"
+      }
+    },
+    {
+      "id": "case-featured",
+      "file": "assets/case-featured.webp",
+      "demo": true,
+      "source": {
+        "method": "built-in image_gen",
+        "reference": "design-references/cases-approved.png",
+        "context": "按用户选定版式生成独立摄影素材，不包含实际品牌或销售数据。"
+      },
+      "encoded": {
+        "format": "webp",
+        "bytes": 25946,
+        "width": 960,
+        "height": 686,
+        "sha256": "640ca0ea3e4628a42008c6e9459c9fa5456072b42bb0990527b1abee5fa0ff9b"
+      },
+      "retired": true,
+      "purpose": "历史护肤案例配图；当前品牌案例及构建输出不再使用。"
+    },
+    {
+      "id": "case-freeze",
+      "file": "assets/case-freeze.webp",
+      "demo": true,
+      "source": {
+        "method": "built-in image_gen",
+        "reference": "design-references/cases-approved.png",
+        "context": "按用户选定版式生成独立摄影素材，不包含实际品牌或销售数据。"
+      },
+      "encoded": {
+        "format": "webp",
+        "bytes": 27236,
+        "width": 960,
+        "height": 436,
+        "sha256": "3afb22887de744a2820be01791113b8c95486ee785c8c8a7fcaede5703cfc4eb"
+      }
+    },
+    {
+      "id": "case-haircare",
+      "file": "assets/case-haircare.webp",
+      "demo": true,
+      "source": {
+        "method": "built-in image_gen",
+        "reference": "design-references/cases-approved.png",
+        "context": "按用户选定版式生成独立摄影素材，不包含实际品牌或销售数据。"
+      },
+      "encoded": {
+        "format": "webp",
+        "bytes": 11840,
+        "width": 960,
+        "height": 437,
+        "sha256": "b4a21fcccdb53d6201536fff8b56c9771e9069ad05d658ca6eb73f3dfd2fb192"
+      },
+      "retired": true,
+      "purpose": "历史洗护案例配图；当前品牌案例及构建输出不再使用。"
+    },
+    {
+      "id": "case-header",
+      "file": "assets/case-header.webp",
+      "demo": true,
+      "source": {
+        "method": "built-in image_gen",
+        "reference": "design-references/cases-approved.png",
+        "context": "按用户选定版式生成独立摄影素材，不包含实际品牌或销售数据。"
+      },
+      "encoded": {
+        "format": "webp",
+        "bytes": 5708,
+        "width": 960,
+        "height": 320,
+        "sha256": "0090b56cfbf768ee9e2c0502d543f50e7b0bce6aa0b004ec25dbb704f4ccc534"
+      }
+    },
+    {
+      "id": "case-medical",
+      "file": "assets/case-medical.webp",
+      "demo": true,
+      "source": {
+        "method": "built-in image_gen",
+        "reference": "design-references/cases-approved.png",
+        "context": "按用户选定版式生成独立摄影素材，不包含实际品牌或销售数据。"
+      },
+      "encoded": {
+        "format": "webp",
+        "bytes": 8678,
+        "width": 960,
+        "height": 436,
+        "sha256": "efd66e15b4518c1aba558ea07c8d85d3a8159f0cd73a49b8dac09a39324b2bb6"
+      }
+    },
+    {
+      "id": "case-skincare",
+      "file": "assets/case-skincare.webp",
+      "demo": true,
+      "source": {
+        "method": "built-in image_gen",
+        "reference": "design-references/cases-approved.png",
+        "context": "按用户选定版式生成独立摄影素材，不包含实际品牌或销售数据。"
+      },
+      "encoded": {
+        "format": "webp",
+        "bytes": 25392,
+        "width": 879,
+        "height": 400,
+        "sha256": "7eb1a6a45b7182354ed338282a5b5594df4003ac3956532f8f95dc4f56e9fab8"
+      },
+      "retired": true,
+      "purpose": "历史护肤案例配图；当前品牌案例及构建输出不再使用。"
+    },
+    {
+      "id": "detail-series",
+      "file": "assets/detail-series.webp",
+      "demo": true,
+      "purpose": "示例产品详情页共用的概念系列摄影长图；用于展示完整详情阅读体验，不代表实际产品或生产事实。",
+      "source": {
+        "method": "built-in image_gen",
+        "references": [
+          "assets/products.webp",
+          "assets/cover.webp"
+        ],
+        "prompt": "Use case: premium skincare product-mockup photography asset for a mobile product detail page.\n\nCreate ONE tall vertical ecommerce photography strip, portrait 1:2.5 preferred (approximately 900 wide by 2250 tall), at least 1:2 tall. It must read as one continuous, quiet studio scene rather than a collage or a grid.\n\nInput references:\n1. products.webp is a packaging-shape reference only: its four quadrants show a dark olive-green transparent cylinder with dark green lotion pump, a clear cylindrical toner bottle with a satin silver cap and very pale green transparent liquid, a rounded ivory opaque lotion pump bottle, and a low ivory cream jar with a dark green screw lid. Use the recognizable four product silhouettes faithfully, without labels.\n2. cover.webp is a lighting and palette reference only: abundant pure white, a trace of extremely pale ice blue, refined soft daylight, clean transparent glass, gentle shadows.\n\nPrimary composition:\n- Upper third: a beautiful complete group of all four unbranded products at varied heights on a pale transparent glass ledge. All four are readable and fully visible, no confusing duplicate pump mechanisms. Calm, refined editorial skincare photograph. Plenty of breathing space.\n- Middle third: the white studio background continues seamlessly down into macro texture details: delicate clear water droplets, a clean translucent ribbon of water/glass and a small pristine ivory cream smear. Airy, minimal, physically convincing textures, no dramatic splash.\n- Lower third: a closer foreground composition of the same cream jar with its green lid beside it and a modest ivory cream swirl, with an elegant partial glass-bottle detail and a clean white tabletop. The bottom should end gracefully with a faint pale blue reflection and white negative space.\nThe transitions are soft and spatial, like a single long luxury product photograph, not boxed sections, not contact sheets, not a poster of separate panels. Light travels consistently from upper left. Avoid floating products.\n\nVisual treatment: high-end real product still-life photography, believable glass refraction, satin packaging, precise pump construction, microscopic water droplets, gently diffused daylight, subtle grounded shadows, low contrast; white dominates, pale icy blue only as a light accent, restrained olive-green packaging from the reference. No deep blue. Beautiful but quiet. Optimized to remain legible in a mobile long-image display.\n\nSTRICT exclusions: absolutely NO words, NO numbers, NO brand names, NO logos, NO labels, NO medical symbols, NO claims, NO icons, NO frame, NO UI, NO divider lines, NO collage borders, NO people, NO hands, NO extra ingredients or botanical props. This is an invented unbranded series concept photograph, not evidence about any real product.",
+        "generated_source_path": "/workspace/scratch/7394f728392d/generated_images/exec-d0069f91-f849-4745-abc5-ef55a7a42400.png",
+        "original_width": 793,
+        "original_height": 1983
+      },
+      "encoded": {
+        "format": "webp",
+        "width": 793,
+        "height": 1983,
+        "bytes": 46508,
+        "quality": 88,
+        "sha256": "5aaaa240cb8801c5f7883e17e34cc8a8a23e3a1033c23a2d3052153ccfbadfda"
+      },
+      "transform": {
+        "crop": false,
+        "colorEdits": false,
+        "contentEdits": false,
+        "resize": false,
+        "operation": "仅 PNG → WebP 编码，未裁切、未缩放、未修改画面内容"
+      },
+      "review": {
+        "referencePackaging": "绿泵瓶、透明水瓶、乳白泵瓶、绿盖白霜罐",
+        "palette": "以白色为主，极淡冰蓝背景，绿色包装",
+        "composition": "连续约 1:2.5 竖幅；上部系列产品、中部水滴和乳霜质地、下部霜罐特写",
+        "textOrLogo": false,
+        "layoutFrameOrUI": false,
+        "medicalSymbolsOrEfficacyClaims": false,
+        "visualInspection": "已核对生成图与要求一致，四件产品外形清楚，无文字、品牌、医疗符号或夸张功效信息。"
+      }
+    },
+    {
+      "id": "home-example-01",
+      "file": "assets/home-poster-01.webp",
+      "demo": true,
+      "purpose": "留存的旧版首页示例海报，不再作为首页轮播素材。",
+      "source": {
+        "method": "built-in image_gen",
+        "prompt_file": "home-poster-prompts.txt",
+        "context": "沿用白底浅蓝方向和用户提供的公司定位、数字；底部标注示例海报。"
+      },
+      "encoded": {
+        "format": "webp",
+        "width": 793,
+        "height": 1983,
+        "bytes": 96264,
+        "quality": 88,
+        "sha256": "08b2b6a5a3cc469272980f5d7bd180ad65cc16e1f78c380eda230224aa8d6e43"
+      },
+      "transform": {
+        "crop": false,
+        "resize": false,
+        "contentEdits": false,
+        "operation": "仅PNG转WebP编码"
+      },
+      "retired": true
+    },
+    {
+      "id": "home-example-02",
+      "file": "assets/home-poster-02.webp",
+      "demo": true,
+      "purpose": "留存的旧版首页示例海报，不再作为首页轮播素材。",
+      "source": {
+        "method": "built-in image_gen",
+        "prompt_file": "home-poster-prompts.txt",
+        "context": "沿用白底浅蓝方向和用户提供的公司定位、数字；底部标注示例海报。"
+      },
+      "encoded": {
+        "format": "webp",
+        "width": 793,
+        "height": 1983,
+        "bytes": 99630,
+        "quality": 88,
+        "sha256": "ab3d2c87ce18870252063988285745287e3c994eabfaa3165d9f717b31cb3876"
+      },
+      "transform": {
+        "crop": false,
+        "resize": false,
+        "contentEdits": false,
+        "operation": "仅PNG转WebP编码"
+      },
+      "retired": true
+    },
+    {
+      "id": "home-example-03",
+      "file": "assets/home-poster-03.webp",
+      "demo": true,
+      "purpose": "留存的旧版首页示例海报，不再作为首页轮播素材。",
+      "source": {
+        "method": "built-in image_gen",
+        "prompt_file": "home-poster-prompts.txt",
+        "context": "沿用白底浅蓝方向和用户提供的公司定位、数字；底部标注示例海报。"
+      },
+      "encoded": {
+        "format": "webp",
+        "width": 793,
+        "height": 1983,
+        "bytes": 79878,
+        "quality": 88,
+        "sha256": "13e2c7e58117c180240444cc5e3c72e30abb320cf0a234116381baed3dae413a"
+      },
+      "transform": {
+        "crop": false,
+        "resize": false,
+        "contentEdits": false,
+        "operation": "仅PNG转WebP编码"
+      },
+      "retired": true
+    },
+    {
+      "id": "home-poster-01",
+      "file": "assets/home-poster-01.jpg",
+      "demo": false,
+      "purpose": "首页轮播正式素材，使用用户提供的完整原图。",
+      "source": {
+        "method": "user-provided upload",
+        "context": "用户本轮提供的第1张首页海报：光感微珠素颜霜。",
+        "width": 1228,
+        "height": 2048,
+        "bytes": 248463,
+        "sha256": "ea594b9283cb30cb2aa5a67b04b9db8c0ae704ad834644920a9544ce2f75b4e2"
+      },
+      "encoded": {
+        "format": "jpeg",
+        "width": 1228,
+        "height": 2048,
+        "bytes": 248463,
+        "originalBytesPreserved": true,
+        "sha256": "ea594b9283cb30cb2aa5a67b04b9db8c0ae704ad834644920a9544ce2f75b4e2"
+      },
+      "transform": {
+        "crop": false,
+        "resize": false,
+        "colorEdits": false,
+        "contentEdits": false,
+        "operation": "原始JPEG文件逐字节复制，未重新编码"
+      }
+    },
+    {
+      "id": "home-preview-01",
+      "file": "assets/home-preview-01.webp",
+      "demo": false,
+      "purpose": "聊天内嵌预览使用的完整同尺寸压缩副本。",
+      "source": {
+        "method": "user-provided upload",
+        "file": "assets/home-poster-01.jpg",
+        "width": 1228,
+        "height": 2048,
+        "bytes": 248463,
+        "sha256": "ea594b9283cb30cb2aa5a67b04b9db8c0ae704ad834644920a9544ce2f75b4e2"
+      },
+      "encoded": {
+        "format": "webp",
+        "width": 1228,
+        "height": 2048,
+        "bytes": 64440,
+        "quality": 75,
+        "method": 6,
+        "sha256": "01663e46d5ef5ac5424203e4950eb88042d44c61cc9dff366b839ac11359c566"
+      },
+      "transform": {
+        "crop": false,
+        "resize": false,
+        "colorEdits": false,
+        "contentEdits": false,
+        "operation": "仅JPEG转WebP压缩编码；保持完整画面与原像素尺寸"
+      }
+    },
+    {
+      "id": "home-poster-02",
+      "file": "assets/home-poster-02.jpg",
+      "demo": false,
+      "purpose": "首页轮播正式素材，使用用户提供的完整原图。",
+      "source": {
+        "method": "user-provided upload",
+        "context": "用户本轮提供的第2张首页海报：三曜凝时精华油。",
+        "width": 1228,
+        "height": 2048,
+        "bytes": 315975,
+        "sha256": "0ac484bbd9c51484fcfb1d7f2a46127aab2c3070c9f3135ee1e261542e3b780d"
+      },
+      "encoded": {
+        "format": "jpeg",
+        "width": 1228,
+        "height": 2048,
+        "bytes": 315975,
+        "originalBytesPreserved": true,
+        "sha256": "0ac484bbd9c51484fcfb1d7f2a46127aab2c3070c9f3135ee1e261542e3b780d"
+      },
+      "transform": {
+        "crop": false,
+        "resize": false,
+        "colorEdits": false,
+        "contentEdits": false,
+        "operation": "原始JPEG文件逐字节复制，未重新编码"
+      }
+    },
+    {
+      "id": "home-preview-02",
+      "file": "assets/home-preview-02.webp",
+      "demo": false,
+      "purpose": "聊天内嵌预览使用的完整同尺寸压缩副本。",
+      "source": {
+        "method": "user-provided upload",
+        "file": "assets/home-poster-02.jpg",
+        "width": 1228,
+        "height": 2048,
+        "bytes": 315975,
+        "sha256": "0ac484bbd9c51484fcfb1d7f2a46127aab2c3070c9f3135ee1e261542e3b780d"
+      },
+      "encoded": {
+        "format": "webp",
+        "width": 1228,
+        "height": 2048,
+        "bytes": 91648,
+        "quality": 75,
+        "method": 6,
+        "sha256": "04532a2d611371fc2ee1044abaa6469d74d21ab70ff07183f8ec3d4a701dda8d"
+      },
+      "transform": {
+        "crop": false,
+        "resize": false,
+        "colorEdits": false,
+        "contentEdits": false,
+        "operation": "仅JPEG转WebP压缩编码；保持完整画面与原像素尺寸"
+      }
+    },
+    {
+      "id": "home-poster-03",
+      "file": "assets/home-poster-03.jpg",
+      "demo": false,
+      "purpose": "首页轮播正式素材，使用用户提供的完整原图。",
+      "source": {
+        "method": "user-provided upload",
+        "context": "用户本轮提供的第3张首页海报：三相双仓抗醇精华。",
+        "width": 1228,
+        "height": 2048,
+        "bytes": 314038,
+        "sha256": "91115780bbd9255f47e4556a5237834b57f7c85ade7119350738a98203ffbe68"
+      },
+      "encoded": {
+        "format": "jpeg",
+        "width": 1228,
+        "height": 2048,
+        "bytes": 314038,
+        "originalBytesPreserved": true,
+        "sha256": "91115780bbd9255f47e4556a5237834b57f7c85ade7119350738a98203ffbe68"
+      },
+      "transform": {
+        "crop": false,
+        "resize": false,
+        "colorEdits": false,
+        "contentEdits": false,
+        "operation": "原始JPEG文件逐字节复制，未重新编码"
+      }
+    },
+    {
+      "id": "home-preview-03",
+      "file": "assets/home-preview-03.webp",
+      "demo": false,
+      "purpose": "聊天内嵌预览使用的完整同尺寸压缩副本。",
+      "source": {
+        "method": "user-provided upload",
+        "file": "assets/home-poster-03.jpg",
+        "width": 1228,
+        "height": 2048,
+        "bytes": 314038,
+        "sha256": "91115780bbd9255f47e4556a5237834b57f7c85ade7119350738a98203ffbe68"
+      },
+      "encoded": {
+        "format": "webp",
+        "width": 1228,
+        "height": 2048,
+        "bytes": 88696,
+        "quality": 75,
+        "method": 6,
+        "sha256": "b898865d69a1d40e3ca9aae2957006be31e6fa83f2d564448a8d4a3d1c88d5d1"
+      },
+      "transform": {
+        "crop": false,
+        "resize": false,
+        "colorEdits": false,
+        "contentEdits": false,
+        "operation": "仅JPEG转WebP压缩编码；保持完整画面与原像素尺寸"
+      }
+    },
+    {
+      "id": "home-poster-04",
+      "file": "assets/home-poster-04.jpg",
+      "demo": false,
+      "purpose": "首页轮播正式素材，使用用户提供的完整原图。",
+      "source": {
+        "method": "user-provided upload",
+        "context": "用户本轮提供的第4张首页海报：双萃奢润精华粉底液。",
+        "width": 1228,
+        "height": 2048,
+        "bytes": 272002,
+        "sha256": "13319efe7cfd14bd2884b5421a94efb080b6a5630c8ff08a695d046c5fdb5dd0"
+      },
+      "encoded": {
+        "format": "jpeg",
+        "width": 1228,
+        "height": 2048,
+        "bytes": 272002,
+        "originalBytesPreserved": true,
+        "sha256": "13319efe7cfd14bd2884b5421a94efb080b6a5630c8ff08a695d046c5fdb5dd0"
+      },
+      "transform": {
+        "crop": false,
+        "resize": false,
+        "colorEdits": false,
+        "contentEdits": false,
+        "operation": "原始JPEG文件逐字节复制，未重新编码"
+      }
+    },
+    {
+      "id": "home-preview-04",
+      "file": "assets/home-preview-04.webp",
+      "demo": false,
+      "purpose": "聊天内嵌预览使用的完整同尺寸压缩副本。",
+      "source": {
+        "method": "user-provided upload",
+        "file": "assets/home-poster-04.jpg",
+        "width": 1228,
+        "height": 2048,
+        "bytes": 272002,
+        "sha256": "13319efe7cfd14bd2884b5421a94efb080b6a5630c8ff08a695d046c5fdb5dd0"
+      },
+      "encoded": {
+        "format": "webp",
+        "width": 1228,
+        "height": 2048,
+        "bytes": 78922,
+        "quality": 75,
+        "method": 6,
+        "sha256": "bb11dc6198fe5f08528afbdebbb18a8207e9189cebfd4b2f5d339bc605c09af0"
+      },
+      "transform": {
+        "crop": false,
+        "resize": false,
+        "colorEdits": false,
+        "contentEdits": false,
+        "operation": "仅JPEG转WebP压缩编码；保持完整画面与原像素尺寸"
+      }
+    }
+  ]
+}

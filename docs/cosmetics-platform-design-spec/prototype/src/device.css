@@ -1,0 +1,217 @@
+/*
+ * HONOR 400-inspired preview frame.
+ * The screen uses the official 1264:2736 portrait pixel ratio (79:171).
+ * The chassis, camera and side keys are illustrative CSS geometry.
+ * No page-wide scale: the app remains 360–400 CSS px wide on desktop.
+ */
+
+#weitai-redesign.prototype-stage {
+  --device-screen-width: 400px;
+  --device-screen-width: clamp(360px, calc((100svh - 120px) * 79 / 171), 400px);
+  --device-screen-height: calc(var(--device-screen-width) * 171 / 79);
+  --device-camera-height: 28px;
+  --device-frame-radius: 43px;
+  --device-screen-radius: 34px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 100vh;
+  min-height: 100svh;
+  padding: 24px 24px 20px;
+  background: #f3f5f6;
+  isolation: isolate;
+}
+
+#weitai-redesign .device-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin: 0;
+  max-width: 100%;
+}
+
+#weitai-redesign .device-frame {
+  position: relative;
+  box-sizing: border-box;
+  flex: none;
+  width: calc(var(--device-screen-width) + 18px);
+  padding: 8px;
+  border: 1px solid #bcc3c8;
+  border-radius: var(--device-frame-radius);
+  background: linear-gradient(115deg, #e7ebed 0%, #f9fafb 24%, #b7bfc5 53%, #eef1f3 78%, #c2c9cf 100%);
+  box-shadow:
+    0 28px 65px -28px rgb(39 50 58 / 24%),
+    0 5px 14px rgb(39 50 58 / 7%),
+    inset 0 0 0 1px rgb(255 255 255 / 85%);
+}
+
+#weitai-redesign .device-frame::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: calc(var(--device-frame-radius) - 3px);
+  background: #171b1e;
+  box-shadow: inset 0 0 0 1px #353b3f;
+  pointer-events: none;
+}
+
+#weitai-redesign .device-screen {
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: var(--device-screen-height);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: var(--device-screen-radius);
+  background: #fff;
+  box-shadow: 0 0 0 1px #080b0d;
+  /* Keep app-owned fixed layers inside this preview, without scaling text. */
+  contain: layout paint;
+  isolation: isolate;
+}
+
+#weitai-redesign .device-camera-strip {
+  position: relative;
+  z-index: 10;
+  flex: 0 0 var(--device-camera-height);
+  height: var(--device-camera-height);
+  background: #fff;
+  pointer-events: none;
+}
+
+#weitai-redesign .device-camera {
+  position: absolute;
+  top: 9px;
+  left: 50%;
+  width: 9px;
+  height: 9px;
+  transform: translateX(-50%);
+  border: 1px solid #101316;
+  border-radius: 50%;
+  background: radial-gradient(circle at 39% 36%, #3e4c56 0, #172028 23%, #080c0f 54%, #000 100%);
+  box-shadow: 0 0 0 1px rgb(38 48 56 / 7%);
+}
+
+#weitai-redesign .device-side-key {
+  position: absolute;
+  right: -3px;
+  z-index: 0;
+  width: 3px;
+  border: 1px solid #b1bac1;
+  border-left: 0;
+  border-radius: 0 2px 2px 0;
+  background: linear-gradient(90deg, #aab3ba, #e3e8eb);
+  pointer-events: none;
+}
+
+#weitai-redesign .device-side-key-volume {
+  top: 135px;
+  height: 55px;
+}
+
+#weitai-redesign .device-side-key-power {
+  top: 214px;
+  height: 34px;
+}
+
+#weitai-redesign .device-screen > .phone-app {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  width: 100%;
+  height: auto;
+  min-width: 0;
+  min-height: 0;
+  isolation: isolate;
+}
+
+#weitai-redesign .device-caption {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 0 10px;
+  color:#000;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  text-align: center;
+}
+
+#weitai-redesign .device-caption p {
+  margin: 0;
+}
+
+#weitai-redesign .device-caption-title {
+  font-size:11px;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+
+#weitai-redesign .device-caption-divider {
+  padding: 0 7px;
+  color:#000;
+  font-weight: 400;
+}
+
+#weitai-redesign .device-caption-hint {
+  color:#000;
+  font-size:11px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+/*
+ * Phone visits, including landscape touch devices, use the available screen.
+ * Keep browser zoom/pinch gestures available; the fragment sets no viewport tag.
+ */
+@media (max-width: 600px), (hover: none) and (pointer: coarse) {
+  #weitai-redesign.prototype-stage {
+    --device-screen-width: 100%;
+    --device-camera-height: 0px;
+    box-sizing: border-box;
+    display: block;
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: 0;
+    background: #fff;
+  }
+
+  #weitai-redesign .device-preview,
+  #weitai-redesign .device-frame {
+    display: block;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: #fff;
+    box-shadow: none;
+  }
+
+  #weitai-redesign .device-frame::before,
+  #weitai-redesign .device-side-key,
+  #weitai-redesign .device-camera-strip,
+  #weitai-redesign .device-caption {
+    display: none;
+  }
+
+  #weitai-redesign .device-screen {
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}

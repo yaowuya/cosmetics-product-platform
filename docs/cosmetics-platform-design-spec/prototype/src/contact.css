@@ -1,0 +1,86 @@
+/* Services and contact content within the existing HONOR 400 shell. */
+#weitai-redesign .contact-page{height:100%;min-width:0;min-height:0;overflow:hidden;background:#fff;color:#000}
+#weitai-redesign .contact-page:not([hidden]){display:flex;flex-direction:column}
+#weitai-redesign .contact-header-copy{min-width:0}
+#weitai-redesign .contact-service-headline,#weitai-redesign .contact-service-summary{display:block}
+#weitai-redesign .contact-header{padding:12px 18px 13px;display:flex;align-items:center;gap:12px;justify-content:space-between;background:#f5faff;flex:none;border-bottom:1px solid #edf3f7}
+#weitai-redesign .contact-header h1{margin:0;font-size:17px;font-weight:500;line-height:1.5;letter-spacing:.15px}
+#weitai-redesign .contact-header p{margin:4px 0 0;font-size:11.5px;line-height:1.5}
+#weitai-redesign .contact-consult{display:flex;align-items:center;justify-content:center;gap:5px;min-width:83px;min-height:36px;padding:8px 10px;border-radius:18px;background:#e5f1fb;font-size:11.5px;white-space:nowrap}
+#weitai-redesign .contact-consult svg{width:15px;height:15px;flex:none}
+#weitai-redesign .contact-content{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:none;padding:17px 17px 24px;background:#fff}
+#weitai-redesign .contact-content::-webkit-scrollbar{display:none}
+#weitai-redesign .contact-section-head{display:flex;align-items:center;justify-content:space-between;margin:0 0 11px;gap:10px}
+#weitai-redesign .contact-section-head h2{font-size:12.5px;line-height:1.6;font-weight:500;margin:0}
+#weitai-redesign .contact-sample{font-size:11px;line-height:1.5;padding:3px 7px;background:#f4f7f9;border-radius:5px;white-space:nowrap}
+#weitai-redesign .contact-service-list{display:grid;gap:12px}
+#weitai-redesign .contact-service{display:block;width:100%;text-align:left;padding:0;border-radius:13px;overflow:hidden;background:transparent}
+#weitai-redesign .contact-service-art{aspect-ratio:3/2;display:flex;position:relative;align-items:center;overflow:hidden;border-radius:13px;background:#eaf4fc;padding:24px;isolation:isolate}
+#weitai-redesign .contact-service-art:after{content:"";position:absolute;width:195px;height:195px;right:-88px;bottom:-75px;border:28px solid #fff9;border-radius:50%;z-index:-1;pointer-events:none}
+#weitai-redesign .contact-service-art[data-tone="silver"]{background:#f0f5f8}
+#weitai-redesign .contact-service-art[data-tone="mint"]{background:#edf5f5}
+#weitai-redesign .contact-service-copy{flex:1;min-width:0}
+#weitai-redesign .contact-service-label{display:block;font-size:11px;line-height:1.5;margin-bottom:10px;letter-spacing:.5px}
+#weitai-redesign .contact-service-headline{margin:0;font-size:17px;font-weight:400;line-height:1.6;letter-spacing:.15px}
+#weitai-redesign .contact-service-summary{margin:11px 0 0;font-size:11.5px;line-height:1.75;max-width:170px}
+#weitai-redesign .contact-service-visual{flex:none;display:grid;place-items:center;align-self:flex-end;width:66px;height:82px;border-radius:30px 30px 18px 18px;background:#ffffffb3;border:1px solid #fff;margin-left:-12px;transform:rotate(7deg)}
+#weitai-redesign .contact-service-visual svg{width:29px;height:29px;stroke-width:1.25}
+#weitai-redesign .contact-service-art[data-tone="silver"] .contact-service-visual{border-radius:18px;height:74px;transform:rotate(-8deg)}
+#weitai-redesign .contact-service-art[data-tone="mint"] .contact-service-visual{border-radius:50%;height:66px;transform:rotate(0)}
+#weitai-redesign .contact-service-caption{display:flex;align-items:center;justify-content:space-between;padding:7px 2px 0;gap:8px;font-size:11px;line-height:1.6}
+#weitai-redesign .contact-service-caption svg{width:13px;height:13px;flex:none}
+#weitai-redesign .contact-business{margin-top:24px;padding-top:21px;border-top:1px solid #e4edf3}
+#weitai-redesign .contact-business h2{font-size:14px;line-height:1.6;font-weight:500;margin:0 0 5px}
+#weitai-redesign .contact-business>p{margin:0;font-size:11.5px;line-height:1.75}
+#weitai-redesign .contact-business-card{flex-wrap:wrap;margin-top:16px;padding:16px;background:#f6fafd;border-radius:13px;display:flex;align-items:center;gap:15px}
+#weitai-redesign .contact-qr-placeholder{width:132px;aspect-ratio:1;flex:none;background:#fff;border:1px solid #e4edf3;border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+#weitai-redesign .contact-qr-placeholder svg{width:39px;height:39px;stroke-width:1.25}
+#weitai-redesign .contact-qr-placeholder span{font-size:11px;line-height:1.5}
+#weitai-redesign .contact-business-copy{min-width:0;flex:1}
+#weitai-redesign .contact-business-copy h3{font-size:12.5px;line-height:1.6;margin:0 0 6px;font-weight:500}
+#weitai-redesign .contact-business-copy p{font-size:11.5px;line-height:1.75;margin:0}
+#weitai-redesign .contact-link{display:inline-flex;align-items:center;gap:5px;padding:0;min-height:38px;background:transparent;font-size:11.5px;margin-top:4px;text-decoration:underline;text-underline-offset:4px}
+#weitai-redesign .contact-link svg{width:13px;height:13px}
+#weitai-redesign .contact-note{font-size:11px;line-height:1.7;margin:13px 0 0;text-align:center}
+#weitai-redesign .contact-overlay{position:absolute;inset:0;z-index:40;background:#16212e3d;display:flex;align-items:flex-end;padding:10px}
+#weitai-redesign .contact-dialog-panel{background:#fff;border-radius:20px;width:100%;max-height:100%;overflow:auto;padding:20px;box-shadow:0 10px 30px #17253618}
+#weitai-redesign .contact-dialog-head{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:12px}
+#weitai-redesign .contact-dialog-panel h2{font-size:14px;line-height:1.6;font-weight:500;margin:0}
+#weitai-redesign .contact-dialog-close{width:36px;height:36px;border-radius:50%;background:#f2f6f8;display:grid;place-items:center;flex:none}
+#weitai-redesign .contact-dialog-close svg{width:18px;height:18px}
+#weitai-redesign .contact-dialog-copy{font-size:11.5px;line-height:1.75;margin:0 0 15px}
+#weitai-redesign .contact-qr-large{width:194px;margin:0 auto 14px}
+#weitai-redesign .contact-qr-large svg{width:58px;height:58px}
+#weitai-redesign .contact-dialog-note{font-size:11px;line-height:1.75;text-align:center;margin:12px 0 0}
+#weitai-redesign .contact-dialog-return{display:block;width:100%;margin-top:18px;background:#eaf4fc;border-radius:10px;min-height:42px;font-size:11.5px}
+#weitai-redesign .contact-service-preview .contact-service-art{padding:22px;aspect-ratio:3/2}
+#weitai-redesign .contact-service-preview .contact-service-headline{font-size:17px}
+#weitai-redesign .contact-content{min-width:0;overflow-x:hidden}
+#weitai-redesign .contact-service-copy,#weitai-redesign .contact-business-copy,#weitai-redesign .contact-header p,#weitai-redesign .contact-dialog-head h2{overflow-wrap:anywhere}
+#weitai-redesign .contact-consult{flex:none}
+#weitai-redesign .contact-service-photo{display:block;width:100%;overflow:hidden;border-radius:13px;background:#f5f9fc}
+#weitai-redesign .contact-service-photo img{display:block;width:100%;max-width:100%;height:auto;object-fit:contain}
+#weitai-redesign .contact-qr-image{display:block;width:132px;aspect-ratio:1;flex:none;padding:8px;border:1px solid #e4edf3;border-radius:4px;background:#fff}
+#weitai-redesign .contact-qr-image img{display:block;width:100%;max-width:100%;height:100%;object-fit:contain}
+#weitai-redesign .contact-qr-full{display:block;width:260px;max-width:100%;height:auto;margin:0 auto 14px;padding:10px;background:#fff;object-fit:contain}
+#weitai-redesign .contact-extra-actions{display:flex;flex-wrap:wrap;gap:8px;width:100%;margin-top:6px}
+#weitai-redesign .contact-extra-actions button,#weitai-redesign .contact-extra-actions a{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:38px;padding:8px 12px;border-radius:8px;background:#eaf4fc;font-size:11.5px;line-height:1.5;color:#000;text-decoration:none;overflow-wrap:anywhere}
+#weitai-redesign .contact-extra-actions svg{width:15px;height:15px}
+#weitai-redesign .contact-extra-actions a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+#weitai-redesign .contact-dialog-panel{min-width:0;overscroll-behavior:contain}
+#weitai-redesign .contact-dialog-note{overflow-wrap:anywhere}
+#weitai-redesign .contact-business>.contact-note{margin:13px 0 0;font-size:11px;line-height:1.7}
+@container weitai-phone (max-width:370px){
+  #weitai-redesign .contact-header{padding:12px 14px;gap:9px}
+  #weitai-redesign .contact-content{padding:15px 13px 21px}
+  #weitai-redesign .contact-service-art{padding:20px}
+  #weitai-redesign .contact-service-headline,#weitai-redesign .contact-service-preview .contact-service-headline{font-size:16px}
+  #weitai-redesign .contact-business-card{padding:12px;gap:12px}
+  #weitai-redesign .contact-qr-placeholder,#weitai-redesign .contact-qr-image{width:120px}
+  #weitai-redesign .contact-qr-placeholder.contact-qr-large{width:190px}
+  #weitai-redesign .contact-dialog-panel{padding:17px}
+}
+@media(pointer:coarse){
+  #weitai-redesign .contact-consult,#weitai-redesign .contact-link,#weitai-redesign .contact-dialog-close,#weitai-redesign .contact-extra-actions button,#weitai-redesign .contact-extra-actions a{min-height:44px}
+  #weitai-redesign .contact-dialog-close{width:44px}
+}

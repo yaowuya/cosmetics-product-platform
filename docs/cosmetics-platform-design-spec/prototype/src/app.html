@@ -1,0 +1,112 @@
+<div class="phone-app">
+  <header class="app-topbar" id="app-header" hidden>
+    <img class="brand-logo" data-asset="logo" alt="微肽生物">
+    <span class="page-label" id="page-label">产品目录</span>
+  </header>
+  <main class="app-main" id="app-main">
+    <section class="page catalog-page" id="catalog-page" aria-label="产品目录">
+      <div class="catalog-cover">
+        <img data-asset="cover" alt="浅蓝与白色护肤品包装概念封面" width="2172" height="724">
+        <div class="catalog-cover-copy">
+          <p class="catalog-cover-kicker">医研共创为根基</p>
+          <p class="catalog-cover-title">功效护肤超级工厂</p>
+        </div>
+      </div>
+      <div class="catalog-tools">
+        <label class="catalog-search">
+          <i data-lucide="search" aria-hidden="true"></i>
+          <span class="sr-only" id="search-label">搜索产品名称或配方编号</span>
+          <input id="product-search" type="search" aria-labelledby="search-label" placeholder="搜索产品 / 编号" autocomplete="off">
+          <button id="clear-search" type="button" aria-label="清空搜索" hidden><i data-lucide="x" aria-hidden="true"></i></button>
+        </label>
+        <div class="module-tabs" id="module-tabs" role="tablist" aria-label="业务板块"></div>
+      </div>
+      <div class="catalog-body" id="catalog-body">
+        <aside class="category-rail" id="category-rail" aria-label="产品分类"></aside>
+        <div class="catalog-results" id="catalog-results" role="tabpanel" aria-labelledby="module-cosmetics">
+          <h1 id="category-title" class="sr-only">净澈清洁</h1>
+          <div class="results-toolbar">
+            <div class="results-summary" id="results-summary" hidden>
+              <span id="result-count" class="result-count" aria-live="polite" aria-atomic="true"></span>
+              <button class="text-control" id="reset-search" type="button" hidden>清空</button>
+            </div>
+            <div class="catalog-filter-row" id="catalog-filter-row">
+              <div class="subfilters" id="subfilters" role="group" aria-label="净澈清洁细分类"></div>
+              <span class="category-result-total" id="category-result-total" aria-live="polite" aria-atomic="true"></span>
+            </div>
+          </div>
+          <p id="filter-status" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
+          <div class="product-list" id="product-list"></div>
+          <div class="empty-state" id="empty-state" hidden>
+            <span class="empty-symbol" id="empty-symbol"><i data-lucide="search-x" aria-hidden="true"></i></span>
+            <h2 id="empty-title">没有找到相关产品</h2>
+            <p id="empty-description">试试产品名称、分类，<br>或配方编号。</p>
+            <button class="soft-button" id="empty-reset" type="button" data-action="reset-search">重新查找</button>
+          </div>
+          <p class="catalog-footnote" id="catalog-footnote">示例产品 · 正式资料待替换</p>
+        </div>
+      </div>
+    </section>
+    {{COMPANY_HTML}}
+    <section class="page cases-page" id="cases-page" aria-label="品牌案例" hidden>
+      <div class="cases-content">
+        <header class="cases-hero">
+          <img class="cases-hero-image" data-asset="case-header" alt="" aria-hidden="true">
+          <div class="cases-hero-copy">
+            <h1>品牌案例</h1>
+            <p>携手品牌，共创高功效产品</p>
+          </div>
+        </header>
+        <div class="cases-toolbar">
+        <label class="catalog-search cases-search">
+          <i data-lucide="search" aria-hidden="true"></i>
+          <span class="sr-only" id="case-search-label">搜索品牌、产品或功效案例</span>
+          <input id="case-search" type="search" aria-labelledby="case-search-label" placeholder="搜索品牌、产品或功效案例" autocomplete="off">
+          <button id="clear-case-search" class="search-clear" type="button" aria-label="清空案例搜索" hidden><i data-lucide="x" aria-hidden="true"></i></button>
+        </label>
+        <div class="case-filter-tabs" id="case-filter-tabs" role="tablist" aria-label="案例分类"></div>
+        </div>
+        <div class="case-results" id="case-results" role="tabpanel" aria-labelledby="filter-case_featured">
+        <p id="case-count" class="sr-only" aria-live="polite"></p>
+        <section id="case-featured" class="case-featured-zone" aria-label="精选案例"></section>
+        <section class="case-grid-section" aria-labelledby="case-grid-title">
+          <div class="section-head"><h2 id="case-grid-title">更多品牌案例</h2></div>
+          <div id="case-grid" class="case-grid"></div>
+        </section>
+        <div class="empty-state" id="cases-empty" hidden><i data-lucide="search-x" aria-hidden="true"></i><h2>没有找到相关案例</h2><p>试试品牌名称、产品类型或功效关键词。</p><button class="soft-button" type="button" data-action="reset-case-search">重新查找</button></div>
+        </div>
+        <p class="cases-footnote">示例品牌与产品图片 · 待替换真实案例</p>
+      </div>
+    </section>
+    {{CONTACT_HTML}}
+  </main>
+  <nav class="bottom-nav" id="bottom-nav" aria-label="主导航">
+    <button type="button" data-page="company" aria-label="首页"><span class="nav-icon"><i data-lucide="house" aria-hidden="true"></i></span><span>首页</span></button>
+    <button type="button" data-page="catalog" class="active" aria-current="page" aria-label="产品目录"><span class="nav-icon"><i data-lucide="layout-grid" aria-hidden="true"></i></span><span>产品目录</span></button>
+    <button type="button" data-page="cases" aria-label="品牌案例"><span class="nav-icon"><i data-lucide="briefcase-business" aria-hidden="true"></i></span><span>品牌案例</span></button>
+    <button type="button" data-page="contact" aria-label="联系我们"><span class="nav-icon"><i data-lucide="phone" aria-hidden="true"></i></span><span>联系我们</span></button>
+  </nav>
+  <section class="detail-screen" id="product-detail" role="dialog" aria-modal="true" aria-labelledby="detail-title" hidden>
+    <header class="detail-header"><button class="icon-control" type="button" id="close-detail" aria-label="返回产品目录"><i data-lucide="arrow-left" aria-hidden="true"></i></button><span id="detail-page-label">产品详情</span><span class="detail-header-spacer" aria-hidden="true"></span></header>
+    <div class="detail-content">
+      <div class="detail-photo" id="detail-photo"></div>
+      <div class="detail-info">
+        <div class="detail-name-meta" id="detail-name-meta"><span class="field-label detail-name-label" id="detail-name-label">产品名称</span><span class="detail-sample-label" id="detail-sample-label" hidden>示例资料</span></div>
+        <h2 id="detail-title"></h2>
+        <p class="detail-sample-note" id="detail-sample-note" hidden>以下为展示示例，含模拟生产状态。</p>
+        <div class="case-detail-meta" id="case-detail-meta" hidden></div>
+        <dl class="detail-fields">
+          <div class="detail-field" data-product-field><dt>功效</dt><dd id="detail-efficacy"></dd></div>
+          <div class="detail-field" data-product-field><dt>核心成分</dt><dd id="detail-ingredients"></dd></div>
+          <div class="detail-field" data-product-field><dt>产品亮点</dt><dd id="detail-highlights"></dd></div>
+          <div class="detail-field detail-formula-field"><dt id="detail-code-label">配方编号</dt><dd class="detail-code-value"><strong id="detail-code"></strong><button class="icon-control code-copy" id="copy-code" type="button" aria-label="复制配方编号"><i data-lucide="copy" aria-hidden="true"></i></button></dd></div>
+          <div class="detail-field" data-product-field><dt>是否生产过</dt><dd><span class="production-status" id="detail-produced"></span></dd></div>
+        </dl>
+      </div>
+      <figure class="detail-long-media" id="detail-long-media"><img id="detail-long-image" alt="产品详情长图" decoding="async"></figure>
+    </div>
+  </section>
+  <div id="copy-sheet" class="copy-sheet" role="dialog" aria-modal="true" aria-labelledby="copy-sheet-title" hidden><div class="copy-sheet-card"><h2 id="copy-sheet-title">复制内容</h2><p>选中下方文字即可复制，手机可长按复制。</p><textarea id="copy-fallback" readonly aria-label="待复制内容"></textarea><button class="soft-button" id="close-copy-sheet" type="button">完成</button></div></div>
+  {{CONTACT_DIALOG_HTML}}
+  <div class="app-toast" id="app-toast" role="status" aria-live="polite"></div>
+</div>
