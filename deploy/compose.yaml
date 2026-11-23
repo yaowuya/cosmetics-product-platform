@@ -2,7 +2,8 @@ services:
   api:
     image: ${SHOWCASE_API_IMAGE:-showcase-api:local}
     build:
-      context: ../backend
+      context: ..
+      dockerfile: Dockerfile
     environment:
       ASSET_ROOT: /var/lib/showcase/assets
       FORWARDED_ALLOW_IPS: ${SHOWCASE_TRUSTED_PROXY_IPS:?Set the private proxy address}

@@ -17,7 +17,7 @@
 docker compose -p "$PROJECT" -f deploy/compose.yaml config --quiet
 docker compose -p "$PROJECT" -f deploy/compose.yaml up -d db
 docker compose -p "$PROJECT" -f deploy/compose.yaml run --rm api alembic -c alembic.ini upgrade head
-docker compose -p "$PROJECT" -f deploy/compose.yaml run --rm api python -m app.bootstrap "$ADMIN_LOGIN"
+docker compose -p "$PROJECT" -f deploy/compose.yaml run --rm api python -m app.cli.bootstrap "$ADMIN_LOGIN"
 docker compose -p "$PROJECT" -f deploy/compose.yaml up -d api proxy
 ```
 
