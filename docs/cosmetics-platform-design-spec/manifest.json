@@ -1,0 +1,17 @@
+{
+  "package": "化妆品产品平台设计稿细则与需求汇总",
+  "version": "1.0",
+  "date": "2026-11-22",
+  "scope": "页面设计细则与会话需求整理；不含开发架构或接口",
+  "prototype_commit": "04139dfb52be695ccba610079a92884b80ce794b",
+  "prototype_index_sha256": "066d5d809e55933ce745644a12fcea349c63ad0188912347d7ac08b42b2901db",
+  "conversation_requirement_count": 76,
+  "category_count": 43,
+  "design_spec_pages": 22,
+  "design_parameter_count": 42,
+  "asset_list_count": 26,
+  "design_checklist_count": 44,
+  "design_diagram_count": 2,
+  "prototype_files": 44,
+  "prototype_preserved": true
+}

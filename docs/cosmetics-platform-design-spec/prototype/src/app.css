@@ -1,0 +1,172 @@
+#weitai-redesign{--ink:#000;--muted:#000;--accent:#4888b5;--accent-ink:#32698e;--pale:#edf6fc;--line:#e6edf2;--white:#fff;--soft:#f7f9fb;--font:"PingFang SC","Microsoft YaHei","Noto Sans CJK SC",system-ui,-apple-system,sans-serif;color:#000;font-family:var(--font);font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased;color-scheme:light}
+#weitai-redesign *,#weitai-redesign *::before,#weitai-redesign *::after{box-sizing:border-box}
+#weitai-redesign [hidden]{display:none!important}
+#weitai-redesign h1,#weitai-redesign h2,#weitai-redesign h3,#weitai-redesign p{margin:0}
+#weitai-redesign button,#weitai-redesign input,#weitai-redesign textarea{font:inherit;color:#000}
+#weitai-redesign button{border:0;margin:0;padding:0;background:none;touch-action:manipulation;cursor:pointer;-webkit-tap-highlight-color:transparent}
+#weitai-redesign button:disabled{cursor:default;opacity:1}
+#weitai-redesign button:focus-visible,#weitai-redesign input:focus-visible,#weitai-redesign textarea:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+#weitai-redesign img{display:block;max-width:none}
+#weitai-redesign .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+#weitai-redesign svg.lucide{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;vertical-align:middle}
+#weitai-redesign .phone-app{position:relative;isolation:isolate;display:flex;flex-direction:column;flex:1;min-height:0;height:100%;width:100%;overflow:hidden;background:var(--white);container-type:inline-size;container-name:weitai-phone}
+#weitai-redesign .app-topbar{flex:none;height:56px;display:flex;align-items:center;justify-content:space-between;padding:8px 20px;background:var(--white);gap:16px}
+#weitai-redesign .brand-logo{width:92px;height:auto;object-fit:contain}
+#weitai-redesign .page-label{font-size:12px;font-weight:450;letter-spacing:.5px;color:#000}
+#weitai-redesign .app-main{flex:1;min-height:0;position:relative;overflow:hidden}
+#weitai-redesign .page{height:100%;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#dbe5eb transparent}
+#weitai-redesign .catalog-page{display:flex;flex-direction:column;overflow:hidden}
+#weitai-redesign .catalog-cover{position:relative;flex:none;width:100%;aspect-ratio:3/1;overflow:hidden;background:#f3f9fd;display:flex;align-items:center}
+#weitai-redesign .catalog-cover>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#weitai-redesign .catalog-cover-copy{position:relative;padding:16px 20px;max-width:61%}
+#weitai-redesign .catalog-cover-kicker{font-size:11px;line-height:1.6;letter-spacing:.3px;color:#000}
+#weitai-redesign .catalog-cover-title{margin-top:5px;font-size:16px;line-height:1.5;font-weight:500;letter-spacing:0;color:#000;white-space:nowrap}
+#weitai-redesign .catalog-tools{flex:none;background:var(--white)}
+#weitai-redesign .catalog-search{height:44px;display:flex;align-items:center;gap:9px;margin:12px 16px 5px;padding:0 13px;border:1px solid #e4ecf2;border-radius:12px;background:#f5f8fb;color:#000;transition:background .15s,border-color .15s}
+#weitai-redesign .catalog-search:focus-within{background:white;border-color:#8eb9d7}
+#weitai-redesign .catalog-search>svg{width:18px;height:18px}
+#weitai-redesign .catalog-search input{border:0;outline:none;min-width:0;flex:1;width:100%;background:transparent;height:100%;font-size:13px;line-height:1.4;color:#000;-webkit-appearance:none;appearance:none}
+#weitai-redesign .catalog-search input::-webkit-search-cancel-button{display:none}
+#weitai-redesign .catalog-search input::placeholder{color:#000;opacity:1;font-size:12.5px;}
+#weitai-redesign #clear-search,#weitai-redesign .search-clear{display:flex;align-items:center;justify-content:center;width:35px;height:40px;margin-right:-9px;flex:none}
+#weitai-redesign #clear-search svg,#weitai-redesign .search-clear svg{width:16px;height:16px}
+#weitai-redesign .module-tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:0 12px;border-bottom:1px solid var(--line);height:50px}
+#weitai-redesign .module-tabs button{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:3px 0 5px;font-size:11.5px;line-height:1.45;font-weight:400;white-space:nowrap;color:#000;min-width:0;min-height:44px;}
+#weitai-redesign .module-icon{display:flex;align-items:center;justify-content:center;width:32px;height:24px;border-radius:8px;color:#7a919f}
+#weitai-redesign .module-icon svg{width:18px;height:18px;stroke-width:1.5}
+#weitai-redesign .module-tabs button[aria-selected="true"]{color:#000;font-weight:500}
+#weitai-redesign .module-tabs button[aria-selected="true"] .module-icon{color:var(--accent-ink);background:var(--pale)}
+#weitai-redesign .module-tabs button[aria-selected="true"]::after{content:"";position:absolute;width:18px;height:2px;left:calc(50% - 9px);bottom:2px;border-radius:2px;background:#9bc8e6}
+#weitai-redesign .catalog-body{display:flex;flex:1;min-height:0;overflow:hidden}
+#weitai-redesign .category-rail{flex:0 0 80px;background:#f5f8fa;overflow-y:auto;scrollbar-width:none;overscroll-behavior:contain;padding:7px 0 10px}
+#weitai-redesign .category-rail::-webkit-scrollbar{display:none}
+#weitai-redesign .category-button{position:relative;display:flex;align-items:center;justify-content:center;width:100%;min-height:48px;padding:12px 5px;text-align:center;font-size:11.5px;line-height:1.5;color:#000}
+#weitai-redesign .category-button.active{color:#000;font-weight:500}
+#weitai-redesign .category-button.active::before{content:"";position:absolute;inset:6px 4px;background:#e7f3fb;border-radius:8px}
+#weitai-redesign .category-button:hover{color:#000}
+#weitai-redesign .category-name{position:relative;display:block;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#weitai-redesign .catalog-results{flex:1;min-width:0;overflow-y:auto;overscroll-behavior:contain;padding:0 12px 22px;scrollbar-width:thin;scrollbar-color:#dbe5eb transparent}
+#weitai-redesign .results-toolbar{position:sticky;top:0;z-index:2;padding:12px 0 8px;background:#fff}
+#weitai-redesign .results-summary{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:20px;margin-bottom:7px}
+#weitai-redesign .results-summary .text-control{min-height:30px;padding:2px 4px}
+#weitai-redesign .result-count{font-size:11px;color:#000;white-space:nowrap}
+#weitai-redesign .text-control{font-size:11px;min-height:40px;padding:4px;color:#000}
+#weitai-redesign .product-card{display:flex;align-items:center;position:relative;width:100%;gap:13px;padding:14px 0;text-align:left;border-bottom:1px solid #edf1f4;min-height:124px;transition:opacity .15s}
+#weitai-redesign .product-card:first-child{padding-top:0;min-height:110px}
+#weitai-redesign .product-card:active{background:var(--pale)}
+#weitai-redesign .product-photo{flex:0 0 96px;height:96px;position:relative;overflow:hidden;background:#f2f6f8;border-radius:10px}
+#weitai-redesign .quad-image{position:absolute;width:200%;height:200%;object-fit:fill}
+#weitai-redesign .quad-clean{left:0;top:0}
+#weitai-redesign .quad-water{right:0;top:0}
+#weitai-redesign .quad-emulsion{left:0;bottom:0}
+#weitai-redesign .quad-cream{right:0;bottom:0}
+#weitai-redesign .product-card-info{min-width:0;flex:1;display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+#weitai-redesign .product-name{display:block;max-width:100%;font-size:13px;line-height:1.5;font-weight:500;color:#000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#weitai-redesign .product-efficacy{display:block;max-width:100%;font-size:11.5px;line-height:1.5;font-weight:400;color:#000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#weitai-redesign .image-placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;color:#000;text-align:center;font-size:11px;background:#f4f7fa}
+#weitai-redesign .image-placeholder svg{width:24px;height:24px;color:#9caeba;stroke-width:1.3}
+#weitai-redesign .photo-placeholder-content{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:8px;font-size:11px;line-height:1.5}
+#weitai-redesign .catalog-filter-row{display:flex;align-items:center;gap:10px;min-width:0}
+#weitai-redesign .category-result-total{flex:none;white-space:nowrap;font-size:11px;line-height:1.5;color:#000;font-variant-numeric:tabular-nums}
+#weitai-redesign .subfilters{position:relative;display:flex;flex:1;min-width:0;flex-wrap:nowrap;gap:6px;margin:0;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none}
+#weitai-redesign .subfilters::-webkit-scrollbar{display:none}
+#weitai-redesign .subfilters button{flex:0 0 auto;white-space:nowrap;padding:7px 9px;min-height:34px;background:#f4f7f9;color:#000;border-radius:7px;font-size:11.5px;line-height:1.45}
+#weitai-redesign .subfilters button.active{background:var(--pale);color:#000;font-weight:500}
+#weitai-redesign .subfilters button:focus-visible{outline-offset:-3px}
+#weitai-redesign .catalog-footnote{padding:27px 0 6px;text-align:center;font-size:11px;line-height:1.6;color:#000}
+#weitai-redesign .catalog-body.single-category .catalog-results{padding-left:20px;padding-right:20px}
+#weitai-redesign .catalog-body.single-category .product-card{gap:18px}
+#weitai-redesign .bottom-nav{flex:none;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));height:calc(58px + env(safe-area-inset-bottom,0px));padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);background:white;z-index:10}
+#weitai-redesign .bottom-nav>button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:#000;font-size:11px;font-weight:400;min-width:0;line-height:1.35;min-height:44px;}
+#weitai-redesign .nav-icon{display:flex;align-items:center;justify-content:center;width:36px;height:24px;border-radius:8px;transition:background .15s}
+#weitai-redesign .nav-icon svg{width:18px;height:18px;stroke-width:1.5}
+#weitai-redesign .bottom-nav>button.active{color:#000;font-weight:500}
+#weitai-redesign .bottom-nav>button.active .nav-icon{background:var(--pale)}
+#weitai-redesign .detail-screen{position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;overflow:hidden;background:white;animation:detail-in .2s ease-out}
+#weitai-redesign .detail-header{display:flex;align-items:center;justify-content:space-between;flex:none;height:52px;padding:5px 10px;border-bottom:1px solid var(--line);font-size:13px;font-weight:500}
+#weitai-redesign .icon-control{width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:50%;flex:none}
+#weitai-redesign .icon-control:hover{background:#f1f6f9}
+#weitai-redesign .detail-header-spacer{width:44px}
+#weitai-redesign .detail-content{overflow-y:auto;flex:1;min-height:0;padding-bottom:0;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#dbe5eb transparent}
+#weitai-redesign .detail-photo{position:relative;display:flex;align-items:center;justify-content:center;width:100%;aspect-ratio:16/9;overflow:hidden;background:linear-gradient(135deg,#f9fbfd,#eef5fa)}
+#weitai-redesign .detail-cover-product{position:relative;height:100%;aspect-ratio:1;overflow:hidden}
+#weitai-redesign .detail-cover-product .photo-placeholder-content{height:100%}
+#weitai-redesign .detail-cover-image{width:100%;height:100%;object-fit:cover}
+#weitai-redesign .detail-cover-note{position:absolute;right:12px;bottom:10px;font-size:11px;line-height:1.4;padding:3px 7px;background:#ffffffd9;border-radius:5px;color:#000}
+#weitai-redesign .detail-photo.image-placeholder{font-size:13px}
+#weitai-redesign .detail-photo.image-placeholder svg{height:44px;width:44px}
+#weitai-redesign .detail-info{padding:20px 20px 24px}
+#weitai-redesign .detail-info h2{font-size:18px;line-height:1.5;font-weight:500;letter-spacing:0;overflow-wrap:anywhere}
+#weitai-redesign .detail-name-meta{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:7px}
+#weitai-redesign .detail-name-label{display:block}
+#weitai-redesign .detail-sample-label{display:inline-flex;align-items:center;padding:3px 7px;font-size:11px;line-height:1.35;border-radius:5px;background:#edf5fa;color:#000}
+#weitai-redesign .detail-sample-note{margin-top:7px;font-size:11px;line-height:1.6;color:#000}
+#weitai-redesign .detail-fields{display:flex;flex-direction:column;gap:15px;margin:20px 0 0}
+#weitai-redesign .detail-field{display:grid;grid-template-columns:66px minmax(0,1fr);align-items:start;gap:12px}
+#weitai-redesign .detail-field dt{font-size:11.5px;line-height:1.75;font-weight:400;color:#000}
+#weitai-redesign .detail-field dd{margin:0;min-width:0;font-size:12.5px;line-height:1.65;color:#000;overflow-wrap:anywhere}
+#weitai-redesign #detail-highlights{white-space:pre-line}
+#weitai-redesign .detail-formula-field{align-items:center}
+#weitai-redesign .detail-code-value{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:36px}
+#weitai-redesign .production-status{display:inline-block;padding:2px 8px;border-radius:5px;background:#f0f6fa;font-size:11.5px;line-height:1.6;color:#000}
+#weitai-redesign .detail-long-media{margin:0;width:100%;background:#f7fafc}
+#weitai-redesign .detail-long-media img{width:100%;height:auto;max-width:100%;display:block}
+#weitai-redesign .field-label{color:#000;font-size:11px}
+#weitai-redesign #detail-code{font-size:13px;line-height:1.4;font-weight:400;font-variant-numeric:tabular-nums;letter-spacing:.3px}
+#weitai-redesign .code-copy{width:36px;height:36px;background:var(--pale);color:#000;border-radius:8px}
+#weitai-redesign .code-copy svg{width:16px;height:16px}
+#weitai-redesign .app-toast{position:absolute;z-index:60;bottom:100px;left:50%;transform:translate(-50%,10px);width:max-content;max-width:calc(100% - 36px);padding:11px 17px;background:#edf6fc;color:#000;font-size:12px;line-height:1.5;border-radius:10px;box-shadow:0 5px 22px #25343d15;pointer-events:none;opacity:0;transition:opacity .18s,transform .18s;text-align:center}
+#weitai-redesign .app-toast.show{opacity:1;transform:translate(-50%,0)}
+#weitai-redesign .copy-sheet{position:absolute;inset:0;z-index:50;background:#28384455;display:flex;align-items:flex-end;padding:14px}
+#weitai-redesign .copy-sheet-card{width:100%;max-height:100%;overflow-y:auto;overscroll-behavior:contain;padding:22px;border-radius:18px;background:white;box-shadow:0 8px 40px #182a3c15}
+#weitai-redesign .copy-sheet-card h2{font-size:14px;font-weight:500;margin-bottom:7px}
+#weitai-redesign .copy-sheet-card p{font-size:13px;color:#000}
+#weitai-redesign .copy-sheet-card textarea{display:block;width:100%;height:150px;margin:16px 0;padding:12px;border:1px solid var(--line);border-radius:9px;background:var(--soft);font-size:13px;line-height:1.7;resize:none}
+#weitai-redesign .copy-sheet-card button{width:100%}
+@keyframes detail-in{from{opacity:.8;transform:translateX(15px)}to{opacity:1;transform:translateX(0)}}
+@container weitai-phone (max-width:370px){#weitai-redesign .product-photo{flex-basis:88px;height:88px}#weitai-redesign .product-card{gap:10px}#weitai-redesign .case-card .product-photo{flex-basis:116px;height:116px}}
+@container weitai-phone (max-width:340px){#weitai-redesign .catalog-results{padding-left:10px;padding-right:10px}#weitai-redesign .product-photo{flex-basis:76px;height:76px}#weitai-redesign .product-card{gap:8px}}
+@media(pointer:coarse){#weitai-redesign .subfilters button{min-height:40px}#weitai-redesign .code-copy{width:44px;height:44px}}
+@media(prefers-reduced-motion:reduce){#weitai-redesign *,#weitai-redesign *::before,#weitai-redesign *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+
+/* 产品目录设计微调 · 2026-11-21：保持白底与轻蓝，不添加产品分隔横线 */
+#weitai-redesign .catalog-cover {
+  aspect-ratio: 2.6 / 1;
+  min-height: 146px;
+  max-height: 182px;
+}
+#weitai-redesign .catalog-cover > img { object-fit: cover; object-position: center 52%; }
+#weitai-redesign .catalog-cover-copy { padding: 14px 20px; }
+#weitai-redesign .catalog-search {
+  height: 36px;
+  margin: 9px 15px 7px;
+  padding: 0 11px;
+  border-color: #e6eef4;
+  background: #f8fafc;
+  border-radius: 10px;
+  gap: 8px;
+  box-shadow: none;
+}
+#weitai-redesign .catalog-search > svg { width: 15px; height: 15px; }
+#weitai-redesign .catalog-search input { font-size:13px; letter-spacing: 0; }
+#weitai-redesign .catalog-search input::placeholder { color:#000;opacity:1;font-size:12.5px;}
+#weitai-redesign .catalog-search:focus-within { border-color: #a6cbe4; background:#fff; }
+#weitai-redesign .module-tabs { padding:0 12px; height:50px; }
+#weitai-redesign .module-tabs button { font-size:11.5px; gap:2px; padding:3px 0 5px;min-height:44px;}
+#weitai-redesign .product-card,
+#weitai-redesign .case-card { border-bottom: none !important; }
+#weitai-redesign .catalog-results .product-list { display:flex; flex-direction:column; gap: 7px; }
+#weitai-redesign .catalog-results .product-card { min-height:105px; padding:10px 0; }
+#weitai-redesign .catalog-results .product-card:first-child { min-height:105px; padding-top:9px; }
+#weitai-redesign .catalog-results .product-card:last-child { padding-bottom:16px; }
+@container weitai-phone (max-width:340px){#weitai-redesign .catalog-results .product-card,#weitai-redesign .catalog-results .product-card:first-child{min-height:96px}}
+#weitai-redesign .catalog-body:not(.single-category) .category-rail { display:block; }
+@media (max-width:410px) {
+  #weitai-redesign .catalog-cover { min-height:0; max-height:none; }
+  #weitai-redesign .catalog-cover-kicker { font-size:11px;letter-spacing:.3px;}
+  #weitai-redesign .catalog-cover-title { font-size:16px;letter-spacing:0;margin-top:5px;}
+}
+
+/* Compact labels with readable touch-keyboard input; tap targets stay full size. */
+@media(pointer:coarse){#weitai-redesign .catalog-search input{font-size:16px}}

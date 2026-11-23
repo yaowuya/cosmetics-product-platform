@@ -1,0 +1,66 @@
+/* Approved reference: pale-blue photographic header, one hero case and two-column case gallery. */
+#weitai-redesign .cases-page{display:flex;flex-direction:column;overflow:hidden;background:#fff;color:#000}
+#weitai-redesign .cases-content{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-width:none;padding-bottom:16px;background:#fff}
+#weitai-redesign .cases-content::-webkit-scrollbar{display:none}
+#weitai-redesign .cases-hero{position:relative;min-height:75px;padding:10px 25px 8px;overflow:hidden;background:#f5faff}
+#weitai-redesign .cases-hero-image{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;pointer-events:none}
+#weitai-redesign .cases-hero-copy{position:relative}
+#weitai-redesign .cases-hero h1{font-size:21px;line-height:1.35;letter-spacing:.3px;font-weight:600;color:#000}
+#weitai-redesign .cases-hero p{font-size:11.5px;line-height:1.6;color:#000;margin-top:4px;letter-spacing:0}
+#weitai-redesign .cases-toolbar{position:relative;margin-top:-3px;padding:10px 16px 11px;border-radius:18px 18px 0 0;background:#fff}
+#weitai-redesign .cases-search{height:34px;margin:0 4px 10px;padding:0 12px;border:1px solid #e2e9f2;border-radius:22px;background:#f6f8fc;gap:8px}
+#weitai-redesign .cases-search>svg{width:17px;height:17px;color:#8290a3;flex:none}
+#weitai-redesign .cases-search input{font-size:13px;letter-spacing:0}
+#weitai-redesign .cases-search input::placeholder{color:#000;opacity:1;font-size:12.5px;}
+#weitai-redesign .cases-search button{width:28px;height:28px;flex:none}
+#weitai-redesign .case-filter-tabs{display:flex;gap:5px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding:3px 0 2px}
+#weitai-redesign .case-filter-tabs::-webkit-scrollbar{display:none}
+#weitai-redesign .case-filter-tabs button{flex:1 0 53px;min-width:53px;min-height:29px;padding:5px 4px;border-radius:7px;color:#000;background:#f0f4fa;font-size:11px;font-weight:400;line-height:1.5;white-space:nowrap;transition:background .15s,color .15s}
+#weitai-redesign .case-filter-tabs button.active{background:#4e8bdb;color:#000;box-shadow:0 2px 5px #427fc81a}
+#weitai-redesign .case-results{padding:0 14px}
+#weitai-redesign .featured-case-card{display:grid;grid-template-columns:61% 39%;width:100%;min-height:170px;border-radius:12px;overflow:hidden;background:#edf5fc;box-shadow:0 2px 8px #405f7910;text-align:left;isolation:isolate;transition:box-shadow .18s}
+#weitai-redesign .featured-case-photo{display:block;position:relative;width:100%;height:100%;min-height:170px;overflow:hidden;background:#e8f2fb}
+#weitai-redesign .featured-case-photo img{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:cover;object-position:center}
+#weitai-redesign .featured-case-photo.case-photo-wide img{object-fit:contain}
+#weitai-redesign .featured-case-info{display:flex;flex-direction:column;justify-content:center;min-width:0;padding:14px 10px;background:#f1f7fc;overflow-wrap:anywhere}
+#weitai-redesign .featured-case-brand{display:block;font-size:14px;font-weight:500;line-height:1.45;letter-spacing:.1px;color:#000}
+#weitai-redesign .featured-case-type{display:block;font-size:12px;font-weight:500;line-height:1.55;margin-top:8px;color:#000}
+#weitai-redesign .featured-case-description{display:block;font-size:11.5px;line-height:1.65;margin-top:8px;color:#000}
+#weitai-redesign .case-grid-section{margin-top:13px}
+#weitai-redesign .case-grid-section .section-head{display:flex;align-items:center;gap:8px;margin:0 0 11px;padding-left:1px}
+#weitai-redesign .case-grid-section .section-head::before{content:"";width:3px;height:15px;flex:none;border-radius:2px;background:#5e99df}
+#weitai-redesign .case-grid-section h2{font-size:14px;line-height:1.6;font-weight:500;letter-spacing:.3px;color:#000}
+#weitai-redesign .case-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 8px}
+#weitai-redesign .case-grid-card{display:flex;flex-direction:column;min-width:0;overflow:hidden;border-radius:10px;background:#f9fbfe;box-shadow:0 2px 6px #486d9512;text-align:left;transition:box-shadow .18s,transform .18s}
+#weitai-redesign .case-grid-photo{display:block;position:relative;width:100%;aspect-ratio:2.2;overflow:hidden;background:#eef4f8;border-radius:10px 10px 8px 8px}
+#weitai-redesign .case-grid-photo img{display:block;width:100%;height:100%;object-fit:cover;object-position:center}
+#weitai-redesign .case-grid-copy{display:flex;flex-direction:column;gap:2px;padding:5px 9px 6px}
+#weitai-redesign .case-grid-meta{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;min-width:0}
+#weitai-redesign .case-grid-brand{font-size:12.5px;font-weight:500;line-height:1.35;color:#000}
+#weitai-redesign .case-tag{display:inline-flex;align-items:center;min-height:18px;padding:1px 6px;border-radius:9px;background:#e8f2ff;font-size:11px;font-weight:450;line-height:1.4;color:#000;white-space:nowrap}
+#weitai-redesign .case-grid-desc{font-size:11.5px;line-height:1.5;color:#000;overflow-wrap:anywhere}
+#weitai-redesign .cases-footnote{font-size:11px;line-height:1.6;color:#000;padding:17px 14px 0;text-align:center}
+#weitai-redesign .featured-case-card:hover,#weitai-redesign .case-grid-card:hover{box-shadow:0 4px 15px #40689624}
+#weitai-redesign .featured-case-card:active,#weitai-redesign .case-grid-card:active{box-shadow:0 0 0 2px #dce9f2}
+#weitai-redesign .detail-photo.case-detail-photo{aspect-ratio:1.4;background:#f4f8fc}
+#weitai-redesign .detail-photo.case-detail-photo img{width:100%;height:100%;display:block;object-fit:contain}
+#weitai-redesign .case-detail-meta{margin:8px 0 0;color:#000;font-size:13px;line-height:1.7}
+#weitai-redesign .case-detail-note{font-size:11.5px;color:#000;margin-top:14px}
+#weitai-redesign .empty-state{text-align:center;padding:45px 0;color:#000}
+#weitai-redesign .empty-state>svg,#weitai-redesign .empty-symbol svg{width:30px;height:30px;color:#9fb6c4;margin-bottom:17px}
+#weitai-redesign .empty-state h2{font-size:14px;color:#000;font-weight:500;margin-bottom:8px}
+#weitai-redesign .empty-state p{font-size:13px;line-height:1.75}
+#weitai-redesign .empty-state button{margin-top:22px}
+#weitai-redesign .soft-button{border:1px solid #dce9f2;border-radius:10px;background:var(--pale);color:#000;padding:11px 17px;min-height:44px;font-size:13px;font-weight:500}
+@container weitai-phone (max-width:370px){
+  #weitai-redesign .cases-hero{padding:12px 22px 9px;min-height:78px}
+  #weitai-redesign .cases-hero h1{font-size:21px;font-weight:600;letter-spacing:.3px;}
+  #weitai-redesign .cases-toolbar{padding-right:12px;padding-left:12px}
+  #weitai-redesign .case-results{padding:0 12px}
+  #weitai-redesign .featured-case-card{grid-template-columns:57% 43%}
+  #weitai-redesign .featured-case-info{padding:12px 9px}
+  #weitai-redesign .featured-case-brand{font-size:14px;font-weight:500;}
+  #weitai-redesign .case-grid-copy{padding:5px 8px 6px}
+  #weitai-redesign .case-grid-meta{gap:3px 5px}
+}
+@media(pointer:coarse){#weitai-redesign .cases-search input{font-size:16px}#weitai-redesign .case-filter-tabs button{min-height:36px;font-size:11px;font-weight:400;flex:1 0 53px;min-width:53px;}}

@@ -1,0 +1,1712 @@
+{
+  "modules": [
+    {
+      "id": "cosmetics",
+      "label": "护肤",
+      "shortName": "护肤",
+      "searchPlaceholder": "搜索护肤产品、成分或方案编号",
+      "categories": [
+        {
+          "id": "cos_cleanse",
+          "name": "净澈清洁",
+          "en": "CLEANSING",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            },
+            {
+              "id": "cleanser",
+              "label": "洁面",
+              "values": [
+                "洁面",
+                "洁面乳"
+              ]
+            },
+            {
+              "id": "makeup-removal",
+              "label": "卸妆",
+              "values": [
+                "卸妆油",
+                "卸妆膏",
+                "卸妆水",
+                "卸妆"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "cos_skincare",
+          "name": "基础维稳",
+          "en": "DAILY SKINCARE",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            },
+            {
+              "id": "essence-water",
+              "label": "精华水",
+              "values": [
+                "精华水"
+              ]
+            },
+            {
+              "id": "lotion",
+              "label": "乳液",
+              "values": [
+                "乳液"
+              ]
+            },
+            {
+              "id": "cream",
+              "label": "膏霜",
+              "values": [
+                "膏霜",
+                "面霜"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "cos_efficacy",
+          "name": "功效护肤",
+          "en": "TARGETED SKINCARE",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            }
+          ]
+        },
+        {
+          "id": "cos_ecommerce",
+          "name": "电商爆品",
+          "en": "E-COMMERCE PICKS",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            },
+            {
+              "id": "single",
+              "label": "便携单品",
+              "values": [
+                "便携洁面",
+                "便携单品"
+              ]
+            },
+            {
+              "id": "set",
+              "label": "套组",
+              "values": [
+                "便携组合",
+                "套组"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "cos_innovation",
+          "name": "创新剂型",
+          "en": "INNOVATIVE FORMATS",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            }
+          ]
+        },
+        {
+          "id": "cos_hydrating",
+          "name": "功效水光",
+          "en": "HYDRATING CARE",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            }
+          ]
+        },
+        {
+          "id": "cos_oil",
+          "name": "以油养肤",
+          "en": "FACIAL OILS",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            },
+            {
+              "id": "facial-oil",
+              "label": "精华油",
+              "values": [
+                "精华油"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "cos_eye",
+          "name": "眼部专项",
+          "en": "EYE CARE",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            }
+          ]
+        },
+        {
+          "id": "cos_complexion",
+          "name": "底妆专项",
+          "en": "COMPLEXION CARE",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            }
+          ]
+        },
+        {
+          "id": "cos_mask",
+          "name": "面膜棉片",
+          "en": "MASKS & PADS",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            },
+            {
+              "id": "mask",
+              "label": "面膜",
+              "values": [
+                "贴片面膜",
+                "面膜"
+              ]
+            },
+            {
+              "id": "pad",
+              "label": "棉片",
+              "values": [
+                "棉片",
+                "护理棉片"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "cos_professional",
+          "name": "院线护理",
+          "en": "PROFESSIONAL CARE",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            },
+            {
+              "id": "gel-mask",
+              "label": "凝膜",
+              "values": [
+                "敷护方案",
+                "凝膜"
+              ]
+            },
+            {
+              "id": "care-lotion",
+              "label": "护理乳",
+              "values": [
+                "护理乳"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "hc_5",
+          "name": "身体护理",
+          "en": "BODY CARE",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            }
+          ]
+        }
+      ],
+      "icon": "droplets"
+    },
+    {
+      "id": "lyophilized",
+      "label": "冻干",
+      "shortName": "冻干",
+      "searchPlaceholder": "搜索冻干产品或方案编号",
+      "icon": "snowflake",
+      "categories": [
+        {
+          "id": "fr_powder",
+          "name": "冻干粉",
+          "en": "FREEZE-DRIED",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            }
+          ]
+        },
+        {
+          "id": "fr_flock",
+          "name": "冻干絮",
+          "en": "FREEZE-DRIED",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            }
+          ]
+        },
+        {
+          "id": "fr_ball",
+          "name": "冻干球",
+          "en": "FREEZE-DRIED",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            }
+          ]
+        },
+        {
+          "id": "fr_oil",
+          "name": "冻干油",
+          "en": "FREEZE-DRIED",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            }
+          ]
+        },
+        {
+          "id": "fr_emulsion",
+          "name": "冻干乳",
+          "en": "FREEZE-DRIED",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            }
+          ]
+        },
+        {
+          "id": "fr_microsphere",
+          "name": "冻干微球",
+          "en": "FREEZE-DRIED",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            }
+          ]
+        },
+        {
+          "id": "fr_ice",
+          "name": "冻干冰晶",
+          "en": "FREEZE-DRIED",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            }
+          ]
+        },
+        {
+          "id": "fr_mask",
+          "name": "冻干面膜",
+          "en": "FREEZE-DRIED",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            }
+          ]
+        },
+        {
+          "id": "fr_eye_mask",
+          "name": "冻干眼膜",
+          "en": "FREEZE-DRIED",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "medical",
+      "label": "二类",
+      "shortName": "二类",
+      "searchPlaceholder": "搜索二类目录或资料展示位",
+      "categories": [
+        {
+          "id": "med_sunclean",
+          "name": "防晒清洁",
+          "en": "SUNSCREEN & CLEANSING DIRECTORY",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            },
+            {
+              "id": "sun-care",
+              "label": "防晒",
+              "values": [
+                "防晒"
+              ]
+            },
+            {
+              "id": "cleanser",
+              "label": "清洁",
+              "values": [
+                "洁面",
+                "清洁"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "med_collagen",
+          "name": "重组胶原蛋白",
+          "en": "RECOMBINANT COLLAGEN",
+          "labelParts": [
+            "重组",
+            "胶原蛋白"
+          ],
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            }
+          ]
+        },
+        {
+          "id": "med_mussel",
+          "name": "重组贻贝蛋白",
+          "en": "RECOMBINANT MUSSEL PROTEIN",
+          "labelParts": [
+            "重组",
+            "贻贝蛋白"
+          ],
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            }
+          ]
+        },
+        {
+          "id": "med_hyaluronate",
+          "name": "透明质酸钠",
+          "en": "SODIUM HYALURONATE",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            }
+          ]
+        },
+        {
+          "id": "med_polysaccharide",
+          "name": "生物多糖",
+          "en": "BIOPOLYSACCHARIDES",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            }
+          ]
+        },
+        {
+          "id": "med_trehalose",
+          "name": "海藻糖",
+          "en": "TREHALOSE",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            }
+          ]
+        },
+        {
+          "id": "med_bioglass",
+          "name": "生物玻璃",
+          "en": "BIOGLASS",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            }
+          ]
+        },
+        {
+          "id": "med_eye",
+          "name": "眼部护理",
+          "en": "EYE CARE DIRECTORY",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            }
+          ]
+        },
+        {
+          "id": "med_intimate",
+          "name": "私密护理",
+          "en": "INTIMATE CARE DIRECTORY",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            }
+          ]
+        },
+        {
+          "id": "med_nasal",
+          "name": "鼻腔护理",
+          "en": "NASAL CARE DIRECTORY",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            }
+          ]
+        },
+        {
+          "id": "med_other",
+          "name": "其他",
+          "en": "OTHER",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            }
+          ]
+        }
+      ],
+      "icon": "shield-plus"
+    },
+    {
+      "id": "haircare",
+      "label": "洗护",
+      "shortName": "洗护",
+      "searchPlaceholder": "搜索洗护产品或方案编号",
+      "icon": "bubbles",
+      "categories": [
+        {
+          "id": "hc_1",
+          "name": "洗发护理",
+          "en": "HAIR & BODY CARE",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            }
+          ]
+        },
+        {
+          "id": "hc_2",
+          "name": "护发修护",
+          "en": "HAIR & BODY CARE",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            }
+          ]
+        },
+        {
+          "id": "hc_3",
+          "name": "头皮护理",
+          "en": "HAIR & BODY CARE",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            }
+          ]
+        },
+        {
+          "id": "hc_4",
+          "name": "沐浴清洁",
+          "en": "HAIR & BODY CARE",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "export",
+      "label": "外贸",
+      "shortName": "外贸",
+      "searchPlaceholder": "搜索外贸产品、英文名称或方案编号",
+      "categories": [
+        {
+          "id": "ex_cleanse",
+          "name": "净澈清洁",
+          "en": "CLEANSERS",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            },
+            {
+              "id": "cleanser",
+              "label": "洁面",
+              "values": [
+                "洁面",
+                "洁面乳"
+              ]
+            },
+            {
+              "id": "makeup-removal",
+              "label": "卸妆",
+              "values": [
+                "卸妆油",
+                "卸妆膏",
+                "卸妆水",
+                "卸妆"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "ex_peptide",
+          "name": "多肽抗老",
+          "en": "PEPTIDE ANTI-AGING",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            }
+          ]
+        },
+        {
+          "id": "ex_copper",
+          "name": "蓝铜肽",
+          "en": "COPPER PEPTIDE",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            }
+          ]
+        },
+        {
+          "id": "ex_visual",
+          "name": "视觉爆款",
+          "en": "VISUAL CONCEPTS",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            }
+          ]
+        },
+        {
+          "id": "ex_oil",
+          "name": "以油养肤",
+          "en": "FACIAL OILS",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            },
+            {
+              "id": "facial-oil",
+              "label": "精华油",
+              "values": [
+                "精华油"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "ex_body_scalp",
+          "name": "身体头皮",
+          "en": "BODY & SCALP CARE",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            },
+            {
+              "id": "body",
+              "label": "身体",
+              "values": [
+                "身体护理",
+                "身体"
+              ]
+            },
+            {
+              "id": "scalp",
+              "label": "头皮",
+              "values": [
+                "头皮护理",
+                "头皮"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "ex_mask",
+          "name": "面膜系列",
+          "en": "FACE MASKS",
+          "filters": [
+            {
+              "id": "all",
+              "label": "全部"
+            }
+          ]
+        }
+      ],
+      "icon": "globe"
+    },
+    {
+      "id": "cases",
+      "label": "品牌案例",
+      "shortName": "案例",
+      "searchPlaceholder": "搜索品牌、产品或功效案例",
+      "categories": [
+        {
+          "id": "case_featured",
+          "name": "精选案例",
+          "en": "FEATURED"
+        },
+        {
+          "id": "case_freeze",
+          "name": "冻干案例",
+          "en": "LYOPHILIZED"
+        },
+        {
+          "id": "case_medical",
+          "name": "二类案例",
+          "en": "MEDICAL"
+        },
+        {
+          "id": "case_export",
+          "name": "外贸案例",
+          "en": "EXPORT"
+        }
+      ],
+      "icon": "book-open"
+    }
+  ],
+  "products": [
+    {
+      "id": "c01",
+      "module": "cosmetics",
+      "category": "cos_cleanse",
+      "name": "轻盈卸妆油",
+      "en": "LIGHT CLEANSING OIL",
+      "code": "CL-001",
+      "visual": "clean",
+      "type": "product",
+      "subcategory": "卸妆油",
+      "efficacy": "帮助溶解日常彩妆及防晒残留，清洁后保留柔润肤感，适合日常卸妆。",
+      "ingredients": [
+        "辛酸/癸酸甘油三酯",
+        "PEG-20 甘油三异硬脂酸酯",
+        "霍霍巴籽油",
+        "生育酚"
+      ],
+      "highlights": [
+        "流动油质便于全脸均匀延展",
+        "遇水乳化便于冲洗清洁",
+        "按压泵头方便控制使用量"
+      ],
+      "produced": true,
+      "coverAssetKey": null,
+      "longImageAssetKey": "detail-series",
+      "efficacySummary": "卸除彩妆柔润洁净",
+      "isSample": true
+    },
+    {
+      "id": "c02",
+      "module": "cosmetics",
+      "category": "cos_cleanse",
+      "name": "柔融卸妆膏",
+      "en": "MELTING CLEANSING BALM",
+      "code": "CL-002",
+      "visual": "cream",
+      "type": "product",
+      "subcategory": "卸妆膏",
+      "efficacy": "膏体接触肌肤后柔融延展，帮助带走日常彩妆与污垢，卸妆过程保持柔润触感。",
+      "ingredients": [
+        "辛酸/癸酸甘油三酯",
+        "聚甘油-10 二异硬脂酸酯",
+        "向日葵籽油",
+        "合成蜡"
+      ],
+      "highlights": [
+        "柔融膏体兼顾取用与延展",
+        "遇水转为细腻乳状易冲洗",
+        "广口罐搭配挖勺便于取用"
+      ],
+      "produced": true,
+      "coverAssetKey": null,
+      "longImageAssetKey": "detail-series",
+      "efficacySummary": "柔融卸妆滋润洁净",
+      "isSample": true
+    },
+    {
+      "id": "c03",
+      "module": "cosmetics",
+      "category": "cos_cleanse",
+      "name": "绵密洁面乳",
+      "en": "CREAM CLEANSER",
+      "code": "CL-003",
+      "visual": "clean",
+      "type": "product",
+      "subcategory": "洁面",
+      "efficacy": "搭配氨基酸表活与保湿成分，温和清洁面部油脂和污垢，洗后肤感清爽柔润。",
+      "ingredients": [
+        "椰油酰甘氨酸钠",
+        "椰油酰胺丙基甜菜碱",
+        "甘油",
+        "泛醇"
+      ],
+      "highlights": [
+        "绵密泡沫便于均匀清洁面部",
+        "乳状质地适合日常洁面场景",
+        "保湿成分搭配洗后柔润肤感"
+      ],
+      "produced": true,
+      "coverAssetKey": null,
+      "longImageAssetKey": "detail-series",
+      "efficacySummary": "温和清洁柔润不紧绷",
+      "isSample": true
+    },
+    {
+      "id": "w01",
+      "module": "cosmetics",
+      "category": "cos_skincare",
+      "name": "晨露轻盈精华水",
+      "en": "LIGHT ESSENCE WATER",
+      "code": "WT-001",
+      "visual": "water",
+      "type": "product",
+      "subcategory": "精华水",
+      "efficacy": "清透水状质地为肌肤补充水分，帮助缓解干燥紧绷，适合日常护肤打底。",
+      "ingredients": [
+        "甘油",
+        "透明质酸钠",
+        "海藻糖",
+        "泛醇"
+      ],
+      "highlights": [
+        "清透水感适合多次少量叠涂",
+        "轻拍即可融入日常护肤流程",
+        "细口瓶型便于控制单次用量"
+      ],
+      "produced": true,
+      "coverAssetKey": null,
+      "longImageAssetKey": "detail-series",
+      "efficacySummary": "清透补水轻盈保湿",
+      "isSample": true
+    },
+    {
+      "id": "w02",
+      "module": "cosmetics",
+      "category": "cos_skincare",
+      "name": "凝露柔润精华水",
+      "en": "SOFT ESSENCE WATER",
+      "code": "WT-002",
+      "visual": "water",
+      "type": "product",
+      "subcategory": "精华水",
+      "efficacy": "以柔润精华水质地提供保湿护理，帮助改善干燥粗糙肤感，让肌肤保持润泽舒适。",
+      "ingredients": [
+        "甘油",
+        "甜菜碱",
+        "透明质酸钠",
+        "β-葡聚糖"
+      ],
+      "highlights": [
+        "微稠水感兼顾流动性与润感",
+        "保湿成分组合呈现柔润触感",
+        "适合与同系列乳霜搭配使用"
+      ],
+      "produced": true,
+      "coverAssetKey": null,
+      "longImageAssetKey": "detail-series",
+      "efficacySummary": "柔润补水舒缓干燥",
+      "isSample": true
+    },
+    {
+      "id": "e01",
+      "module": "cosmetics",
+      "category": "cos_skincare",
+      "name": "轻感柔润乳",
+      "en": "LIGHT MOISTURE LOTION",
+      "code": "EM-001",
+      "visual": "emulsion",
+      "type": "product",
+      "subcategory": "乳液",
+      "efficacy": "轻盈乳液为肌肤补充水分与油分，帮助改善干燥，适合日常基础保湿护理。",
+      "ingredients": [
+        "甘油",
+        "角鲨烷",
+        "辛酸/癸酸甘油三酯",
+        "泛醇"
+      ],
+      "highlights": [
+        "轻盈乳状质地便于均匀涂抹",
+        "水润与柔润肤感形成平衡",
+        "按压包装方便日常定量取用"
+      ],
+      "produced": true,
+      "coverAssetKey": null,
+      "longImageAssetKey": "detail-series",
+      "efficacySummary": "轻盈保湿柔润肌肤",
+      "isSample": true
+    },
+    {
+      "id": "e02",
+      "module": "cosmetics",
+      "category": "cos_skincare",
+      "name": "丝柔水感乳",
+      "en": "SILKY WATER LOTION",
+      "code": "EM-002",
+      "visual": "emulsion",
+      "type": "product",
+      "subcategory": "乳液",
+      "efficacy": "水感乳液延展轻薄，提供日常保湿与柔滑触感，适合偏好清爽肤感的护肤场景。",
+      "ingredients": [
+        "甘油",
+        "甜菜碱",
+        "角鲨烷",
+        "透明质酸钠"
+      ],
+      "highlights": [
+        "水感乳液易延展且便于叠涂",
+        "柔滑肤感适合日常晨间护理",
+        "可与精华水组成轻护肤搭配"
+      ],
+      "produced": false,
+      "coverAssetKey": null,
+      "longImageAssetKey": "detail-series",
+      "efficacySummary": "水感保湿清爽柔滑",
+      "isSample": true
+    },
+    {
+      "id": "r01",
+      "module": "cosmetics",
+      "category": "cos_skincare",
+      "name": "轻透水凝面霜",
+      "en": "LIGHT GEL CREAM",
+      "code": "CR-001",
+      "visual": "cream",
+      "type": "product",
+      "subcategory": "膏霜",
+      "efficacy": "水凝霜质地兼顾补水与柔润，帮助缓解干燥紧绷，适合希望面霜触感轻盈的人群。",
+      "ingredients": [
+        "甘油",
+        "透明质酸钠",
+        "角鲨烷",
+        "海藻糖"
+      ],
+      "highlights": [
+        "水凝质地呈现轻透使用触感",
+        "易于铺展满足日常保湿需求",
+        "可作为水乳之后的保湿步骤"
+      ],
+      "produced": true,
+      "coverAssetKey": null,
+      "longImageAssetKey": "detail-series",
+      "efficacySummary": "水凝补水清透柔润",
+      "isSample": true
+    },
+    {
+      "id": "r02",
+      "module": "cosmetics",
+      "category": "cos_skincare",
+      "name": "丝绒柔润面霜",
+      "en": "VELVET SOFT CREAM",
+      "code": "CR-002",
+      "visual": "cream",
+      "type": "product",
+      "subcategory": "膏霜",
+      "efficacy": "丰润面霜帮助补充肌肤所需油分与水分，改善干燥粗糙肤感，留下细腻柔滑触感。",
+      "ingredients": [
+        "角鲨烷",
+        "牛油果树果脂",
+        "甘油",
+        "神经酰胺 NP"
+      ],
+      "highlights": [
+        "丝绒霜感适合偏干燥护理场景",
+        "润肤油脂搭配细腻膏体结构",
+        "夜间使用形成舒适包裹肤感"
+      ],
+      "produced": true,
+      "coverAssetKey": null,
+      "longImageAssetKey": "detail-series",
+      "efficacySummary": "柔润保湿改善干燥",
+      "isSample": true
+    },
+    {
+      "id": "oi01",
+      "module": "cosmetics",
+      "category": "cos_oil",
+      "name": "轻盈柔润精华油",
+      "en": "LIGHT FACIAL OIL",
+      "code": "OL-001",
+      "visual": "water",
+      "type": "product",
+      "subcategory": "精华油",
+      "efficacy": "以轻盈润肤油组合改善干燥肤感，赋予柔滑触感，可用于日常护理中的润养步骤。",
+      "ingredients": [
+        "角鲨烷",
+        "霍霍巴籽油",
+        "白池花籽油",
+        "生育酚"
+      ],
+      "highlights": [
+        "多种润肤油搭配轻盈延展性",
+        "滴管包装便于少量分次使用",
+        "可与面霜搭配调整护理润感"
+      ],
+      "produced": true,
+      "coverAssetKey": null,
+      "longImageAssetKey": "detail-series",
+      "efficacySummary": "轻盈润养柔滑肌肤",
+      "isSample": true
+    },
+    {
+      "id": "lx01",
+      "module": "cosmetics",
+      "category": "cos_skincare",
+      "name": "凝绒丰润贵妇霜",
+      "en": "VELVET RICH CREAM",
+      "code": "LX-001",
+      "visual": "cream",
+      "type": "product",
+      "subcategory": "膏霜",
+      "efficacy": "丰润膏霜为肌肤提供滋润护理，改善干燥和粗糙肤感，适合偏好饱满霜感的场景。",
+      "ingredients": [
+        "角鲨烷",
+        "牛油果树果脂",
+        "霍霍巴籽油",
+        "生育酚"
+      ],
+      "highlights": [
+        "丰润膏体呈现细腻触肤质感",
+        "润肤油脂组合强化柔滑肤感",
+        "圆罐外观便于呈现系列定位"
+      ],
+      "produced": false,
+      "coverAssetKey": null,
+      "longImageAssetKey": "detail-series",
+      "efficacySummary": "丰润滋养细腻柔滑",
+      "isSample": true
+    },
+    {
+      "id": "mk01",
+      "module": "cosmetics",
+      "category": "cos_mask",
+      "name": "水润贴片面膜",
+      "en": "MOISTURE SHEET MASK",
+      "code": "MK-001",
+      "visual": "water",
+      "type": "product",
+      "subcategory": "贴片面膜",
+      "efficacy": "精华液配合贴片膜布进行集中补水护理，帮助缓解干燥紧绷，使肌肤触感柔润。",
+      "ingredients": [
+        "甘油",
+        "透明质酸钠",
+        "泛醇",
+        "海藻糖"
+      ],
+      "highlights": [
+        "轻薄膜布便于贴合面部轮廓",
+        "精华液质地兼顾浸润与润感",
+        "独立袋装适合单次护肤使用"
+      ],
+      "produced": true,
+      "coverAssetKey": null,
+      "longImageAssetKey": "detail-series",
+      "efficacySummary": "密集补水柔润肌肤",
+      "isSample": true
+    },
+    {
+      "id": "ec01",
+      "module": "cosmetics",
+      "category": "cos_ecommerce",
+      "name": "轻旅水乳霜组合",
+      "en": "DAILY TRAVEL SKINCARE SET",
+      "code": "EC-001",
+      "visual": "emulsion",
+      "type": "product",
+      "subcategory": "便携组合",
+      "efficacy": "将精华水、乳液与面霜组合为日常保湿方案，适合旅行及轻量护肤等使用场景。",
+      "ingredients": [
+        "甘油",
+        "透明质酸钠",
+        "角鲨烷",
+        "泛醇"
+      ],
+      "highlights": [
+        "水乳霜组合覆盖基础保湿步骤",
+        "小规格搭配方便旅行随身携带",
+        "统一视觉便于组合陈列展示"
+      ],
+      "produced": true,
+      "coverAssetKey": null,
+      "longImageAssetKey": "detail-series",
+      "efficacySummary": "水乳霜组协同保湿",
+      "isSample": true
+    },
+    {
+      "id": "ec02",
+      "module": "cosmetics",
+      "category": "cos_ecommerce",
+      "name": "日常洁面便携装",
+      "en": "COMPACT DAILY CLEANSER",
+      "code": "EC-002",
+      "visual": "clean",
+      "type": "product",
+      "subcategory": "便携洁面",
+      "efficacy": "以便携规格提供日常洁面护理，温和带走面部油脂和污垢，适合外出及旅行使用。",
+      "ingredients": [
+        "椰油酰甘氨酸钠",
+        "椰油酰胺丙基甜菜碱",
+        "甘油",
+        "甜菜碱"
+      ],
+      "highlights": [
+        "小容量软管便于外出随身携带",
+        "乳状洁面适合日常清洁流程",
+        "可与水乳便携装组合成套开发"
+      ],
+      "produced": true,
+      "coverAssetKey": null,
+      "longImageAssetKey": "detail-series",
+      "efficacySummary": "便携洁面清爽柔润",
+      "isSample": true
+    },
+    {
+      "id": "pk01",
+      "module": "cosmetics",
+      "category": null,
+      "name": "素感方瓶水乳外观提案",
+      "en": "SQUARE BOTTLE DESIGN",
+      "code": "PK-001",
+      "visual": "emulsion",
+      "type": "product",
+      "subcategory": "瓶型设计",
+      "previousCategory": {
+        "id": "cos_packaging",
+        "name": "颜值外观",
+        "en": "PACKAGING DESIGN"
+      },
+      "classificationPending": true,
+      "efficacy": "配套水乳示例以清爽保湿为主，方瓶外观强调整齐陈列与成套辨识度。",
+      "ingredients": [
+        "配套水乳示例：甘油",
+        "透明质酸钠",
+        "角鲨烷",
+        "泛醇"
+      ],
+      "highlights": [
+        "方形瓶身便于系列化陈列",
+        "透明窗位可展示内容物质感",
+        "适配精华水与乳液成套开发"
+      ],
+      "produced": false,
+      "coverAssetKey": null,
+      "longImageAssetKey": "detail-series",
+      "efficacySummary": "配套水乳清爽保湿",
+      "isSample": true
+    },
+    {
+      "id": "pk02",
+      "module": "cosmetics",
+      "category": null,
+      "name": "柔雾圆罐面霜外观提案",
+      "en": "SOFT MATTE JAR DESIGN",
+      "code": "PK-002",
+      "visual": "cream",
+      "type": "product",
+      "subcategory": "罐型设计",
+      "previousCategory": {
+        "id": "cos_packaging",
+        "name": "颜值外观",
+        "en": "PACKAGING DESIGN"
+      },
+      "classificationPending": true,
+      "efficacy": "配套面霜示例以柔润保湿为主，圆罐外观通过柔雾质感呈现简洁细腻的系列风格。",
+      "ingredients": [
+        "配套面霜示例：角鲨烷",
+        "牛油果树果脂",
+        "甘油",
+        "生育酚"
+      ],
+      "highlights": [
+        "柔雾表面呈现细腻视觉质感",
+        "圆罐轮廓便于形成系列识别",
+        "可搭配挖勺完善取用体验"
+      ],
+      "produced": false,
+      "coverAssetKey": null,
+      "longImageAssetKey": "detail-series",
+      "efficacySummary": "配套面霜柔润保湿",
+      "isSample": true
+    },
+    {
+      "id": "pr01",
+      "module": "cosmetics",
+      "category": "cos_professional",
+      "name": "院线水润护理凝膜",
+      "en": "PROFESSIONAL GEL MASK",
+      "code": "PR-001",
+      "visual": "cream",
+      "type": "product",
+      "subcategory": "敷护方案",
+      "efficacy": "用于护理流程中的补水敷护环节，凝胶质地易铺展，帮助改善干燥紧绷肤感。",
+      "ingredients": [
+        "甘油",
+        "透明质酸钠",
+        "海藻糖",
+        "泛醇"
+      ],
+      "highlights": [
+        "凝胶质地便于均匀覆盖肌肤",
+        "水润肤感适合补水敷护步骤",
+        "可与护理乳组成完整保湿搭配"
+      ],
+      "produced": true,
+      "coverAssetKey": null,
+      "longImageAssetKey": "detail-series",
+      "efficacySummary": "水润敷护舒缓干燥",
+      "isSample": true
+    },
+    {
+      "id": "pr02",
+      "module": "cosmetics",
+      "category": "cos_professional",
+      "name": "院线柔润护理乳",
+      "en": "PROFESSIONAL CARE LOTION",
+      "code": "PR-002",
+      "visual": "emulsion",
+      "type": "product",
+      "subcategory": "护理乳",
+      "efficacy": "适用于面部护理收尾及日常保湿，柔润乳液帮助改善干燥，延展时触感顺滑。",
+      "ingredients": [
+        "甘油",
+        "角鲨烷",
+        "霍霍巴籽油",
+        "尿囊素"
+      ],
+      "highlights": [
+        "乳液延展顺滑便于均匀涂抹",
+        "柔润触感适合护理收尾步骤",
+        "泵装形式便于按需定量取用"
+      ],
+      "produced": true,
+      "coverAssetKey": null,
+      "longImageAssetKey": "detail-series",
+      "efficacySummary": "柔润滋养顺滑护理",
+      "isSample": true
+    },
+    {
+      "id": "ly01",
+      "module": "lyophilized",
+      "category": "fr_powder",
+      "name": "海藻糖冻干粉组合",
+      "en": "FREEZE-DRIED ESSENCE KIT",
+      "code": "FD-001",
+      "visual": "water",
+      "type": "product",
+      "subcategory": "冻干粉",
+      "efficacy": "冻干粉与配套溶媒混合后形成精华液，为肌肤提供补水保湿护理，呈现轻透柔润肤感。",
+      "ingredients": [
+        "海藻糖",
+        "透明质酸钠",
+        "甘露醇",
+        "泛醇"
+      ],
+      "highlights": [
+        "冻干粉与溶媒分开独立包装",
+        "使用前混合呈现清透精华液",
+        "小容量单次护肤便于携带"
+      ],
+      "produced": true,
+      "coverAssetKey": null,
+      "longImageAssetKey": "detail-series",
+      "efficacySummary": "复溶补水柔润肌肤",
+      "isSample": true
+    },
+    {
+      "id": "ly02",
+      "module": "lyophilized",
+      "category": "fr_ball",
+      "name": "轻融冻干球",
+      "en": "FREEZE-DRIED BEAUTY PEARLS",
+      "code": "FD-002",
+      "visual": "cream",
+      "type": "product",
+      "subcategory": "冻干球",
+      "efficacy": "冻干球与精华水搭配后复溶，提供轻盈补水护理，以球形剂型丰富日常护肤体验。",
+      "ingredients": [
+        "海藻糖",
+        "透明质酸钠",
+        "普鲁兰多糖",
+        "甘露醇"
+      ],
+      "highlights": [
+        "球形外观形成清晰使用记忆",
+        "与精华水搭配完成复溶护理",
+        "独立包装便于按次搭配使用"
+      ],
+      "produced": false,
+      "coverAssetKey": null,
+      "longImageAssetKey": "detail-series",
+      "efficacySummary": "轻触复溶补水柔润",
+      "isSample": true
+    },
+    {
+      "id": "md01",
+      "module": "medical",
+      "category": "med_sunclean",
+      "name": "防晒清洁",
+      "en": "SUNSCREEN & CLEANSING DIRECTORY",
+      "code": "",
+      "visual": null,
+      "type": "placeholder",
+      "subcategory": "防晒清洁"
+    },
+    {
+      "id": "md03",
+      "module": "medical",
+      "category": "med_collagen",
+      "name": "重组胶原蛋白",
+      "en": "RECOMBINANT COLLAGEN",
+      "code": "",
+      "visual": null,
+      "type": "placeholder",
+      "subcategory": "重组胶原蛋白"
+    },
+    {
+      "id": "md04",
+      "module": "medical",
+      "category": "med_mussel",
+      "name": "重组贻贝蛋白",
+      "en": "RECOMBINANT MUSSEL PROTEIN",
+      "code": "",
+      "visual": null,
+      "type": "placeholder",
+      "subcategory": "重组贻贝蛋白"
+    },
+    {
+      "id": "md10",
+      "module": "medical",
+      "category": "med_hyaluronate",
+      "name": "透明质酸钠",
+      "en": "SODIUM HYALURONATE",
+      "code": "",
+      "visual": null,
+      "type": "placeholder",
+      "subcategory": "透明质酸钠"
+    },
+    {
+      "id": "md05",
+      "module": "medical",
+      "category": "med_polysaccharide",
+      "name": "生物多糖",
+      "en": "BIOPOLYSACCHARIDES",
+      "code": "",
+      "visual": null,
+      "type": "placeholder",
+      "subcategory": "生物多糖"
+    },
+    {
+      "id": "md11",
+      "module": "medical",
+      "category": "med_trehalose",
+      "name": "海藻糖",
+      "en": "TREHALOSE",
+      "code": "",
+      "visual": null,
+      "type": "placeholder",
+      "subcategory": "海藻糖"
+    },
+    {
+      "id": "md12",
+      "module": "medical",
+      "category": "med_bioglass",
+      "name": "生物玻璃",
+      "en": "BIOGLASS",
+      "code": "",
+      "visual": null,
+      "type": "placeholder",
+      "subcategory": "生物玻璃"
+    },
+    {
+      "id": "md13",
+      "module": "medical",
+      "category": "med_eye",
+      "name": "眼部护理",
+      "en": "EYE CARE DIRECTORY",
+      "code": "",
+      "visual": null,
+      "type": "placeholder",
+      "subcategory": "眼部护理"
+    },
+    {
+      "id": "md08",
+      "module": "medical",
+      "category": "med_intimate",
+      "name": "私密护理",
+      "en": "INTIMATE CARE DIRECTORY",
+      "code": "",
+      "visual": null,
+      "type": "placeholder",
+      "subcategory": "私密护理"
+    },
+    {
+      "id": "md09",
+      "module": "medical",
+      "category": "med_nasal",
+      "name": "鼻腔护理",
+      "en": "NASAL CARE DIRECTORY",
+      "code": "",
+      "visual": null,
+      "type": "placeholder",
+      "subcategory": "鼻腔护理"
+    },
+    {
+      "id": "md14",
+      "module": "medical",
+      "category": "med_other",
+      "name": "其他",
+      "en": "OTHER",
+      "code": "",
+      "visual": null,
+      "type": "placeholder",
+      "subcategory": "其他"
+    },
+    {
+      "id": "ex01",
+      "module": "export",
+      "category": "ex_cleanse",
+      "name": "外贸轻感洁面乳",
+      "en": "EXPORT CREAM CLEANSER",
+      "code": "EX-001",
+      "visual": "clean",
+      "type": "product",
+      "subcategory": "洁面",
+      "efficacy": "乳状洁面温和清洁面部油脂与污垢，兼顾清爽和柔润肤感，适合日常清洁使用。",
+      "ingredients": [
+        "椰油酰甘氨酸钠",
+        "椰油酰胺丙基甜菜碱",
+        "甘油",
+        "泛醇"
+      ],
+      "highlights": [
+        "轻盈乳状质地适合日常洁面",
+        "可搭配多语言标签方案开发",
+        "软管包装便于不同规格组合"
+      ],
+      "produced": true,
+      "coverAssetKey": null,
+      "longImageAssetKey": "detail-series",
+      "efficacySummary": "清爽洁面洗后柔润",
+      "isSample": true
+    },
+    {
+      "id": "ex03",
+      "module": "export",
+      "category": null,
+      "name": "外贸清透精华水",
+      "en": "EXPORT ESSENCE WATER",
+      "code": "EX-003",
+      "visual": "water",
+      "type": "product",
+      "subcategory": "精华水",
+      "previousCategory": {
+        "id": "ex_water",
+        "name": "精华水",
+        "en": "ESSENCE WATERS"
+      },
+      "classificationPending": true,
+      "efficacy": "清透精华水为肌肤提供轻盈保湿护理，帮助改善干燥紧绷，便于融入日常护肤流程。",
+      "ingredients": [
+        "甘油",
+        "透明质酸钠",
+        "甜菜碱",
+        "海藻糖"
+      ],
+      "highlights": [
+        "清透质地适合轻拍或分次叠涂",
+        "简洁瓶型便于系列化视觉设计",
+        "可与同系列乳霜组成基础套组"
+      ],
+      "produced": true,
+      "coverAssetKey": null,
+      "longImageAssetKey": "detail-series",
+      "efficacySummary": "轻透补水润泽肌肤",
+      "isSample": true
+    },
+    {
+      "id": "ex04",
+      "module": "export",
+      "category": null,
+      "name": "外贸轻润精华乳",
+      "en": "EXPORT ESSENCE LOTION",
+      "code": "EX-004",
+      "visual": "emulsion",
+      "type": "product",
+      "subcategory": "精华乳",
+      "previousCategory": {
+        "id": "ex_emulsion",
+        "name": "精华乳",
+        "en": "ESSENCE LOTIONS"
+      },
+      "classificationPending": true,
+      "efficacy": "轻润精华乳兼顾补水与滋润需求，帮助改善干燥肤感，涂抹后呈现柔滑舒适触感。",
+      "ingredients": [
+        "甘油",
+        "角鲨烷",
+        "泛醇",
+        "辛酸/癸酸甘油三酯"
+      ],
+      "highlights": [
+        "轻润乳感便于多步骤护肤搭配",
+        "按压泵头帮助控制单次用量",
+        "可搭配不同容量形成规格梯度"
+      ],
+      "produced": true,
+      "coverAssetKey": null,
+      "longImageAssetKey": "detail-series",
+      "efficacySummary": "轻润保湿柔滑肤感",
+      "isSample": true
+    },
+    {
+      "id": "ex05",
+      "module": "export",
+      "category": null,
+      "name": "外贸凝露精华液",
+      "en": "EXPORT GEL SERUM",
+      "code": "EX-005",
+      "visual": "water",
+      "type": "product",
+      "subcategory": "精华液",
+      "previousCategory": {
+        "id": "ex_serum",
+        "name": "精华液",
+        "en": "SERUMS"
+      },
+      "classificationPending": true,
+      "efficacy": "凝露精华以轻盈水润触感提供保湿护理，帮助缓解干燥紧绷，适合日常精华步骤。",
+      "ingredients": [
+        "甘油",
+        "透明质酸钠",
+        "泛醇",
+        "β-葡聚糖"
+      ],
+      "highlights": [
+        "凝露质地具有轻盈延展肤感",
+        "滴管包装便于少量分次涂抹",
+        "可与精华水搭配形成护理组合"
+      ],
+      "produced": false,
+      "coverAssetKey": null,
+      "longImageAssetKey": "detail-series",
+      "efficacySummary": "凝露补水舒缓干燥",
+      "isSample": true
+    },
+    {
+      "id": "ex06",
+      "module": "export",
+      "category": "ex_oil",
+      "name": "外贸柔润精华油",
+      "en": "EXPORT FACIAL OIL",
+      "code": "EX-006",
+      "visual": "water",
+      "type": "product",
+      "subcategory": "精华油",
+      "efficacy": "柔润精华油为肌肤补充油分，帮助改善干燥粗糙肤感，适合日常润养与面霜搭配。",
+      "ingredients": [
+        "角鲨烷",
+        "霍霍巴籽油",
+        "白池花籽油",
+        "生育酚"
+      ],
+      "highlights": [
+        "油性质地兼顾柔润与易延展",
+        "滴管结构适合少量分次取用",
+        "可作为同系列面霜的润养搭配"
+      ],
+      "produced": true,
+      "coverAssetKey": null,
+      "longImageAssetKey": "detail-series",
+      "efficacySummary": "柔润滋养改善干燥",
+      "isSample": true
+    },
+    {
+      "id": "ex02",
+      "module": "export",
+      "category": null,
+      "name": "外贸丰润面霜",
+      "en": "EXPORT RICH MOISTURE CREAM",
+      "code": "EX-002",
+      "visual": "cream",
+      "type": "product",
+      "subcategory": "膏霜",
+      "previousCategory": {
+        "id": "ex_cream",
+        "name": "面霜",
+        "en": "FACE CREAMS"
+      },
+      "classificationPending": true,
+      "efficacy": "丰润面霜为偏干燥肌肤提供日常保湿护理，帮助改善粗糙紧绷，呈现细腻柔润肤感。",
+      "ingredients": [
+        "角鲨烷",
+        "牛油果树果脂",
+        "甘油",
+        "神经酰胺 NP"
+      ],
+      "highlights": [
+        "细腻膏体带来饱满柔润触感",
+        "广口圆罐便于取用与系列陈列",
+        "可与精华水组成基础保湿套组"
+      ],
+      "produced": true,
+      "coverAssetKey": null,
+      "longImageAssetKey": "detail-series",
+      "efficacySummary": "丰润保湿细腻肤感",
+      "isSample": true
+    },
+    {
+      "id": "ex07",
+      "module": "export",
+      "category": "ex_mask",
+      "name": "外贸水润面膜",
+      "en": "EXPORT SHEET MASK",
+      "code": "EX-007",
+      "visual": "water",
+      "type": "product",
+      "subcategory": "面膜",
+      "efficacy": "以精华液与贴片膜布组合进行集中补水护理，帮助缓解干燥紧绷，敷后肌肤触感柔润。",
+      "ingredients": [
+        "甘油",
+        "透明质酸钠",
+        "泛醇",
+        "海藻糖"
+      ],
+      "highlights": [
+        "柔软膜布便于贴合面部轮廓",
+        "独立袋装适合单次保湿护理",
+        "可配合不同膜布开发系列方案"
+      ],
+      "produced": true,
+      "coverAssetKey": null,
+      "longImageAssetKey": "detail-series",
+      "efficacySummary": "水润敷护舒缓干燥",
+      "isSample": true
+    },
+    {
+      "id": "ex08",
+      "module": "export",
+      "category": null,
+      "name": "外贸柔润护理棉片",
+      "en": "EXPORT SKINCARE PADS",
+      "code": "EX-008",
+      "visual": "cream",
+      "type": "product",
+      "subcategory": "棉片",
+      "previousCategory": {
+        "id": "ex_pad",
+        "name": "棉片",
+        "en": "SKINCARE PADS"
+      },
+      "classificationPending": true,
+      "efficacy": "浸润精华液的护理棉片便于局部湿敷，提供日常补水护理，帮助改善干燥紧绷肤感。",
+      "ingredients": [
+        "甘油",
+        "透明质酸钠",
+        "甜菜碱",
+        "泛醇"
+      ],
+      "highlights": [
+        "棉片形式便于局部补水护理",
+        "罐装搭配夹取工具方便取用",
+        "可与同系列精华水搭配陈列"
+      ],
+      "produced": false,
+      "coverAssetKey": null,
+      "longImageAssetKey": "detail-series",
+      "efficacySummary": "便捷湿敷补水柔润",
+      "isSample": true
+    },
+    {
+      "id": "case03",
+      "module": "cases",
+      "category": "case_freeze",
+      "name": "冻干修护组合",
+      "en": "FREEZE-DRIED REPAIR KIT",
+      "code": "BC-003",
+      "visual": "case-freeze",
+      "type": "case",
+      "subcategory": "冻干案例",
+      "brand": "客户品牌 C",
+      "caseTag": "冻干系列",
+      "result": "冻干粉与溶媒组合展示",
+    "caseHighlight": "冻干粉搭配溶媒，呈现成套产品组合",
+      "assetKey": "case-freeze",
+      "mock": true,
+      "mockNote": "演示案例，待替换真实客户资料"
+    },
+    {
+      "id": "case04",
+      "module": "cases",
+      "category": "case_medical",
+      "name": "修护敷料系列",
+      "en": "DRESSING SERIES",
+      "code": "BC-004",
+      "visual": "case-medical",
+      "type": "case",
+      "subcategory": "二类案例",
+      "brand": "客户品牌 D",
+      "caseTag": "二类系列",
+      "result": "敷料包装与产品形态展示",
+    "caseHighlight": "敷料产品搭配包装，统一呈现系列形态",
+      "assetKey": "case-medical",
+      "mock": true,
+      "mockNote": "演示案例，待替换真实客户资料"
+    },
+    {
+      "id": "case06",
+      "module": "cases",
+      "category": "case_export",
+      "name": "外贸护肤系列",
+      "en": "EXPORT SKINCARE SERIES",
+      "code": "BC-006",
+      "visual": "case-export",
+      "type": "case",
+      "subcategory": "外贸案例",
+      "brand": "客户品牌 F",
+      "caseTag": "外贸系列",
+      "result": "洁面、乳液、面霜组合展示",
+    "caseHighlight": "洁面、乳液与面霜，呈现系列护肤组合",
+      "assetKey": "case-export",
+      "mock": true,
+      "mockNote": "演示案例，待替换真实客户资料"
+    }
+  ]
+}

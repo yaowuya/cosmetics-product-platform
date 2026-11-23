@@ -1,0 +1,44 @@
+﻿模块序号,模块ID,模块名称,分类序号,分类ID,分类名称,细分类,当前示例产品数
+1,cosmetics,护肤,1,cos_cleanse,净澈清洁,全部 / 洁面 / 卸妆,3
+1,cosmetics,护肤,2,cos_skincare,基础维稳,全部 / 精华水 / 乳液 / 膏霜,7
+1,cosmetics,护肤,3,cos_efficacy,功效护肤,全部,0
+1,cosmetics,护肤,4,cos_ecommerce,电商爆品,全部 / 便携单品 / 套组,2
+1,cosmetics,护肤,5,cos_innovation,创新剂型,全部,0
+1,cosmetics,护肤,6,cos_hydrating,功效水光,全部,0
+1,cosmetics,护肤,7,cos_oil,以油养肤,全部 / 精华油,1
+1,cosmetics,护肤,8,cos_eye,眼部专项,全部,0
+1,cosmetics,护肤,9,cos_complexion,底妆专项,全部,0
+1,cosmetics,护肤,10,cos_mask,面膜棉片,全部 / 面膜 / 棉片,1
+1,cosmetics,护肤,11,cos_professional,院线护理,全部 / 凝膜 / 护理乳,2
+1,cosmetics,护肤,12,hc_5,身体护理,全部,0
+2,lyophilized,冻干,1,fr_powder,冻干粉,全部,1
+2,lyophilized,冻干,2,fr_flock,冻干絮,全部,0
+2,lyophilized,冻干,3,fr_ball,冻干球,全部,1
+2,lyophilized,冻干,4,fr_oil,冻干油,全部,0
+2,lyophilized,冻干,5,fr_emulsion,冻干乳,全部,0
+2,lyophilized,冻干,6,fr_microsphere,冻干微球,全部,0
+2,lyophilized,冻干,7,fr_ice,冻干冰晶,全部,0
+2,lyophilized,冻干,8,fr_mask,冻干面膜,全部,0
+2,lyophilized,冻干,9,fr_eye_mask,冻干眼膜,全部,0
+3,medical,二类,1,med_sunclean,防晒清洁,全部 / 防晒 / 清洁,0
+3,medical,二类,2,med_collagen,重组胶原蛋白,全部,0
+3,medical,二类,3,med_mussel,重组贻贝蛋白,全部,0
+3,medical,二类,4,med_hyaluronate,透明质酸钠,全部,0
+3,medical,二类,5,med_polysaccharide,生物多糖,全部,0
+3,medical,二类,6,med_trehalose,海藻糖,全部,0
+3,medical,二类,7,med_bioglass,生物玻璃,全部,0
+3,medical,二类,8,med_eye,眼部护理,全部,0
+3,medical,二类,9,med_intimate,私密护理,全部,0
+3,medical,二类,10,med_nasal,鼻腔护理,全部,0
+3,medical,二类,11,med_other,其他,全部,0
+4,haircare,洗护,1,hc_1,洗发护理,全部,0
+4,haircare,洗护,2,hc_2,护发修护,全部,0
+4,haircare,洗护,3,hc_3,头皮护理,全部,0
+4,haircare,洗护,4,hc_4,沐浴清洁,全部,0
+5,export,外贸,1,ex_cleanse,净澈清洁,全部 / 洁面 / 卸妆,1
+5,export,外贸,2,ex_peptide,多肽抗老,全部,0
+5,export,外贸,3,ex_copper,蓝铜肽,全部,0
+5,export,外贸,4,ex_visual,视觉爆款,全部,0
+5,export,外贸,5,ex_oil,以油养肤,全部 / 精华油,1
+5,export,外贸,6,ex_body_scalp,身体头皮,全部 / 身体 / 头皮,0
+5,export,外贸,7,ex_mask,面膜系列,全部,1

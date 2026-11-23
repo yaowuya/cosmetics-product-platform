@@ -1,0 +1,4 @@
+# The deployment host and the Windows Git Bash smoke tests both interpret these with bash.
+*.sh text eol=lf
+# The design handoff manifest records the SHA-256 of this exact file.
+docs/cosmetics-platform-design-spec/prototype/index.html -text

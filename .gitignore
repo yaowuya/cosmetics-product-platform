@@ -1,0 +1,68 @@
+# Python environments, caches, and packaging output
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+/backend/build/
+/backend/dist/
+
+# npm workspaces, Vite, and uni-app build output
+node_modules/
+.vite/
+*.tsbuildinfo
+/frontend/admin/dist/
+/frontend/h5/dist/
+/frontend/h5/unpackage/
+/frontend/coverage/
+
+# Local environment values; keep shareable templates
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+!.env.*.example
+!.env.*.sample
+!.env.*.template
+
+# Machine-local services, database files, private browser states, and QA captures
+/.local/
+/fp-showcase-ui.*/
+/fp-mysql*/
+/test-results/
+/playwright-report/
+**/playwright/.auth/
+**/.fp-execute/visual/**/*.png
+*.sql.gz
+*.sql.gpg
+*.tar.gpg
+
+# Private deployment material and local output
+/deploy/secrets/
+/deploy/backups/
+/backups/
+/mysql-data/
+/uploads/
+*.pem
+*.crt
+*.key
+*.key.pem
+*-key.pem
+privkey*.pem
+*.p12
+*.pfx
+*.log
+
+# Local tools; this launch configuration references absolute machine paths
+/.claude/launch.json
+/.claude/settings.local.json
+/.claude/scheduled_tasks.lock
+/.claude/worktrees/
+/.codegraph/
