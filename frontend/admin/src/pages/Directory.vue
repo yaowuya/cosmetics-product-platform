@@ -40,9 +40,9 @@ async function reset(){if(!dirty.value||globalThis.confirm('确定丢弃本地�
 onMounted(refresh);
 </script>
 <template>
- <header class="page-head"><div><h1>板块与分类</h1><p class="muted">维护业务板块、分类和细分类。停用只影响展示，不删除对应产品。</p></div><button type="button" class="btn primary" :disabled="busy||!item" @click="save()">保存草稿</button></header>
+ <header class="page-head"><div><h1>板块与分类</h1><p class="muted">维护业务板块、分类和细分类。停用只影响展示，不删除对应产品。</p></div></header>
  <p v-if="note" class="notice" role="status">{{note}}</p><p v-if="error" class="inline-error" role="alert">{{error}} <button type="button" class="btn link" @click="reset">{{conflict?'重新核对':'重试'}}</button></p>
- <nav v-if="item" class="seg"><button v-for="[key,label] in [['edit','目录树'],['release','发布检查'],['history','版本记录']]" :key="key" type="button" :aria-pressed="tab===key" @click="tab=key">{{label}}</button></nav>
+ <div v-if="item" class="config-tabs"><nav class="seg"><button v-for="[key,label] in [['edit','目录树'],['release','发布检查'],['history','版本记录']]" :key="key" type="button" :aria-pressed="tab===key" @click="tab=key">{{label}}</button></nav><button class="btn primary" type="button" :disabled="busy" @click="save()">保存草稿</button></div>
  <div v-if="tab==='edit'&&item" class="edit-layout"><section class="panel stack"><div class="section-head"><h2>目录结构</h2><button type="button" class="btn" @click="adding=!adding">＋ 新增节点</button></div>
   <form v-if="adding" class="panel stack" @submit.prevent="add"><label class="field">节点名称<input v-model.trim="name" required></label><label class="field">所在位置<select v-model="parent"><option value="">根目录（新建业务板块）</option><option v-for="entry in view.filter(row=>row.depth<2)" :key="entry.node.id" :value="entry.node.id">{{ ['','　'][entry.depth] }}{{entry.node.name}}</option></select></label><div class="toolbar"><button type="submit" class="btn primary" :disabled="busy">添加到草稿</button><button type="button" class="btn" @click="adding=false">取消</button></div></form>
   <p v-if="!view.length" class="empty">还没有配置目录。先添加一个业务板块。</p>
@@ -51,3 +51,4 @@ onMounted(refresh);
  <Release v-if="item&&tab==='release'" :item="item" :dirty="dirty" @changed="refresh" />
  <History v-if="item&&tab==='history'" :item="item" @restored="row=>{accept(row);tab='edit';note='目录历史已恢复为草稿。'}" />
 </template>
+<style scoped>.config-tabs{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}.config-tabs .seg{margin-bottom:15px}</style>

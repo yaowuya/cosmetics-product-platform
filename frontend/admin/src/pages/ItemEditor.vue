@@ -45,9 +45,9 @@ onMounted(async()=>{await refresh();await options();});
 </script>
 
 <template>
- <header class="page-head"><div><RouterLink :to="`/${collection}`" class="muted">← {{ yes?'全部产品':'全部案例' }}</RouterLink><h1>{{ display }}</h1><p class="muted">{{item?.live_id?'已有线上版本':'未上线'}} <template v-if="item">· 修订 {{ item.revision }}</template> <span v-if="dirty" class="pill warn">尚未保存</span></p></div><button v-if="!readonly" type="button" class="btn primary" :disabled="busy" @click="store">保存草稿</button></header>
+ <header class="page-head"><div><RouterLink :to="`/${collection}`" class="muted">← {{ yes?'全部产品':'全部案例' }}</RouterLink><h1>{{ display }}</h1><p class="muted">{{item?.live_id?'已有线上版本':'未上线'}} <template v-if="item">· 修订 {{ item.revision }}</template> <span v-if="dirty" class="pill warn">尚未保存</span></p></div></header>
  <p v-if="note" role="status" class="notice">{{ note }}</p><p v-if="error" role="alert" class="inline-error">{{error}} <button v-if="!newItem" type="button" class="btn link" @click="reset">{{conflict?'核对最新修订':'重试加载'}}</button></p>
- <nav class="seg" aria-label="内容编辑视图"><button type="button" :aria-pressed="tab==='edit'" @click="tab='edit'">内容编辑</button><button v-if="item" type="button" :aria-pressed="tab==='release'" @click="tab='release'">发布检查</button><button v-if="item" type="button" :aria-pressed="tab==='history'" @click="tab='history'">版本记录</button></nav>
+ <div class="config-tabs"><nav class="seg" aria-label="内容编辑视图"><button type="button" :aria-pressed="tab==='edit'" @click="tab='edit'">内容编辑</button><button v-if="item" type="button" :aria-pressed="tab==='release'" @click="tab='release'">发布检查</button><button v-if="item" type="button" :aria-pressed="tab==='history'" @click="tab='history'">版本记录</button></nav><button v-if="!readonly" type="button" class="btn primary" :disabled="busy" @click="store">保存草稿</button></div>
  <div v-if="tab==='edit'" class="edit-layout">
   <section class="panel stack"><h2>{{ yes?'产品资料':'案例信息' }}</h2>
    <div class="form-grid"><label v-for="f in yes?productFields:caseFields" :key="f.key" class="field" :style="f.large?{gridColumn:'1 / -1'}:{}">{{f.label}}<textarea v-if="f.large" :value="text(body[f.key])" :disabled="readonly" @input="assign(f.key,$event)"/><input v-else :value="text(body[f.key])" :disabled="readonly" @input="assign(f.key,$event)"></label></div>
@@ -61,3 +61,4 @@ onMounted(async()=>{await refresh();await options();});
  <Release v-if="item&&tab==='release'" :item="item" :dirty="dirty" @changed="refresh" />
  <History v-if="item&&tab==='history'" :item="item" @restored="row=>{accept(row);tab='edit';note='历史已恢复为草稿，线上版本未改变。'}" />
 </template>
+<style scoped>.config-tabs{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}.config-tabs .seg{margin-bottom:15px}</style>
