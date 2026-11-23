@@ -217,7 +217,7 @@ export async function runGovernance(h) {
     const path = '/admin/pages/business_contact';
     const readContact = async () => (await (await h.observe(V, 'GET', '/api/public/pages/contact', () => h.open(V, '/contact'))).json()).body;
     const baseline = await readContact();
-    h.require(baseline.services?.cards?.length && baseline.business_contact?.email && !baseline.business_contact.qr_asset_url, '需要本轮已发布服务卡和仅有测试邮箱、尚无二维码的联系位置');
+    h.require(baseline.business_contact?.email && !baseline.business_contact.qr_asset_url, '需要本轮仅有测试邮箱、尚无二维码的联系位置');
     async function uploadQr(file) {
       await h.open(E, path);
       await E.getByRole('heading', { name: '位置资料' }).waitFor();
@@ -227,7 +227,6 @@ export async function runGovernance(h) {
     }
     async function verifyContact(media, expectedBytes) {
       const body = await readContact();
-      assert.deepEqual(body.services, baseline.services, '联系版本操作不应改动服务卡');
       const { qr_asset_url: src, ...fields } = body.business_contact;
       assert.deepEqual(fields, baseline.business_contact);
       const u = new URL(src, h.base);
@@ -235,9 +234,9 @@ export async function runGovernance(h) {
       const card = V.getByAltText('商务联系二维码', { exact: true });
       await card.waitFor(); await card.evaluate(img => img.decode());
       assert.equal(new URL(await card.getAttribute('src'), h.base).href, u.href);
-      assert.equal(await V.locator('.service-list article').count(), baseline.services.cards.length);
+      assert.equal(await V.locator('.contact-service').count(), 3);
       await button(V, '合作咨询').click();
-      const modal = V.getByRole('dialog', { name: '商务联系' });
+      const modal = V.getByRole('dialog', { name: '联系商务合作' });
       const qr = modal.getByAltText('长按保存商务二维码');
       await qr.waitFor(); await qr.evaluate(img => img.decode());
       assert.equal(new URL(await qr.getAttribute('src'), h.base).href, u.href);

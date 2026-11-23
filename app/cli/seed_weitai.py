@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.cli.weitai_content import (
-    CASE_HEADER, CONTACT, DRAFT_SLOT, PUBLISH_SLOTS, SERVICES, catalog_cover_body, directory_body, slot_action,
+    CASE_HEADER, CONTACT, PUBLISH_SLOTS, catalog_cover_body, directory_body, slot_action,
 )
 from app.core.errors import AppError
 from app.models import Account
@@ -44,7 +44,6 @@ def apply(asset_root: Path) -> list[str]:
                 raise RuntimeError("还没有管理员。请先执行 make bootstrap LOGIN=登录名")
             lock_accounts(db, actor.id)
             lines = [_publish(db, actor.id, asset_root, owned, slot) for slot in PUBLISH_SLOTS]
-            lines.append(_save_services_draft(db, actor.id))
         owned.clear()
         return lines
     finally:
@@ -72,16 +71,6 @@ def _publish(db: Session, actor_id: int, asset_root: Path, owned: list[Path], sl
                "seq": release.seq, "request_key": request_key}
     releases.add_publish_audit(db, actor_id, item, str(source), receipt)
     return f"{slot}: published"
-
-
-def _save_services_draft(db: Session, actor_id: int) -> str:
-    item = _config_item(db, DRAFT_SLOT)
-    draft = items.get_draft(db, item.id)
-    if slot_action(DRAFT_SLOT, live=item.live_id is not None, has_draft=draft is not None,
-                   archived=item.archived_at is not None) == "skip":
-        return f"{DRAFT_SLOT}: skipped"
-    _write(db, item, actor_id, normalize_body("config", DRAFT_SLOT, SERVICES))
-    return f"{DRAFT_SLOT}: draft"
 
 
 def _config_item(db: Session, slot: str):

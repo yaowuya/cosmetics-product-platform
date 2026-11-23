@@ -114,22 +114,13 @@ async function checkContact(h, page, openContact) {
   // 以此导航真正加载的公开配置为预期，不能根据按钮本身推断哪些按钮本来就不该出现。
   const response = await h.observe(page, 'GET', '/api/public/pages/contact', openContact);
   const { body } = await response.json();
-  const card = body.services?.cards?.find(card => card.image_asset_url);
   const c = body.business_contact || {};
-  h.require(card, '已发布样例缺少可放大的服务图');
   await checkNav(page, '联系我们');
   await page.getByRole('heading', { name: '服务与合作', exact: true }).waitFor();
-  const first = page.locator('.service-list button img').first();
-  await first.scrollIntoViewIfNeeded();
-  const original = await imageMetrics(first);
-  proportional(original, '服务图');
-  assert.ok(original.src === new URL(card.image_asset_url, page.url()).href, '服务图应来自本次展示的服务卡');
-  await first.click();
+  assert.equal(await page.locator('.contact-service').count(), 3);
+  await page.getByRole('button', { name: /配方研发与打样/ }).click();
   const dialog = page.getByRole('dialog');
-  await page.getByRole('dialog', { name: '图片预览', exact: true }).waitFor();
-  const zoom = await imageMetrics(dialog.getByRole('img', { name: '放大的服务图片' }));
-  proportional(zoom, '服务大图');
-  assert.ok(zoom.src === original.src, '打开的是点击的服务图原图');
+  await page.getByRole('dialog', { name: '配方研发与打样', exact: true }).waitFor();
   const close = async () => {
     await dialog.getByRole('button', { name: '关闭弹层' }).click();
     await dialog.waitFor({ state: 'hidden' });
@@ -145,7 +136,7 @@ async function checkContact(h, page, openContact) {
   const snapshots = [];
   for (const entry of ['合作咨询', qr ? '查看二维码' : '查看联系方式']) {
     await page.getByRole('button', { name: entry, exact: true }).click();
-    await page.getByRole('dialog', { name: '商务联系', exact: true }).waitFor();
+    await page.getByRole('dialog', { name: '联系商务合作', exact: true }).waitFor();
     for (const [selector, enabled] of [['img.qr-image', qr], ['a[download]', qr], ['a[href^="tel:"]', tel], ['a[href^="mailto:"]', mail]]) {
       assert.equal(await dialog.locator(selector).count(), Number(enabled), `只呈现已配置渠道：${selector}`);
     }

@@ -4,7 +4,7 @@ import { ApiError, message, object, type Body, type Item } from '../../shared/co
 import { request } from './session.ts';
 
 export const slots = [
-  ['home_posters','首页海报'],['catalog_cover','目录封面'],['case_header','案例页头'],['services','服务说明'],['business_contact','商务联系'],
+  ['home_posters','首页海报'],['catalog_cover','目录封面'],['case_header','案例页头'],['business_contact','联系方式'],
 ] as const;
 
 /** Daily-list cleanup follows publication history, not just the current live pointer. */

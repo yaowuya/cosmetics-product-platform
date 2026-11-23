@@ -2,7 +2,6 @@
 from collections.abc import Callable
 
 PUBLISH_SLOTS = ("catalog_cover", "directory", "case_header", "business_contact")
-DRAFT_SLOT = "services"
 
 SLOGAN_TOP = "医研共创为根基"
 SLOGAN_BOTTOM = "功效护肤超级工厂"
@@ -18,27 +17,7 @@ CASE_HEADER = {
     ],
 }
 
-CONTACT = {
-    "title": "聊聊你的产品想法",
-    "intro": "配方打样、生产合作、品牌开发，欢迎沟通。",
-    "label": "商务合作",
-    "method": "扫码添加企业微信",
-    "description": "沟通具体合作需求",
-    "note": "示例预览，不含真实联系方式",
-}
-
-SERVICES = {
-    "page_title": "服务与合作",
-    "intro": "从产品想法，到成品落地",
-    "section_title": "我们能为你做什么",
-    "sample_label": "服务内容示例",
-    "consult_label": "合作咨询",
-    "cards": [
-        {"title": "配方研发与打样", "eyebrow": "研发与共创", "headline": "让产品想法\n成为可用样品", "points": "配方定制 · 样品开发\n应用测试 · 方案优化"},
-        {"title": "OEM / ODM 生产合作", "eyebrow": "生产与交付", "headline": "从样品确认\n到成品交付", "points": "包材协同 · 生产灌装\n成品交付 · 项目跟进"},
-        {"title": "品牌与包装支持", "eyebrow": "品牌与产品", "headline": "形成清晰的\n系列产品形象", "points": "产品规划 · 包装设计\n系列开发 · 资料协同"},
-    ],
-}
+CONTACT = {}
 
 # Board, then categories, then subcategories. "全部" is only a prototype filter button.
 BOARDS = (
@@ -79,15 +58,12 @@ BOARDS = (
 )
 
 
-def slot_action(slot: str, *, live: bool, has_draft: bool, archived: bool = False) -> str:
-    """Leave a released or archived slot untouched. A services draft is written once and never published."""
-    if archived:
+def slot_action(slot: str, *, live: bool, has_draft: bool = False, archived: bool = False) -> str:
+    """Leave a released or archived slot untouched. Contact copy is not seeded."""
+    del has_draft
+    if archived or slot not in PUBLISH_SLOTS:
         return "skip"
-    if slot in PUBLISH_SLOTS:
-        return "skip" if live else "publish"
-    if slot == DRAFT_SLOT:
-        return "skip" if live or has_draft else "draft"
-    raise ValueError(slot)
+    return "skip" if live else "publish"
 
 
 def catalog_cover_body(cover_asset_id: str) -> dict:

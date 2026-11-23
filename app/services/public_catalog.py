@@ -43,7 +43,7 @@ def _slot(db: Session, name: str) -> dict | None:
 def page_content(db: Session, page: str) -> dict:
     """Read fixed page slots independently; the two contact sections may be unpublished."""
     if page == "contact":
-        body = {name: _slot(db, name) for name in ("services", "business_contact")}
+        body = {"business_contact": _slot(db, "business_contact")}
     else:
         name = {"home": "home_posters", "catalog": "catalog_cover", "cases": "case_header"}.get(page)
         if name is None:

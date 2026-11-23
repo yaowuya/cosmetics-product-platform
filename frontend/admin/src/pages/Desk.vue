@@ -6,7 +6,7 @@ import { account, request } from '../session.ts';
 
 const props=withDefaults(defineProps<{mode?:'desk'|'release'|'history'}>(),{mode:'desk'});
 const list=ref<Item[]>([]), events=ref<AuditRow[]>([]), count=ref(0), error=ref(''), loading=ref(false), filter=ref('all'), query=ref('');
-const destinations=[['首页','长图轮播与海报顺序','/pages/home_posters'],['产品目录','业务板块、分类和产品资料','/directory'],['品牌案例','品牌、产品与合作亮点','/cases'],['联系我们','服务说明与独立商务联系','/pages/business_contact']];
+const destinations=[['首页','长图轮播与海报顺序','/pages/home_posters'],['产品目录','业务板块、分类和产品资料','/directory'],['品牌案例','品牌、产品与合作亮点','/cases'],['联系我们','上传二维码和联系方式','/pages/business_contact']];
 const names=Object.fromEntries([...slots,['directory','板块与分类']]);
 function name(row:Item){const body=row.draft??row.live??{};return row.config_slot?names[row.config_slot]:text(body.name??body.product_name,'未命名草稿');}
 function photo(row:Item){const body=row.draft??row.live??{}, posters=body.poster_asset_ids;const id=body.thumbnail_asset_id??body.cover_asset_id??body.image_asset_id??body.background_asset_id??body.qr_asset_id??(Array.isArray(posters)?posters[0]:undefined);return draftImage(row,id,{});}

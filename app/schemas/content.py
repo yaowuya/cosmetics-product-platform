@@ -43,8 +43,7 @@ CONFIG_FIELDS = {
     "case_header": {"background_asset_id": "id", "title": str, "intro": str, "filters": [{"key": str, "label": str}]},
     "services": {"page_title": str, "intro": str, "section_title": str, "sample_label": str, "consult_label": str,
                  "cards": [{"image_asset_id": "id", "title": str, "description": str, "eyebrow": str, "headline": str, "points": str}]},
-    "business_contact": {"title": str, "intro": str, "label": str, "method": str, "description": str, "note": str,
-                         "qr_asset_id": "id", "wechat_id": str, "phone": str, "email": str},
+    "business_contact": {"qr_asset_id": "id", "wechat_id": str, "phone": str, "email": str},
 }
 DIRECTORY_LEVELS = ("board", "category", "subcategory")
 
@@ -105,7 +104,11 @@ def shape_body(kind: str, config_slot: str | None, body: dict) -> dict:
     if kind == "config":
         if config_slot not in CONFIG_FIELDS:
             raise invalid("config_slot")
-        return _shape_object(body, CONFIG_FIELDS[config_slot])
+        source = body
+        if config_slot == "business_contact":
+            allowed = CONFIG_FIELDS[config_slot]
+            source = {key: value for key, value in body.items() if key in allowed}
+        return _shape_object(source, CONFIG_FIELDS[config_slot])
     if kind not in _ITEM_FIELDS or config_slot is not None:
         raise invalid("kind")
     return _shape_object(body, _ITEM_FIELDS[kind])
