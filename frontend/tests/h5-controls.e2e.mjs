@@ -20,6 +20,11 @@ try {
       assert.equal(await page.locator('.board-tabs button').first().evaluate(el => getComputedStyle(el).flexDirection), 'column');
     }
     if (route === '/cases') {
+      const bar = page.locator('.cases-tools .h5-search');
+      const search = bar.locator('input');
+      assert.equal(Math.round((await bar.boundingBox()).height), 34, '案例搜索栏高度');
+      assert.equal(await search.evaluate(el => getComputedStyle(el).borderTopWidth), '0px', '案例输入不应带浏览器默认的内框');
+      assert.equal(Math.round((await search.boundingBox()).height), 32, '案例输入区域保留设计稿高度');
       const next = page.locator('.case-filters button').nth(1);
       await next.focus();
       await page.keyboard.press('Enter');

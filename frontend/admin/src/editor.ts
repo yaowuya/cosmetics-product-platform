@@ -15,6 +15,15 @@ export function canArchive(row: Pick<Item,'has_history'|'live_id'|'archived_at'>
   return Boolean(row.has_history && !row.live_id && !row.archived_at);
 }
 
+export interface AffectedCase {id:string; brand_name?:string|null; product_name?:string|null}
+
+/** Related drafts can be unnamed and different cases can share a brand; keep the stable case ID visible. */
+export function affectedCaseLabel(entry:AffectedCase):string {
+  const brand=entry.brand_name?.trim();
+  const name=entry.product_name?.trim() || '未命名案例';
+  return `${brand ? `${brand} · ` : ''}${name}（#${entry.id}）`;
+}
+
 /** Present the actual directory path for a stable ID, including renamed ancestors. */
 export function nodePath(nodes:readonly {id:string;name:string;parent_id?:string|null}[], id:string):string {
   const byId=new Map(nodes.map(node=>[node.id,node]));

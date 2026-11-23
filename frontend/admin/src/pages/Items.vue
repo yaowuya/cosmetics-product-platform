@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 import { ElPagination, ElTable, ElTableColumn } from 'element-plus';
 import { message, rows, text, withQuery, type CatalogNode, type Item, type Page } from '../../../shared/contracts.ts';
-import { canArchive, canDelete, draftImage, nodePath } from '../editor.ts';
+import { affectedCaseLabel, canArchive, canDelete, draftImage, nodePath, type AffectedCase } from '../editor.ts';
 import { account, request } from '../session.ts';
 import { readAttempts } from '../batch.ts';
 import Batch from '../panels/Batch.vue';
@@ -57,9 +57,9 @@ async function retire(row:Item, action:'unlist'|'archive'|'delete'){
     if(!globalThis.confirm(`确定删除「${label(row)}」的未发布草稿？此操作不可撤销。`))return;
     await request(`/api/admin/items/${row.id}/draft`,'DELETE',{expected_revision:row.revision,confirmed:true});note.value='草稿已删除。';
   }else{
-    const impact=await request<{case_ids:string[];cases:{brand_name?:string;product_name?:string}[]}>(`/api/admin/items/${row.id}/impact`);
-    const detail=impact.cases.map(entry=>entry.brand_name||entry.product_name||'未命名案例').join('、');
-    if(!globalThis.confirm(`确定${action==='unlist'?'下架':'归档'}「${label(row)}」？${detail?`关联案例：${detail}。案例不会随之改变。`:''}历史和记录将保留。`))return;
+    const impact=await request<{case_ids:string[];cases:AffectedCase[]}>(`/api/admin/items/${row.id}/impact`);
+    const related=impact.cases.length ? `\n关联案例（${impact.cases.length}）：\n${impact.cases.map(affectedCaseLabel).join('\n')}\n案例不会随之改变。` : '';
+    if(!globalThis.confirm(`确定${action==='unlist'?'下架':'归档'}「${label(row)}」？${related}\n历史和记录将保留。`))return;
     await request(`/api/admin/items/${row.id}/${action}`,'POST',{expected_revision:row.revision,confirmed:true,case_ids:impact.case_ids});note.value=action==='unlist'?'已下架，公开端不再展示。':'已归档，历史记录保留。';
   }
   selected.value=null;checked.value=checked.value.filter(entry=>entry.id!==row.id);await load();

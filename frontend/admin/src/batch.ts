@@ -1,5 +1,27 @@
-import { ApiError, withQuery, type Item, type Page, type AuditRow, type Receipt, type ReleaseCheck } from '../../shared/contracts.ts';
+import { ApiError, text, withQuery, type Item, type Page, type AuditRow, type Receipt, type ReleaseCheck } from '../../shared/contracts.ts';
 import { request } from './session.ts';
+
+const fieldLabels: Record<string, string> = {
+  name: '产品名称', title: '标题', benefit: '功效', ingredients: '核心成分', highlights: '产品亮点',
+  formula_no: '配方编号', production_status: '生产状态', brand_name: '品牌名称', product_name: '案例产品名',
+  highlight: '案例亮点', description: '说明', intro: '介绍', detail_asset_id: '产品详情长图',
+  thumbnail_asset_id: '产品方图', cover_asset_id: '封面', short_benefit: '简短功效', place_ids: '展示位置',
+  nodes: '板块与分类', poster_asset_ids: '首页海报', qr_asset_id: '商务二维码', image_asset_id: '案例图片',
+  cards: '服务卡片', filters: '案例分类', draft: '草稿', revision: '修订号', id: '条目编号',
+};
+
+/** 单款差异和发布检查沿用相同字段名；未登记的校验字段保留原路径。 */
+export function releaseFieldLabel(field: string): string {
+  return fieldLabels[field] ?? field;
+}
+
+/** 返回检查时用于辨识产品的文本，不保留整份草稿；无稿时仍可用列表摘要或线上资料。 */
+export function productCaption(item: Item): string {
+  const body = item.draft ?? item.live;
+  const name = text(item.summary?.name ?? body?.name) || `产品 ${item.id}`;
+  const formula = text(item.summary?.formula_no ?? body?.formula_no) || '未设置';
+  return `${name} · 配方编号：${formula}`;
+}
 
 /** Only explicitly checked, still-current eligible revisions may enter the confirm queue. */
 export function toConfirm(checks:ReleaseCheck[], items:Pick<Item,'id'|'revision'>[]) {
