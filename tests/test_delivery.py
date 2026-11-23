@@ -18,14 +18,18 @@ def test_bundle(mysql_engine, monkeypatch):
         assert response.status_code == 200 and response.json() == {"status": "ready"}
     for name in ("Caddyfile", "backup.sh", "restore.sh", "runbook.md"):
         assert (ROOT / "deploy" / name).is_file()
-    assert (ROOT / "compose.yaml").is_file()
+    assert (ROOT / "docker-compose.yaml").is_file()
+    assert not (ROOT / "compose.yaml").exists()
     for name in ("backup.sh", "restore.sh"):
         subprocess.run(["bash", "-n", str(ROOT / "deploy" / name)], check=True)
-    compose = (ROOT / "compose.yaml").read_text(encoding="utf-8")
+    compose = (ROOT / "docker-compose.yaml").read_text(encoding="utf-8")
+    example = (ROOT / ".env.example").read_text(encoding="utf-8")
     backup = (ROOT / "deploy" / "backup.sh").read_text(encoding="utf-8")
     assert "--databases cosmetics-product-platform" in backup
     assert "container_name: cosmetics-product-platform" in compose
-    assert "3306" not in compose
+    assert "3306" not in compose and "172.28.50" not in compose
+    for key in ("SHOWCASE_PROXY_IP", "SHOWCASE_SUBNET", "SHOWCASE_FORWARDED_ALLOW_IPS", "ADMIN_LOGIN", "ADMIN_PASSWORD"):
+        assert f"{key}=" in example
     api = compose.split("  api:\n", 1)[1].split("  proxy:\n", 1)[0]
     assert "ports:" not in api and "pull_policy: never" in api
 

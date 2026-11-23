@@ -5,13 +5,13 @@
 ## 端口、证书和秘密
 
 - 对外只监听同源 HTTPS。H5 用 `SHOWCASE_HTTPS_PORT`，默认 `5000`；管理端用 `SHOWCASE_ADMIN_HTTPS_PORT`，默认 `5001`。两个端口都反代同源 `/api`，不把任一端口当作数据库或裸 API。
-- 配置对应 TLS 证书与私钥文件，文件经 Compose secrets 只读挂载。反代来源只信任编排网络里的网关 `172.28.50.1` 和反代 `172.28.50.10`，不填 `*`。
+- 配置对应 TLS 证书与私钥文件，文件经 Compose secrets 只读挂载。反代来源写在 `.env` 的 `SHOWCASE_FORWARDED_ALLOW_IPS`，只信任编排网络里的网关和反代，不填 `*`。
 - 反代先分流 `/api/**` 和 `/health/ready`，再按端口服务 H5 或 `/admin/`。API 容器名是 `cosmetics-product-platform`，不发布端口。数据库使用已获准的主机 MySQL，编排不另起数据库容器，也不发布 `3306`。
 - 用独立的 `SHOWCASE_DB_DIR`、`SHOWCASE_ASSET_DIR`、数据库账号、密钥和容器项目。素材目录由 UID 10001 写入。`SHOWCASE_DATABASE_URL_FILE` 通过秘密挂载提供 `mysql+pymysql` DSN，不能写进 Compose、Git 或操作日志。用已构建的 `frontend/h5/dist/build/h5`、`frontend/admin/dist` 路径提供两端静态产物。
 
 ## 显式迁移和首次管理员
 
-先验证 Compose 展开结果、卷、端口和镜像 ID。主机库就绪后显式运行 Alembic，然后以一次性管理员命令打开后台；应用启动不会自动建表。管理员口令只在隐藏提示输入。路径和秘密文件用环境变量传入，不写进 Compose。
+先验证 Compose 展开结果、卷、端口和镜像 ID。主机库就绪后显式运行 Alembic，然后以一次性管理员命令打开后台；应用启动不会自动建表。登录名和初始口令放在仓库根目录的 `.env`，启动时加载；没有这两项时，口令才从隐藏提示输入。路径和秘密文件用环境变量传入，不写进 Compose。
 
 日常启动和更新见 [开发部署手册](../docs/开发部署手册.md)。在仓库根目录执行：
 
