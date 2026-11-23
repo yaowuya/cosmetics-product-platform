@@ -34,10 +34,9 @@ async function reset(){if(!dirty.value||globalThis.confirm('丢弃当前修改�
 onMounted(refresh);
 </script>
 <template>
- <header class="page-head"><div><h1>{{display}}</h1><p class="muted">只更新这个展示位置。保存不会直接改变线上页面。</p></div><button class="btn primary" type="button" :disabled="busy||!item" @click="save()">保存草稿</button></header>
- <nav class="toolbar" aria-label="页面配置位置"><RouterLink v-for="[key,label] in slots" :key="key" :to="`/pages/${key}`" :class="['btn',{'current':key===slot}]">{{label}}</RouterLink></nav>
+ <header class="page-head"><div><h1>{{display}}</h1><p class="muted">只更新这个展示位置。保存不会直接改变线上页面。</p></div></header>
  <p v-if="note" class="notice" role="status">{{note}}</p><p v-if="error" class="inline-error" role="alert">{{error}} <button type="button" class="btn link" @click="reset">{{conflict?'核对最新修订':'重试'}}</button></p>
- <nav v-if="item" class="seg"><button v-for="[key,title] in [['edit','资料维护'],['release','发布检查'],['history','版本记录']]" :key="key" type="button" :aria-pressed="tab===key" @click="tab=key">{{title}}</button></nav>
+ <div v-if="item" class="config-tabs"><nav class="seg"><button v-for="[key,title] in [['edit','资料维护'],['release','发布检查'],['history','版本记录']]" :key="key" type="button" :aria-pressed="tab===key" @click="tab=key">{{title}}</button></nav><button class="btn primary" type="button" :disabled="busy" @click="save()">保存草稿</button></div>
  <div v-if="item&&tab==='edit'" class="edit-layout"><section class="panel stack"><div class="section-head"><h2>位置资料</h2><span :class="['pill',{'live':item.live_id}]">{{item.live_id?'已有线上版':'未上线'}}</span></div>
   <label v-for="[key,label] in inputs" :key="key" class="field">{{label}}<input :value="text(body[key])" @input="set(key,$event)"></label>
   <label v-if="slot==='catalog_cover'"><input v-model="body.image_has_text" type="checkbox"> 封面图已带文字，不重叠显示文案</label>
@@ -48,4 +47,4 @@ onMounted(refresh);
  <Release v-if="item&&tab==='release'" :item="item" :dirty="dirty" @changed="refresh" />
  <History v-if="item&&tab==='history'" :item="item" @restored="entry=>{accept(entry);tab='edit';note='历史已恢复为草稿，线上版本未改变。'}" />
 </template>
-<style scoped>.current{background:#e1edf1;border-color:#adc7d1}</style>
+<style scoped>.config-tabs{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}.config-tabs .seg{margin-bottom:15px}</style>
