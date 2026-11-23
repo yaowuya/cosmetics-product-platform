@@ -32,8 +32,8 @@ trap cleanup EXIT
 
 # Drain proxy first, then stop the only application writer before taking both snapshots.
 "${compose[@]}" stop proxy api
-"${compose[@]}" exec -T db sh -ec 'export MYSQL_PWD="$(cat /run/secrets/mysql_root_password)"; exec mysqldump -uroot --single-transaction --no-tablespaces --set-gtid-purged=OFF --databases showcase' >"$stage/db.sql"
-"${compose[@]}" exec -T db sh -ec 'export MYSQL_PWD="$(cat /run/secrets/mysql_root_password)"; exec mysql -uroot -N -B showcase -e "SELECT version_num FROM alembic_version"' >"$stage/schema"
+sudo mysqldump -uroot --single-transaction --no-tablespaces --set-gtid-purged=OFF --databases cosmetics-product-platform >"$stage/db.sql"
+sudo mysql -uroot -N -B cosmetics-product-platform -e "SELECT version_num FROM alembic_version" >"$stage/schema"
 [[ -s "$stage/db.sql" && -s "$stage/schema" ]] || exit 1
 api_id=$( "${compose[@]}" ps --all --quiet api )
 [[ -n "$api_id" ]] || { printf 'No source API container metadata\n' >&2; exit 1; }

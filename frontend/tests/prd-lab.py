@@ -39,7 +39,7 @@ def start(c):
    init.unlink(missing_ok=True);break
   except pymysql.OperationalError:time.sleep(.25)
  else:p.terminate();raise RuntimeError('Dedicated MySQL not ready')
- os.environ['ASSET_ROOT']=str(BOX/'media');os.environ['DATABASE_URL']=URL.create('mysql+pymysql','prd_web',c['dbpass'],'127.0.0.1',c['port'],'fp_prd_e2e').render_as_string(hide_password=False);sys.path.insert(0,str(PROJ/'backend'));return p
+ os.environ['ASSET_ROOT']=str(BOX/'media');os.environ['DATABASE_URL']=URL.create('mysql+pymysql','prd_web',c['dbpass'],'127.0.0.1',c['port'],'fp_prd_e2e').render_as_string(hide_password=False);sys.path.insert(0,str(PROJ));return p
 
 def stop(c,p=None):
  if p is not None and p.poll() is not None:return
@@ -63,28 +63,23 @@ if opts.action=='prepare':
  try:
   from alembic import command
   from alembic.config import Config
-  from app.bootstrap import create_first_admin
-  command.upgrade(Config(str(PROJ/'backend/alembic.ini')),'head');create_first_admin(c['actors']['A']['login'],c['actors']['A']['temporary']);write(META,{'origin':'https://127.0.0.1:5155','runId':BOX.name,'files':assets()});print('QA tenant explicitly migrated and bootstrapped; no business fixtures inserted.')
+  from app.cli.bootstrap import create_first_admin
+  command.upgrade(Config(str(PROJ/'alembic.ini')),'head');create_first_admin(c['actors']['A']['login'],c['actors']['A']['temporary']);write(META,{'origin':'https://127.0.0.1:5155','runId':BOX.name,'files':assets()});print('QA tenant explicitly migrated and bootstrapped; no business fixtures inserted.')
  finally:stop(c,child)
 elif opts.action=='serve':
+ for entry in ('frontend/admin/dist/index.html', 'frontend/h5/dist/build/h5/index.html'):
+  if not (PROJ/entry).is_file():
+   raise SystemExit(f'Missing {entry}; run npm --prefix frontend run build before starting the QA site.')
  assert META.exists();c=json.loads(SECRET.read_text());child=start(c);atexit.register(stop,c,child)
- from app.main import app
- from starlette.exceptions import HTTPException
- from starlette.staticfiles import StaticFiles
+ from app.application import create_app
+ from app.local import local_site
  import uvicorn
- class SPA(StaticFiles):
-  async def get_response(self,path,scope):
-   try:return await super().get_response(path,scope)
-   except HTTPException as ex:
-    if ex.status_code!=404 or Path(path).suffix:raise
-    return await super().get_response('index.html',scope)
+ app=create_app()
  @app.middleware('http')
  async def marker(req,nxt):
   resp=await nxt(req)
   if req.url.path=='/health/ready':resp.headers['X-Showcase-QA-Run']=BOX.name
   return resp
- @app.api_route('/api/{other:path}',methods=['GET','POST','PUT','PATCH','DELETE'])
- async def absent(other:str):raise HTTPException(404)
- app.mount('/admin',SPA(directory=PROJ/'frontend/admin/dist',html=True));app.mount('/',SPA(directory=PROJ/'frontend/h5/dist/build/h5',html=True));(BOX/'serving').touch()
- try:uvicorn.run(app,host='127.0.0.1',port=5155,ssl_keyfile=str(BOX.parent/'tls.key'),ssl_certfile=str(BOX.parent/'tls.crt'),proxy_headers=False,access_log=False,log_level='warning')
+ site=local_site(app,PROJ);(BOX/'serving').touch()
+ try:uvicorn.run(site,host='127.0.0.1',port=5155,ssl_keyfile=str(BOX.parent/'tls.key'),ssl_certfile=str(BOX.parent/'tls.crt'),proxy_headers=False,access_log=False,log_level='warning')
  finally:(BOX/'serving').unlink(missing_ok=True)

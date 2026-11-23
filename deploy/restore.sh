@@ -86,9 +86,9 @@ if ! running=$( "${compose[@]}" ps --status running --services api proxy ); then
   exit 1
 fi
 [[ -z "$running" ]] || { printf 'Stop the isolated API and proxy before restoring\n' >&2; exit 1; }
-existing=$( "${compose[@]}" exec -T db sh -ec 'export MYSQL_PWD="$(cat /run/secrets/mysql_root_password)"; exec mysql -uroot -N -B showcase -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()"' )
+existing=$(sudo mysql -uroot -N -B cosmetics-product-platform -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()")
 [[ "$existing" == 0 ]] || { printf 'The isolated target database is not empty\n' >&2; exit 1; }
-"${compose[@]}" exec -T db sh -ec 'export MYSQL_PWD="$(cat /run/secrets/mysql_root_password)"; exec mysql -uroot' <"$stage/verified/db.sql"
+sudo mysql -uroot <"$stage/verified/db.sql"
 for entry in "$stage/verified/assets"/*; do
   destination="$SHOWCASE_ASSET_DIR/${entry##*/}"
   [[ ! -e "$destination" && ! -L "$destination" ]] || exit 1
