@@ -1,24 +1,25 @@
 # 单企业部署与恢复运行说明
 
-本文件是交付配置，不是远端部署记录。只在获准的 Ubuntu、Docker Compose 和企业隔离目录中使用。当前未连接腾讯云，也未核验域名、TLS 证书、镜像或云端网络。
+本文件是交付配置，不是远端操作日志。只在获准的 Ubuntu、Docker Compose 和企业隔离目录中使用。秘密、口令和证书不写入本文件。
 
 ## 端口、证书和秘密
 
-- 对外只监听同源 HTTPS，`SHOWCASE_HTTPS_PORT` 默认 `5000`。腾讯云另有 `5001`，当前不使用；不把它用作数据库或裸 API 的入口。
-- `SHOWCASE_HOST` 写获准域名，不带端口。配置对应 TLS 证书与私钥文件，文件经 Compose secrets 只读挂载。`SHOWCASE_TRUSTED_PROXY_IPS` 只填写应用网络内已核验的反代地址，不填 `*`。
-- 反代先分流 `/api/**` 和 `/health/ready`，再服务 `/admin/` 与 H5。API、MySQL 和素材目录均无公网端口。MySQL 镜像必须已被批准且存在，接受 8.0+；本地不下载新的 MySQL 服务器。
+- 对外只监听同源 HTTPS。H5 用 `SHOWCASE_HTTPS_PORT`，默认 `5000`；管理端用 `SHOWCASE_ADMIN_HTTPS_PORT`，默认 `5001`。两个端口都反代同源 `/api`，不把任一端口当作数据库或裸 API。
+- 配置对应 TLS 证书与私钥文件，文件经 Compose secrets 只读挂载。反代来源只信任编排网络里的网关 `172.28.50.1` 和反代 `172.28.50.10`，不填 `*`。
+- 反代先分流 `/api/**` 和 `/health/ready`，再按端口服务 H5 或 `/admin/`。API 容器名是 `cosmetics-product-platform`，不发布端口。数据库使用已获准的主机 MySQL，编排不另起数据库容器，也不发布 `3306`。
 - 用独立的 `SHOWCASE_DB_DIR`、`SHOWCASE_ASSET_DIR`、数据库账号、密钥和容器项目。素材目录由 UID 10001 写入。`SHOWCASE_DATABASE_URL_FILE` 通过秘密挂载提供 `mysql+pymysql` DSN，不能写进 Compose、Git 或操作日志。用已构建的 `frontend/h5/dist/build/h5`、`frontend/admin/dist` 路径提供两端静态产物。
 
 ## 显式迁移和首次管理员
 
-先在隔离项目、空库验证 Compose 展开结果、卷、端口和镜像 ID。启动数据库后显式运行 Alembic，然后以一次性管理员命令打开后台；应用启动不会自动建表。命令里的 `PROJECT` 是实际获准的 Compose 项目，管理员口令只在隐藏提示输入。
+先验证 Compose 展开结果、卷、端口和镜像 ID。主机库就绪后显式运行 Alembic，然后以一次性管理员命令打开后台；应用启动不会自动建表。管理员口令只在隐藏提示输入。路径和秘密文件用环境变量传入，不写进 Compose。
+
+日常启动和更新见 [开发部署手册](../docs/开发部署手册.md)。在仓库根目录执行：
 
 ```sh
-docker compose -p "$PROJECT" -f deploy/compose.yaml config --quiet
-docker compose -p "$PROJECT" -f deploy/compose.yaml up -d db
-docker compose -p "$PROJECT" -f deploy/compose.yaml run --rm api alembic -c alembic.ini upgrade head
-docker compose -p "$PROJECT" -f deploy/compose.yaml run --rm api python -m app.cli.bootstrap "$ADMIN_LOGIN"
-docker compose -p "$PROJECT" -f deploy/compose.yaml up -d api proxy
+docker compose config --quiet
+docker compose run --rm api alembic -c alembic.ini upgrade head
+docker compose run --rm api python -m app.cli.bootstrap "$ADMIN_LOGIN"
+docker compose up -d
 ```
 
 `/health/ready` 只返回就绪与否，不显示数据库地址或错误详情。核对后端和静态入口的兼容窗口，先部署兼容 API，再更新前端。版本回退在 schema 仍兼容时才只退镜像；否则先隔离写入并恢复匹配的库、图片和镜像。
@@ -35,7 +36,7 @@ bash deploy/backup.sh --project "$SOURCE_PROJECT" --destination "$ENCRYPTED_BUND
 
 ## 干净目标的恢复与放流门槛
 
-使用专用 `*-restore` 项目和不同的空库/素材目录，在另一台获准主机执行。把该项目名写入 `SHOWCASE_APPROVED_RESTORE_PROJECT`；指明签名者、目标可用的 `SHOWCASE_EXPECT_SCHEMA`、`SHOWCASE_EXPECT_API_IMAGE_ID`。只启动目标数据库，保持 API/反代停止。
+使用专用 `*-restore` 项目和不同的空库/素材目录，在另一台获准主机执行。把该项目名写入 `SHOWCASE_APPROVED_RESTORE_PROJECT`；指明签名者、目标可用的 `SHOWCASE_EXPECT_SCHEMA`、`SHOWCASE_EXPECT_API_IMAGE_ID`。目标主机库必须是空的 `cosmetics-product-platform`，并保持 API/反代停止。
 
 可先用只读预检检查签名、完整清单及预期版本，不需要 Docker 或目标素材目录，也不会连接数据库。若本机 Python 3.11+ 不在 `python3` 命令上，可用 `SHOWCASE_PYTHON_BIN` 指向已安装的解释器。
 

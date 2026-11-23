@@ -13,8 +13,8 @@ const change = computed(() => landing(account.value) === 'change-password');
 /** Sign in or perform the required first password change, never bypassing the server gate. */
 async function submit() {
   error.value = '';
-  if (change.value && (replacement.value.length < 12 || replacement.value !== confirmation.value)) {
-    error.value = replacement.value.length < 12 ? '新密码至少需要 12 个字符。' : '两次输入的新密码不一致。';
+  if (change.value && (replacement.value.length < 6 || replacement.value !== confirmation.value)) {
+    error.value = replacement.value.length < 6 ? '新密码至少需要 6 个字符。' : '两次输入的新密码不一致。';
     return;
   }
   busy.value = true;
@@ -46,8 +46,8 @@ async function cancelChange() {
         <label v-if="!change" class="field">登录名<input v-model="login" autocomplete="username" required maxlength="190" /></label>
         <label class="field">{{ change ? '原密码' : '密码' }}<input v-model="password" type="password" autocomplete="current-password" required maxlength="128" /></label>
         <template v-if="change">
-          <label class="field">新密码<input v-model="replacement" type="password" autocomplete="new-password" minlength="12" maxlength="128" required aria-describedby="password-rule" /></label>
-          <small id="password-rule" class="muted">至少 12 个字符，不能与原密码相同。</small>
+          <label class="field">新密码<input v-model="replacement" type="password" autocomplete="new-password" minlength="6" maxlength="128" required aria-describedby="password-rule" /></label>
+          <small id="password-rule" class="muted">至少 6 个字符，不能与原密码相同。</small>
           <label class="field">确认新密码<input v-model="confirmation" type="password" autocomplete="new-password" required maxlength="128" /></label>
         </template>
         <p v-if="error" role="alert" class="inline-error">{{ error }}</p>

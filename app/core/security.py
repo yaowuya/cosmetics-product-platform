@@ -10,8 +10,8 @@ DUMMY_PASSWORD_HASH = f"pbkdf2_sha256${HASH_ROUNDS}${'0' * 32}${'0' * 64}"
 
 def hash_password(password: str) -> str:
     """为符合长度要求的新密码生成独立随机盐，沿用已存口令的 PBKDF2 格式。"""
-    if not 12 <= len(password) <= 128:
-        raise ValueError("Passwords must contain between 12 and 128 characters")
+    if not 6 <= len(password) <= 128:
+        raise ValueError("Passwords must contain between 6 and 128 characters")
     salt = secrets.token_bytes(16)
     digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, HASH_ROUNDS)
     return f"pbkdf2_sha256${HASH_ROUNDS}${salt.hex()}${digest.hex()}"
