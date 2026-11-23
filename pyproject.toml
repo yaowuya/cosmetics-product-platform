@@ -26,6 +26,9 @@ py-modules = ["main"]
 include = ["app", "app.*"]
 namespaces = false
 
+[tool.setuptools.package-data]
+"app.cli" = ["assets/*.webp"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
