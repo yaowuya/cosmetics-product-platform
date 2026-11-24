@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'v
 import { acceptResponse, CATALOG_KEY, children, inputText, prefs, queryFor, remember, selectBoard, type BoardView } from '../browse.ts';
 import { publicGet } from '../public-api.ts';
 import { message, type Body, type Catalog, type CatalogNode, type Page, type PublicItem, type PublicPage } from '../../../shared/contracts.ts';
+import { boardIconPaths } from '../../../shared/board-icons.ts';
 import PageContent from '../views/PageContent.vue';
 import ProductView from '../views/ProductView.vue';
 import ShowcaseNav from '../views/ShowcaseNav.vue';
@@ -49,7 +50,7 @@ onMounted(load);onBeforeUnmount(()=>{store();++generation;clearTimeout(debounce)
   <PageContent section="catalog" :body="cover" />
   <div v-if="bootError" class="h5-empty" role="alert">{{bootError}} <component :is="'button'" type="button" class="h5-soft" @click="load">重试</component></div>
   <template v-else><div class="catalog-tools"><label class="h5-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="m15 15 5 5"/></svg><input type="search" :value="view.q" aria-label="搜索产品或配方编号" placeholder="搜索产品 / 编号" @input="search(inputText($event))"><component :is="'button'" v-if="view.q" type="button" aria-label="清空搜索" @click.prevent="search('')">×</component></label>
-  <nav v-if="boards.length" class="board-tabs" aria-label="业务板块"><component :is="'button'" v-for="n in boards" :key="n.id" :aria-pressed="board===n.id" type="button" @click="changeBoard(n.id)"><img v-if="n.icon_url" :src="n.icon_url" alt=""><svg v-else viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h16v11H4zM8 9V5h8v4m-4 4v3"/></svg><span>{{n.name}}</span></component></nav></div>
+  <nav v-if="boards.length" class="board-tabs" aria-label="业务板块"><component :is="'button'" v-for="n in boards" :key="n.id" :aria-pressed="board===n.id" type="button" @click="changeBoard(n.id)"><img v-if="n.icon_url" :src="n.icon_url" alt=""><svg v-else class="board-mark" viewBox="0 0 24 24" aria-hidden="true"><path v-for="(d,index) in (boardIconPaths(n.name).length?boardIconPaths(n.name):['M4 9h16v11H4zM8 9V5h8v4m-4 4v3'])" :key="index" :d="d"/></svg><span>{{n.name}}</span></component></nav></div>
   <p v-if="boot" class="h5-empty" role="status">正在加载目录…</p><p v-else-if="!boards.length" class="h5-empty">暂无已发布的产品目录</p>
   <div v-else class="catalog-body"><aside v-if="categories.length" ref="left" class="category-rail" aria-label="产品分类" @scroll="rememberScroll"><component :is="'button'" v-for="n in categories" :key="n.id" type="button" :aria-pressed="view.category===n.id" @click="selectCategory(n.id)"><span>{{n.name}}</span></component></aside>
   <section ref="right" class="catalog-results" aria-label="产品列表" @scroll="rememberScroll">

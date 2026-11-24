@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref } from 'vue';
-import { ElPagination, ElTable, ElTableColumn } from 'element-plus';
+import { ElDialog, ElPagination, ElTable, ElTableColumn } from 'element-plus';
+import 'element-plus/es/components/dialog/style/css';
+import ItemEditor from './ItemEditor.vue';
 import { message, rows, text, withQuery, type CatalogNode, type Item, type Page } from '../../../shared/contracts.ts';
 import { affectedCaseLabel, canArchive, canDelete, draftImage, nodePath, type AffectedCase } from '../editor.ts';
 import { account, request } from '../session.ts';
@@ -13,7 +15,7 @@ const product=computed(()=>props.kind==='product');
 const collection=computed(()=>product.value?'products':'cases');
 const title=computed(()=>product.value?'全部产品':'全部案例');
 const list=ref<Item[]>([]), checked=ref<Item[]>([]), nodes=ref<CatalogNode[]>([]), selected=ref<Item|null>(null);
-const batch=ref<'append'|'check'|'recover'|null>(null),loading=ref(false),error=ref(''),note=ref('');
+const batch=ref<'append'|'check'|'recover'|null>(null),creating=ref(false),loading=ref(false),error=ref(''),note=ref('');
 const total=ref(0), archived=ref(0),page=ref(1),batchPanel=ref<HTMLElement|null>(null),releasePanel=ref<HTMLElement|null>(null);
 const filters=reactive({q:'',state:'',has_draft:'',node_id:''});
 const allSelected=computed(()=>total.value>0 && total.value===checked.value.length);
@@ -65,11 +67,13 @@ async function retire(row:Item, action:'unlist'|'archive'|'delete'){
   selected.value=null;checked.value=checked.value.filter(entry=>entry.id!==row.id);await load();
  }catch(cause){error.value=message(cause);}
 }
+function created(){creating.value=false;note.value='草稿已保存，仍在当前列表。';void load();}
 onMounted(()=>{void load();if(product.value)void loadNodes();});
 </script>
 
 <template>
- <header class="page-head"><div><h1>{{ title }}</h1><p class="muted">{{product?'筛选并勾选产品，统一追加展示分类，或检查草稿后发布。':'按品牌名或案例产品名查找，单独维护案例资料。'}}</p></div><div class="toolbar"><button class="btn" @click="filters.state=filters.state==='archived'?'':'archived';search()">{{filters.state==='archived'?'返回日常列表':`已归档（${archived}）`}}</button><RouterLink class="btn primary" :to="`/${collection}/new`">新增{{product?'产品':'案例'}}</RouterLink></div></header>
+ <header class="page-head"><div><h1>{{ title }}</h1><p class="muted">{{product?'筛选并勾选产品，统一追加展示分类，或检查草稿后发布。':'按品牌名或案例产品名查找，单独维护案例资料。'}}</p></div><div class="toolbar"><button class="btn" @click="filters.state=filters.state==='archived'?'':'archived';search()">{{filters.state==='archived'?'返回日常列表':`已归档（${archived}）`}}</button><button type="button" class="btn primary" @click="creating=true">新增{{product?'产品':'案例'}}</button></div></header>
+ <el-dialog v-model="creating" :title="`新增${product?'产品':'案例'}`" width="760px" append-to-body destroy-on-close><ItemEditor v-if="creating" id="new" :kind="kind" embedded @saved="created" /></el-dialog>
  <section class="panel table-frame"><div class="section-head"><h2>{{product?'产品列表':'案例列表'}}</h2><small>共 {{total}} {{product?'款':'条'}}</small></div>
  <form @submit.prevent="search"><div :class="['list-filters',{'case-list':!product}]"><label class="field">搜索{{product?'产品':'案例'}}<input v-model.trim="filters.q" :placeholder="product?'产品名称或配方编号':'品牌名或案例产品名'" type="search" @search="search" @change="search"></label>
  <label v-if="product" class="field">展示分类<select v-model="filters.node_id" @change="search"><option value="">全部分类</option><option v-for="node in nodes" :key="node.id" :value="node.id">{{nodePath(nodes,node.id)}}</option></select></label>
