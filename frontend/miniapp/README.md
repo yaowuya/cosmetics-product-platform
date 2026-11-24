@@ -4,7 +4,7 @@
 
 ## 开发者工具导入
 
-1. 打开微信开发者工具，选择 **导入项目 → 小程序**，项目目录选本目录（`frontend/miniapp`，不是仓库根目录）。仓库使用 `touristappid` 占位；请在工具内选择自己有权限的小程序 AppID，不填 AppSecret，也不要将本机 AppID 或 `project.private.config.json` 提交到仓库。
+1. 如果本目录还没有 `project.config.json`，先把[工程模板](project.config.example.json)复制为 `project.config.json`；已有本机配置就直接保留。打开微信开发者工具，选择 **导入项目 → 小程序**，项目目录选本目录（`frontend/miniapp`，不是仓库根目录）。模板里的 `touristappid` 是占位值，请在工具内选择自己有权限的小程序 AppID，不填 AppSecret。Git 忽略本机的 `project.config.json` 和 `project.private.config.json`，团队共用设置修改模板。
 2. 在仓库根目录运行 `make serve`（Windows 也可运行 `.venv/Scripts/python.exe main.py`），按[开发部署手册](../../docs/开发部署手册.md#L17-L35)复用本机 MySQL 和证书。H5 和管理端继续使用原来的 `https://127.0.0.1:5144`。
 3. 另开终端，运行 `node frontend/tools/miniapp-local.cjs`。小程序[开发版来源](lib/config.js#L2-L6)默认是 `http://127.0.0.1:5145`。[本机转发工具](../tools/miniapp-local.cjs)只在本机监听，不转发管理端或写请求，连接后端时仍用本地证书验证 HTTPS。如后端使用自定义证书，为两个进程配置相同的 `SHOWCASE_TLS_CERT_FILE`。用 `curl -f http://127.0.0.1:5145/api/public/pages/home` 先确认端口能读到 JSON。
 4. 在微信开发者工具的「设置 → 项目设置 → 本地设置」中，仅为本机模拟器调试勾选「不校验合法域名、web-view（业务域名）、TLS 版本以及 HTTPS 证书」，不要提交关闭配置。`127.0.0.1` 只指当前设备，不用于真机或发布。换 QA 来源时只填协议、主机及所需端口，不加 `/api`、尾斜杠或参数。

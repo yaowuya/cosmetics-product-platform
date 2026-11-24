@@ -7,10 +7,11 @@ const read = file => readFileSync(resolve(root,file),'utf8');
 const json = file => JSON.parse(read(file));
 
 test('project imports as six native pages with four tab entries, without package dependencies', () => {
-  const config = json('project.config.json');
+  const config = json('project.config.example.json');
+  assert.equal(config.appid,'touristappid');
   assert.equal(config.compileType,'miniprogram');
   assert.equal(config.miniprogramRoot,'./');
-  assert.notEqual(config.setting.urlCheck,false);
+  assert.equal(config.setting.urlCheck,true);
   assert.deepEqual(Object.keys(json('package.json').dependencies || {}),[]);
   const app = json('app.json');
   assert.deepEqual(app.pages.map(route=>route.split('/')[1]),['home','catalog','product','cases','case','contact']);
