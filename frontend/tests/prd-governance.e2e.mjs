@@ -83,22 +83,17 @@ export async function runGovernance(h) {
     const name = t('06C案例'), brand = t('06C品牌'), edited = t('06C已存亮点');
     const other = await h.createCase(E, { name: t('06C保留稿'), brand: t('06C其他品牌'), highlight: t('保留亮点') });
     assert.equal((await h.check(P, editor('cases', other.id))).eligible, true, '对照条目应是合格但未发布的草稿');
-    await h.open(E, '/admin/cases');
-    await link(E, '新增案例').click();
-    await E.getByLabel('品牌名称', { exact: true }).fill(brand);
-    await E.getByLabel('案例产品名称', { exact: true }).fill(name);
-    await E.getByLabel('案例亮点', { exact: true }).fill(t('06C初稿亮点'));
-    await h.upload(E, 0, h.files.square);
-    const created = await (await h.observe(E, 'POST', '/api/admin/cases', () => button(E, '保存草稿').click(), 201)).json();
-    await E.waitForURL(new URL(editor('cases', created.id), h.base).href);
+    const created = await h.createCase(E, { name, brand, highlight: t('06C初稿亮点') });
     assert.ok(created.draft && !created.live_id);
     assert.equal((await publicCases(name)).total, 0);
     await singleRow(E, 'cases', brand, name, created.id);
     const found = await singleRow(E, 'cases', name, name, created.id);
-    await link(found, '编辑').click();
-    await button(E, '版本记录').waitFor(); // The saved item, not the empty editor shell, has loaded.
-    await E.getByLabel('案例亮点', { exact: true }).fill(edited);
-    const saved = await h.save(E);
+    await button(found, '编辑').click();
+    const dialog = E.getByRole('dialog', { name: '编辑案例', exact: true });
+    await button(dialog, '下一步').click();
+    await dialog.getByLabel('案例亮点', { exact: true }).fill(edited);
+    const saved = await (await h.observe(E, 'PUT', `${itemPath(created.id)}/draft`, () => button(dialog, '保存').click())).json();
+    await dialog.waitFor({ state: 'hidden' });
     assert.equal(saved.draft.highlight, edited);
     const row = await singleRow(P, 'cases', name, name, created.id);
     await button(row, '发布检查').click();
@@ -362,8 +357,7 @@ export async function runGovernance(h) {
       await target.getByRole('checkbox').check();
       for (const control of [button(page, '批量发布检查'), button(target, '发布检查'), button(target, '归档')]) assert.ok(await control.isDisabled());
       assert.equal(await page.getByRole('region', { name: '发布检查' }).count(), 0);
-      await link(target, '编辑').click();
-      await page.waitForURL(new URL(path, h.base).href);
+      await h.open(page, path);
       await button(page.getByRole('navigation', { name: '内容编辑视图' }), '发布检查').click();
       assert.ok(await button(page, '检查发布').isDisabled() && await button(page, '确认发布').isDisabled());
     }

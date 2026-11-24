@@ -322,10 +322,13 @@ export async function runProducts(h) {
     });
     await adminList(E);
     for (const q of [name, code]) { const data = await searchAdmin(E, q); e.expect(data.total === 1 && data.items[0]?.id === row.id, '新增产品未按名称/配方编号唯一查到'); }
-    await uiGet(E, itemApi(row.id), {}, () => rowFor(E, name).getByRole('link', { name: '编辑', exact: true }).click());
-    await E.locator('header.page-head').getByText(/修订/).waitFor();
-    await E.getByLabel('功效', { exact: true }).fill(tag('行编辑后的功效'));
-    const saved = await h.save(E);
+    await uiGet(E, itemApi(row.id), {}, () => button(rowFor(E, name), '编辑').click());
+    const dialog = E.getByRole('dialog', { name: '编辑产品', exact: true });
+    await button(dialog, '下一步').click();
+    await dialog.getByLabel('功效', { exact: true }).fill(tag('行编辑后的功效'));
+    await button(dialog, '下一步').click();
+    const saved = await observeJson(E, 'PUT', `${itemApi(row.id)}/draft`, () => button(dialog, '保存').click());
+    await dialog.waitFor({ state: 'hidden' });
     await adminList(P); await searchAdmin(P, code);
     await button(rowFor(P, name), '发布检查').click();
     const panel = P.locator('section[aria-label="发布检查"]');

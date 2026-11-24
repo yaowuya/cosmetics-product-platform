@@ -74,13 +74,13 @@ export async function createHarness(stage,directory) {
   h.createProduct=async(page,o)=>{
     await h.open(page,'/admin/products');
     const dialog=page.getByRole('dialog',{name:'新增产品',exact:true});
-    const chooseTab=name=>dialog.getByRole('tab',{name,exact:true}).click();
+    const next=()=>button(dialog,'下一步').click();
     const directory=await(await h.observe(page,'GET','/api/admin/config/directory',()=>button(page,'新增产品').click())).json();
     for(const [key,value] of [['产品名称',o.name],['英文名称（选填）',o.english??'Lab '+o.code],['配方编号',o.code],['简短功效',o.short??'本轮测试短功效']]) await field(dialog,key).fill(value);
     await field(dialog,'是否生产过').selectOption('待确认');
-    await chooseTab('产品详情');
+    await next();
     for(const [key,value] of [['功效',o.benefit??'本轮功效说明'],['核心成分','测试成分'],['产品亮点','测试亮点']]) await field(dialog,key).fill(value);
-    await chooseTab('图片与展示位置');
+    await next();
     assert.equal(await dialog.locator('input[type=file]').count(),2);
     await h.upload(page,0,h.files.cover);
     if(!o.omitLong) await h.upload(page,1,h.files.long);
@@ -97,17 +97,32 @@ export async function createHarness(stage,directory) {
           await row.locator(depth===chain.length-1?'label.el-checkbox':'.el-cascader-node__label').click();
         }
       }
-      await chooseTab('基础信息');
+      await dialog.getByRole('heading',{name:'展示位置',exact:true}).click();
     }
-    const save=dialog.locator('form footer').getByRole('button',{name:'保存草稿',exact:true});
+    const save=button(dialog.locator('footer'),'保存');
     const response=await h.observe(page,'POST','/api/admin/products',()=>save.click(),201);
     assert.ok(!('thumbnail_asset_id' in response.request().postDataJSON().body));
     await dialog.waitFor({state:'hidden'});
     assert.equal(page.url(),`${base}/admin/products`);
     return response.json();
   };
-  h.createCase=async(page,o)=>{await h.open(page,'/admin/cases/new');await field(page,'品牌名称').fill(o.brand);await field(page,'案例产品名称').fill(o.name);await field(page,'案例亮点').fill(o.highlight??'本轮案例亮点');if(o.description)await field(page,'案例说明（选填）').fill(o.description);if(o.related)await page.getByRole('combobox',{name:'内部关联产品',exact:true}).selectOption(String(o.related));if(o.category)await page.getByRole('combobox',{name:'案例分类',exact:true}).selectOption(o.category);await h.upload(page,0,h.files.square);
-    const item=await(await h.observe(page,'POST','/api/admin/cases',()=>button(page,'保存草稿').first().click(),201)).json();await page.waitForURL(`${base}/admin/cases/${item.id}`);return item;};
+  h.createCase=async(page,o)=>{
+    await h.open(page,'/admin/cases');
+    await button(page,'新增案例').click();
+    const dialog=page.getByRole('dialog',{name:'新增案例',exact:true});
+    await field(dialog,'品牌名称').fill(o.brand);
+    await field(dialog,'案例产品名称').fill(o.name);
+    if(o.related)await dialog.getByRole('combobox',{name:'内部关联产品',exact:true}).selectOption(String(o.related));
+    if(o.category)await dialog.getByRole('combobox',{name:'案例分类',exact:true}).selectOption(o.category);
+    await button(dialog,'下一步').click();
+    await field(dialog,'案例亮点').fill(o.highlight??'本轮案例亮点');
+    if(o.description)await field(dialog,'案例说明（选填）').fill(o.description);
+    await h.upload(page,0,h.files.square);
+    const item=await(await h.observe(page,'POST','/api/admin/cases',()=>button(dialog,'保存').click(),201)).json();
+    await dialog.waitFor({state:'hidden'});
+    assert.equal(page.url(),`${base}/admin/cases`);
+    return item;
+  };
   if(fs.existsSync(path.join(box,'nodes.json')))Object.assign(h,read('nodes.json'));
   return h;
 }

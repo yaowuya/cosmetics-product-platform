@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {createHarness,button,field} from './prd-harness.mjs';
 const [stage,dir]=process.argv.slice(2);
-assert.ok(['setup','public','catalog','revisions','products','governance','audit'].includes(stage)&&dir,'Expected a stage and private QA run directory');
+assert.ok(['setup','public','catalog','revisions','products','item-wizards','governance','audit'].includes(stage)&&dir,'Expected a stage and private QA run directory');
 const h=await createHarness(stage,dir);
 
 /** Capture public content by navigating the actual H5 pages; keep only stable, non-secret observations. */
@@ -43,6 +43,9 @@ try{
  if(stage==='products'||stage==='governance'){
    h.require(h.places?.a&&h.places?.b&&h.places?.c,'需要成功的一次性企业目录配置');h.A=await h.newPage('A');await h.roles();
    if(stage==='products')await(await import('./prd-products.e2e.mjs')).runProducts(h);else await(await import('./prd-governance.e2e.mjs')).runGovernance(h);
+ }
+ if(stage==='item-wizards'){
+   h.E=await h.newPage('E');await(await import('./prd-item-wizards.e2e.mjs')).runItemWizards(h);
  }
  if(stage==='audit')await audit();
  if(h.results.some(r=>r.status==='FAIL'))process.exitCode=1;

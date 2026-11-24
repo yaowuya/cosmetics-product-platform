@@ -15,7 +15,7 @@ const product=computed(()=>props.kind==='product');
 const collection=computed(()=>product.value?'products':'cases');
 const title=computed(()=>product.value?'全部产品':'全部案例');
 const list=ref<Item[]>([]), checked=ref<Item[]>([]), nodes=ref<CatalogNode[]>([]), selected=ref<Item|null>(null);
-const batch=ref<'append'|'check'|'recover'|null>(null),creating=ref(false),loading=ref(false),error=ref(''),note=ref('');
+const batch=ref<'append'|'check'|'recover'|null>(null),loading=ref(false),error=ref(''),note=ref('');
 const total=ref(0), archived=ref(0),page=ref(1),batchPanel=ref<HTMLElement|null>(null),releasePanel=ref<HTMLElement|null>(null);
 const filters=reactive({q:'',state:'',has_draft:'',node_id:''});
 const allSelected=computed(()=>total.value>0 && total.value===checked.value.length);
@@ -23,6 +23,7 @@ const selectedIds=computed(()=>new Set(checked.value.map(row=>row.id)));
 const pendingCount=ref(0);
 let generation=0;
 function label(item:Item){return text(item.summary?.name??item.summary?.product_name??item.draft?.name??item.live?.name??item.draft?.product_name??item.live?.product_name,'未命名草稿');}
+function subtitle(item:Item){const field=item.kind==='product'?'formula_no':'brand_name';return text(item.summary?.[field]??(item.draft??item.live)?.[field]);}
 function photo(item:Item){const b=item.draft??item.live;return draftImage(item,item.kind==='product'?b?.cover_asset_id:b?.image_asset_id,{});}
 function status(row:Item){return row.archived_at?'已归档':row.live_id?'已上线':row.has_history?'已下架':'从未上线';}
 function address(n:number,size=20){return withQuery(`/api/admin/${collection.value}`,{...filters,page:n,page_size:size});}
@@ -67,16 +68,24 @@ async function retire(row:Item, action:'unlist'|'archive'|'delete'){
   selected.value=null;checked.value=checked.value.filter(entry=>entry.id!==row.id);await load();
  }catch(cause){error.value=message(cause);}
 }
-const createEditor=ref<InstanceType<typeof ItemEditor>|null>(null);
-function closeCreate(done:()=>void){if(!product.value||createEditor.value?.canDismiss()!==false)done();}
-function created(){creating.value=false;note.value='草稿已保存，仍在当前列表。';void load();}
+const editor=ref<InstanceType<typeof ItemEditor>|null>(null), editingId=ref<string|null>(null), editorOpen=ref(false);
+const editorTitle=computed(()=>`${editingId.value==='new'?'新增':'编辑'}${product.value?'产品':'案例'}`);
+function openEditor(id:string){editingId.value=id;editorOpen.value=true;}
+function closeEditor(done:()=>void){if(editor.value?.canDismiss()!==false)done();}
+function saved(item:Item){
+ const current=(row:Item)=>row.id===item.id?item:row;
+ // Invalidate checks for the old revision now, even if the list refresh fails.
+ list.value=list.value.map(current);checked.value=checked.value.map(current);
+ if(selected.value)selected.value=current(selected.value);
+ editorOpen.value=false;note.value='草稿已保存，线上版本未改变。';void load();
+}
 onMounted(()=>{void load();if(product.value)void loadNodes();});
 </script>
 
 <template>
- <header class="page-head"><div><h1>{{ title }}</h1><p class="muted">{{product?'筛选并勾选产品，统一追加展示分类，或检查草稿后发布。':'按品牌名或案例产品名查找，单独维护案例资料。'}}</p></div><div class="toolbar"><button class="btn" @click="filters.state=filters.state==='archived'?'':'archived';search()">{{filters.state==='archived'?'返回日常列表':`已归档（${archived}）`}}</button><button type="button" class="btn primary" @click="creating=true">新增{{product?'产品':'案例'}}</button></div></header>
- <el-dialog v-model="creating" :title="`新增${product?'产品':'案例'}`" :width="product?'min(680px, calc(100% - 24px))':'760px'" :class="{'product-create-dialog':product}" :body-class="product?'product-create-body':undefined" :align-center="product" :close-on-click-modal="!product" :before-close="closeCreate" append-to-body destroy-on-close>
-   <ItemEditor v-if="creating" ref="createEditor" id="new" :kind="kind" embedded @saved="created" @cancel="creating=false" />
+ <header class="page-head"><div><h1>{{ title }}</h1><p class="muted">{{product?'筛选并勾选产品，统一追加展示分类，或检查草稿后发布。':'按品牌名或案例产品名查找，单独维护案例资料。'}}</p></div><div class="toolbar"><button class="btn" @click="filters.state=filters.state==='archived'?'':'archived';search()">{{filters.state==='archived'?'返回日常列表':`已归档（${archived}）`}}</button><button type="button" class="btn primary" @click="openEditor('new')">新增{{product?'产品':'案例'}}</button></div></header>
+ <el-dialog v-model="editorOpen" :title="editorTitle" width="min(680px, calc(100% - 24px))" class="item-wizard-dialog" body-class="item-wizard-body" align-center :close-on-click-modal="false" :before-close="closeEditor" append-to-body destroy-on-close>
+   <ItemEditor v-if="editorOpen&&editingId" :key="editingId" ref="editor" :id="editingId" :kind="kind" embedded @saved="saved" @cancel="editorOpen=false" />
  </el-dialog>
  <section class="panel table-frame"><div class="section-head"><h2>{{product?'产品列表':'案例列表'}}</h2><small>共 {{total}} {{product?'款':'条'}}</small></div>
  <form @submit.prevent="search"><div :class="['list-filters',{'case-list':!product}]"><label class="field">搜索{{product?'产品':'案例'}}<input v-model.trim="filters.q" :placeholder="product?'产品名称或配方编号':'品牌名或案例产品名'" type="search" @search="search" @change="search"></label>
@@ -88,12 +97,13 @@ onMounted(()=>{void load();if(product.value)void loadNodes();});
  <small v-if="product" class="filter-note">更改筛选会清空勾选。{{account?.can_publish?'只有确认后的合格草稿才会发布。':'当前账号不能发布，请由有发布权的同事检查后上线。'}}</small>
  <el-table :data="list" row-key="id" :empty-text="loading?'正在加载…':product?'没有符合条件的产品，请更换搜索词或清除筛选。':'没有符合条件的案例。'">
    <el-table-column v-if="product" label="选择" width="46"><template #default="{row}"><input type="checkbox" :aria-label="`选择${label(row)}`" :checked="selectedIds.has(row.id)" @change="mark(row,($event.target as HTMLInputElement).checked)"></template></el-table-column>
-   <el-table-column :label="product?'产品 / 配方编号':'客户品牌 / 案例产品'" min-width="200"><template #default="{row}"><div class="item-name"><img v-if="photo(row)" :src="photo(row)" alt=""/><div><RouterLink :to="`/${collection}/${row.id}`">{{label(row)}}</RouterLink><small>{{text(row.summary?.formula_no??row.summary?.brand_name??row.draft?.formula_no??row.live?.formula_no)}}</small></div></div></template></el-table-column>
+   <el-table-column :label="product?'产品 / 配方编号':'客户品牌 / 案例产品'" min-width="200"><template #default="{row}"><div class="item-name"><img v-if="photo(row)" :src="photo(row)" alt=""/><div><RouterLink :to="`/${collection}/${row.id}`">{{label(row)}}</RouterLink><small>{{subtitle(row)}}</small></div></div></template></el-table-column>
    <el-table-column v-if="product" label="展示分类" min-width="210"><template #default="{row}">{{row.place_ids.map((id:string)=>nodePath(nodes,id)).join('、')||'—'}}</template></el-table-column>
    <el-table-column label="线上状态" width="95"><template #default="{row}"><span :class="['pill',{live:row.live_id}]">{{status(row)}}</span></template></el-table-column>
    <el-table-column label="草稿状态" width="82"><template #default="{row}"><span :class="['pill',{warn:row.draft}]">{{row.draft?'有草稿':'无草稿'}}</span></template></el-table-column>
    <el-table-column label="操作" min-width="218"><template #default="{row}"><div class="actions">
-     <RouterLink :to="`/${collection}/${row.id}`" class="btn small">{{row.archived_at?'查看':'编辑'}}</RouterLink>
+     <RouterLink v-if="row.archived_at" :to="`/${collection}/${row.id}`" class="btn small">查看</RouterLink>
+      <button v-else type="button" class="btn small" @click="openEditor(row.id)">编辑</button>
      <button v-if="!row.archived_at" class="btn small" :disabled="!account?.can_publish||!row.draft" @click="openRelease(row)">发布检查</button>
      <button v-if="row.live_id" class="btn small" :disabled="!account?.can_publish" @click="retire(row,'unlist')">下架</button><button v-if="canArchive(row)" class="btn small" :disabled="!account?.can_publish" @click="retire(row,'archive')">归档</button>
      <button v-if="canDelete(row)" class="btn small" @click="retire(row,'delete')">删除草稿</button><RouterLink v-if="row.has_history" :to="`/items/${row.id}/history`" class="btn link small">历史版本</RouterLink>
@@ -104,13 +114,13 @@ onMounted(()=>{void load();if(product.value)void loadNodes();});
 </template>
 <style scoped>
 .list-filters{display:grid;grid-template-columns:minmax(180px,2fr) minmax(130px,1.45fr) repeat(2,minmax(106px,1fr));gap:12px}.list-filters.case-list{grid-template-columns:2fr 1fr 1fr}.filter-foot,.bulk-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.filter-foot{margin-top:12px}.filter-foot .toolbar,.bulk-bar .toolbar{margin:0}.btn.small{min-height:29px;font-size:12px;padding:4px 9px}.bulk-bar{padding:13px 15px;background:var(--soft);border-radius:7px;margin:15px 0 4px}.bulk-bar label{font-weight:600}.bulk-bar small,.item-name small{display:block;margin-top:3px}.filter-note{display:block;margin:6px 0}.actions{display:flex;align-items:center;gap:5px;flex-wrap:wrap}.item-name{display:flex;align-items:center;gap:10px;min-height:49px}.item-name img{width:39px;height:39px;object-fit:cover;border-radius:5px}.table-frame :deep(.el-table__cell .cell){padding-left:0;color:var(--ink);font-size:13px}.table-frame :deep(th .cell){color:var(--muted);font-weight:500}.table-frame :deep(.el-table__row td){border-color:var(--line)}@media(max-width:900px){.list-filters,.list-filters.case-list{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:600px){.list-filters .field:first-child{grid-column:1/-1}.filter-foot .toolbar{gap:5px}}
-/* Dialog is teleported to body; keep the size and scroll rules scoped to product creation. */
-:global(.el-dialog.product-create-dialog){--form-inset:24px;--el-dialog-padding-primary:0;display:flex;flex-direction:column;height:min(456px, calc(100dvh - 24px));overflow:hidden;border-radius:14px;color:var(--ink)}
-:global(.product-create-dialog .el-dialog__header){flex:none;margin:0;padding:18px 52px 0 var(--form-inset)}
-:global(.product-create-dialog .el-dialog__title){font-size:20px;font-weight:650;color:var(--ink)}
-:global(.product-create-dialog .el-dialog__headerbtn){top:6px;right:6px}
-:global(.product-create-dialog .product-create-body){display:flex;flex-direction:column;min-height:0;color:var(--ink)}
+/* Teleported dialogs share this frame; only the current step scrolls. */
+:global(.el-dialog.item-wizard-dialog){--form-inset:24px;--el-dialog-padding-primary:0;display:flex;flex-direction:column;height:min(480px, calc(100dvh - 24px));overflow:hidden;border-radius:14px;color:var(--ink)}
+:global(.item-wizard-dialog .el-dialog__header){flex:none;margin:0;padding:18px 52px 0 var(--form-inset)}
+:global(.item-wizard-dialog .el-dialog__title){font-size:20px;font-weight:650;color:var(--ink)}
+:global(.item-wizard-dialog .el-dialog__headerbtn){top:6px;right:6px}
+:global(.item-wizard-dialog .item-wizard-body){display:flex;flex:1;flex-direction:column;min-height:0;color:var(--ink)}
 @media(max-width:560px){
-  :global(.el-dialog.product-create-dialog){--form-inset:14px}
+  :global(.el-dialog.item-wizard-dialog){--form-inset:14px}
 }
 </style>
