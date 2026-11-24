@@ -1,7 +1,7 @@
 /** Reviewer, release and local builds never inherit one another's destination. */
 const ORIGINS = Object.freeze({
   develop: 'http://127.0.0.1:5145', // Local simulator bridge only; never used by trial or release.
-  trial: '',   // Set to the approved HTTPS gateway before uploading a trial build.
+  trial: 'https://www.zhongwuya.site',
   release: '',
 });
 
