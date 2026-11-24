@@ -60,10 +60,13 @@
 .case-filters { width: 100%; white-space: nowrap; }
 .case-filter-track { display: inline-flex; min-width: 100%; gap: 10rpx; padding: 6rpx 0 4rpx; }
 .case-filter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex: 1 0 106rpx;
   min-width: max-content;
-  min-height: 72rpx;
-  padding: 10rpx 8rpx;
+  min-height: 52rpx;
+  padding: 0 8rpx;
   border-radius: 14rpx;
   background: #f0f4fa;
   font-size: 22rpx;
