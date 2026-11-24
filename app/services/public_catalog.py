@@ -9,7 +9,8 @@ from app.repositories import public_catalog as releases
 from app.schemas.content import CONFIG_FIELDS
 from app.services.directory import active_directory
 
-PRODUCT_CARD = ("name", "short_benefit", "thumbnail_asset_id")
+# The legacy field also keeps a real thumbnail publicly readable while its release is live.
+PRODUCT_CARD = ("name", "short_benefit", "cover_asset_id", "thumbnail_asset_id")
 PRODUCT_DETAIL = ("name", "benefit", "ingredients", "highlights", "formula_no", "production_status",
                   "cover_asset_id", "detail_asset_id")
 CASE_FIELDS = ("brand_name", "product_name", "highlight", "series", "description", "case_no",
@@ -32,6 +33,14 @@ def _project(body: dict, fields: tuple[str, ...] | dict) -> dict:
             result[key] = [_project(row, fields[key][0]) for row in value]
         else:
             result[key] = value
+    return result
+
+
+def _product_card(body: dict) -> dict:
+    """Project the shared cover and keep the old list URL field readable by older clients."""
+    result = _project(body, PRODUCT_CARD)
+    if "cover_asset_url" in result:
+        result.setdefault("thumbnail_asset_url", result["cover_asset_url"])
     return result
 
 
@@ -131,7 +140,7 @@ def list_products(db: Session, board_id: str | None, node_id: str | None, q: str
     nodes = active_directory(db)
     scope = _board(nodes, board_id) & _descendants(nodes, node_id)
     keyword = (q or "").strip().casefold()
-    rows = [{"id": str(ident), "body": _project(body, PRODUCT_CARD)}
+    rows = [{"id": str(ident), "body": _product_card(body)}
             for ident, (body, positions) in releases.products_in_nodes(db, scope).items()
             if _product_matches(keyword, body, positions, nodes)]
     return _page(rows, page, page_size)

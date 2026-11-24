@@ -15,7 +15,7 @@ from app.services.media import resolve_asset_file
 
 PRODUCT_REQUIRED = (
     "name", "short_benefit", "benefit", "ingredients", "highlights", "formula_no", "production_status",
-    "thumbnail_asset_id", "cover_asset_id", "detail_asset_id",
+    "cover_asset_id", "detail_asset_id",
 )
 CASE_REQUIRED = ("brand_name", "product_name", "highlight", "image_asset_id")
 
@@ -113,14 +113,23 @@ def _asset_issues(db: Session, draft: dict | None) -> list[dict]:
     return [{"field": field, "reason": "引用的图片不可用"} for field, ident in references if not _available(assets.get(ident))]
 
 
-def inspect(db: Session, item: ContentItem) -> dict:
-    """Return ordered, field-level eligibility issues without modifying the item or its audit."""
+def review_snapshot(db: Session, item: ContentItem) -> tuple[dict | None, dict]:
+    """Return the prospective release body and its eligibility report without modifying the draft."""
     view = item_view(db, item)
+    snapshot = view["draft"]
+    if item.kind == "product" and snapshot is not None:
+        # Legacy drafts and restores may still carry a square image; it neither blocks nor enters a new release.
+        snapshot = {key: value for key, value in snapshot.items() if key != "thumbnail_asset_id"}
     issues = [{"field": "id", "reason": "条目已归档"}] if item.archived_at is not None else []
-    issues.extend(_body_issues(db, item, view["draft"], view["place_ids"]))
-    issues.extend(_asset_issues(db, view["draft"]))
-    return {"id": str(item.id), "revision": view["revision"], "eligible": not issues,
-            "issues": issues, "place_ids": view["place_ids"]}
+    issues.extend(_body_issues(db, item, snapshot, view["place_ids"]))
+    issues.extend(_asset_issues(db, snapshot))
+    return snapshot, {"id": str(item.id), "revision": view["revision"], "eligible": not issues,
+                      "issues": issues, "place_ids": view["place_ids"]}
+
+
+def inspect(db: Session, item: ContentItem) -> dict:
+    """Return ordered field-level eligibility issues without changing the item or its audit."""
+    return review_snapshot(db, item)[1]
 
 
 def check_one(db: Session, item_id: int, expected_revision: str) -> dict:

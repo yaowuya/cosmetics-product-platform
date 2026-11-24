@@ -56,7 +56,7 @@ function matchesMedia(url, id) {
 }
 function cardMatches(record, body) {
   return !!record && record.body.name === body.name && record.body.short_benefit === body.short_benefit &&
-    matchesMedia(record.body.thumbnail_asset_url, body.thumbnail_asset_id);
+    matchesMedia(record.body.cover_asset_url, body.cover_asset_id);
 }
 function detailMatches(record, body) {
   return !!record && ['name', 'formula_no', 'benefit', 'ingredients', 'highlights', 'production_status'].every(k => record.body[k] === body[k]) &&
@@ -115,10 +115,9 @@ export async function runProducts(h) {
     if (benefit) await E.getByLabel('功效', { exact: true }).fill(benefit);
     if (short) await E.getByLabel('简短功效', { exact: true }).fill(short);
     if (removeLong) {
-      const media = E.locator('label.field').filter({ has: E.getByText('产品详情长图', { exact: true }) });
-      await button(media, '移除').click();
+      await button(E, '移除产品详情长图').click();
     }
-    if (uploadLong) await h.upload(E, 2, h.files.long);
+    if (uploadLong) await h.upload(E, 1, h.files.long);
     return h.save(E);
   }
   async function adminList(page) {
@@ -317,16 +316,10 @@ export async function runProducts(h) {
     ready('a', 'c'); const e = evidence();
     const other = await create('hold', '未选合格草稿', [t.c]);
     assert.ok((await h.check(P, editor(other.id))).eligible, '旁侧对照不是合格草稿');
-    await adminList(E);
-    await E.getByRole('link', { name: '新增产品', exact: true }).click();
     const name = tag('行发布甲'), code = `${h.prefix}-PF-alpha`;
-    for (const [label, value] of [['产品名称', name], ['配方编号', code], ['简短功效', tag('甲初始卡片')], ['功效', tag('甲初始功效')],
-      ['核心成分', tag('甲成分')], ['产品亮点', tag('甲亮点')]]) await E.getByLabel(label, { exact: true }).fill(value);
-    await E.getByLabel('是否生产过').selectOption('待确认');
-    for (const id of [t.a, t.c]) await E.locator(`.place-choice input[value="${id}"]`).check();
-    for (const [i, file] of [h.files.square, h.files.cover, h.files.long].entries()) await h.upload(E, i, file);
-    const row = entries.alpha = await observeJson(E, 'POST', products, () => button(E, '保存草稿').click());
-    await E.waitForURL(`${origin}/admin/products/${row.id}`);
+    const row = entries.alpha = await h.createProduct(E, {
+      name, code, short: tag('甲初始卡片'), benefit: tag('甲初始功效'), places: [t.a, t.c],
+    });
     await adminList(E);
     for (const q of [name, code]) { const data = await searchAdmin(E, q); e.expect(data.total === 1 && data.items[0]?.id === row.id, '新增产品未按名称/配方编号唯一查到'); }
     await uiGet(E, itemApi(row.id), {}, () => rowFor(E, name).getByRole('link', { name: '编辑', exact: true }).click());

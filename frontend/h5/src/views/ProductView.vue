@@ -7,13 +7,12 @@ const display=computed(()=>text(props.item.body.name,'未命名产品'));
 const code=computed(()=>text(props.item.body.formula_no));
 const photo=computed(()=>text(props.item.body.cover_asset_url));
 const long=computed(()=>text(props.item.body.detail_asset_url));
-const thumbnail=computed(()=>text(props.item.body.thumbnail_asset_url));
 const copyFallback=ref(false), notice=ref('');
 const details=[['benefit','功效'],['ingredients','核心成分'],['highlights','产品亮点']];
 async function copy(){if(await copyText(code.value)){notice.value='配方编号已复制';}else copyFallback.value=true;}
 </script>
 <template>
- <component :is="preview?'div':'a'" v-if="mode==='card'" class="product-card" :href="preview?undefined:`/products?id=${item.id}`"><img v-if="thumbnail" class="product-thumb" :src="thumbnail" alt="" loading="lazy"><span v-else class="product-thumb no-image" aria-hidden="true"></span><div class="product-copy"><strong>{{display}}</strong><p>{{text(item.body.short_benefit)}}</p></div></component>
+ <component :is="preview?'div':'a'" v-if="mode==='card'" class="product-card" :href="preview?undefined:`/products?id=${item.id}`"><img v-if="photo" class="product-thumb" :src="photo" alt="" loading="lazy"><span v-else class="product-thumb no-image" aria-hidden="true"></span><div class="product-copy"><strong>{{display}}</strong><p>{{text(item.body.short_benefit)}}</p></div></component>
  <article v-else class="detail-view">
   <header class="detail-header"><component :is="'button'" v-if="!preview" class="mobile-icon" type="button" aria-label="返回产品目录" @click="goBack('/catalog')">‹</component><span v-else class="detail-spacer"></span><span>产品详情</span><span class="detail-spacer"></span></header>
   <img v-if="photo" :src="photo" :alt="display" class="detail-photo">

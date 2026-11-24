@@ -52,13 +52,26 @@ def test_two_connections(mysql_engine, monkeypatch, tmp_path):
             asset = image.json()["id"]
             body = {"name": "首次线上", "short_benefit": "护肤", "benefit": "保湿", "ingredients": "配方资料",
                     "highlights": "轻盈", "formula_no": "TXN-10", "production_status": "待确认",
-                    "thumbnail_asset_id": asset, "cover_asset_id": asset, "detail_asset_id": asset}
+                    "cover_asset_id": asset, "detail_asset_id": asset}
             created = editor.post("/api/admin/products", headers=edit, json={"body": body, "place_ids": nodes[1:]})
             assert created.status_code == 201
             product = created.json()["id"]
             path = f"/api/admin/items/{product}"
-            first_version = one.post(path + "/publish", headers=first,
-                                     json={"request_key": "txn-first", "expected_revision": created.json()["revision"]}).json()
+
+            def assert_eligible(revision):
+                """Single and batch checks accept the same cover-only publication data."""
+                selection = {"expected_revision": revision}
+                checked = one.post(path + "/check", headers=first, json=selection)
+                assert checked.status_code == 200 and checked.json()["issues"] == []
+                batch = one.post("/api/admin/products/batch-check", headers=first,
+                                 json={"items": [{"id": product, **selection}]})
+                assert batch.status_code == 200 and batch.json()["items"] == [checked.json()]
+
+            assert_eligible(created.json()["revision"])
+            initial = one.post(path + "/publish", headers=first,
+                               json={"request_key": "txn-first", "expected_revision": created.json()["revision"]})
+            assert initial.status_code == 200
+            first_version = initial.json()
             missing = {k: v for k, v in body.items() if k != "detail_asset_id"} | {"name": "核对新版"}
             partial = editor.put(path + "/draft", headers=edit, json={"expected_revision": first_version["revision"],
                                  "body": missing, "place_ids": nodes[1:]}).json()
@@ -67,8 +80,13 @@ def test_two_connections(mysql_engine, monkeypatch, tmp_path):
                 """Read the same product through two genuinely different public directory positions."""
                 return [visitor.get("/api/public/products", params={"node_id": node}).json()["items"][0]["body"]["name"] for node in nodes[1:]]
             assert public_labels() == ["首次线上", "首次线上"]
+            # A legacy admin client may still send a well-formed ID that never referenced an upload.
+            obsolete_thumbnail = "9223372036854775807"
             ready = editor.put(path + "/draft", headers=edit, json={"expected_revision": partial["revision"],
-                               "body": {**missing, "detail_asset_id": asset}, "place_ids": nodes[1:]}).json()
+                               "body": {**missing, "detail_asset_id": asset, "thumbnail_asset_id": obsolete_thumbnail},
+                               "place_ids": nodes[1:]}).json()
+            assert_eligible(ready["revision"])
+            assert editor.get(path).json()["draft"]["thumbnail_asset_id"] == obsolete_thumbnail
             barrier = Barrier(2)
             def concurrent(args):
                 """Start two HTTP confirmations together using two independently authenticated connections."""
@@ -86,6 +104,8 @@ def test_two_connections(mysql_engine, monkeypatch, tmp_path):
                                              json={"request_key": choices[winner][2], "expected_revision": ready["revision"]})
             assert retry.json() == delivered
             assert public_labels() == ["核对新版", "核对新版"]
+            live_body = editor.get(path).json()["live"]
+            assert "thumbnail_asset_id" not in live_body and live_body["cover_asset_id"] == asset
             restored = editor.post(path + "/versions/1/restore", headers=edit,
                                    json={"expected_revision": delivered["revision"], "confirm_overwrite": False})
             assert restored.status_code == 200 and restored.json()["draft"]["name"] == "首次线上"

@@ -14,7 +14,7 @@ from app.core.errors import AppError
 from app.models import Account
 from app.repositories import directory, items, media, releases
 from app.repositories.accounts import lock_accounts
-from app.services.checks import inspect
+from app.services.checks import review_snapshot
 from app.services.items import normalize_body
 from app.services.media import _image_type, asset_ids
 
@@ -58,13 +58,14 @@ def _publish(db: Session, actor_id: int, asset_root: Path, owned: list[Path], sl
         return f"{slot}: skipped"
     body = _publish_body(db, actor_id, asset_root, owned, slot)
     _write(db, item, actor_id, body)
-    check = inspect(db, item)
+    snapshot, check = review_snapshot(db, item)
     if not check["eligible"]:
         raise RuntimeError(f"{slot} 不满足发布条件: {check['issues']}")
+    assert snapshot is not None
     draft = items.get_draft(db, item.id)
     source = item.revision
     release = releases.install_snapshot(
-        db, item, draft, actor_id, source, check["place_ids"], asset_ids(draft.body),
+        db, item, draft, actor_id, source, check["place_ids"], asset_ids(snapshot), body=snapshot,
     )
     request_key = f"seed-weitai-{slot}-{uuid4().hex}"
     receipt = {"id": str(item.id), "revision": str(item.revision), "release_id": str(release.id),

@@ -23,7 +23,7 @@ const selectedIds=computed(()=>new Set(checked.value.map(row=>row.id)));
 const pendingCount=ref(0);
 let generation=0;
 function label(item:Item){return text(item.summary?.name??item.summary?.product_name??item.draft?.name??item.live?.name??item.draft?.product_name??item.live?.product_name,'未命名草稿');}
-function photo(item:Item){const b=item.draft??item.live;return draftImage(item,b?.thumbnail_asset_id??b?.image_asset_id,{});}
+function photo(item:Item){const b=item.draft??item.live;return draftImage(item,item.kind==='product'?b?.cover_asset_id:b?.image_asset_id,{});}
 function status(row:Item){return row.archived_at?'已归档':row.live_id?'已上线':row.has_history?'已下架':'从未上线';}
 function address(n:number,size=20){return withQuery(`/api/admin/${collection.value}`,{...filters,page:n,page_size:size});}
 function readPending(){pendingCount.value=account.value?.can_publish?readAttempts(account.value.id).length:0;}
@@ -67,13 +67,17 @@ async function retire(row:Item, action:'unlist'|'archive'|'delete'){
   selected.value=null;checked.value=checked.value.filter(entry=>entry.id!==row.id);await load();
  }catch(cause){error.value=message(cause);}
 }
+const createEditor=ref<InstanceType<typeof ItemEditor>|null>(null);
+function closeCreate(done:()=>void){if(!product.value||createEditor.value?.canDismiss()!==false)done();}
 function created(){creating.value=false;note.value='草稿已保存，仍在当前列表。';void load();}
 onMounted(()=>{void load();if(product.value)void loadNodes();});
 </script>
 
 <template>
  <header class="page-head"><div><h1>{{ title }}</h1><p class="muted">{{product?'筛选并勾选产品，统一追加展示分类，或检查草稿后发布。':'按品牌名或案例产品名查找，单独维护案例资料。'}}</p></div><div class="toolbar"><button class="btn" @click="filters.state=filters.state==='archived'?'':'archived';search()">{{filters.state==='archived'?'返回日常列表':`已归档（${archived}）`}}</button><button type="button" class="btn primary" @click="creating=true">新增{{product?'产品':'案例'}}</button></div></header>
- <el-dialog v-model="creating" :title="`新增${product?'产品':'案例'}`" width="760px" append-to-body destroy-on-close><ItemEditor v-if="creating" id="new" :kind="kind" embedded @saved="created" /></el-dialog>
+ <el-dialog v-model="creating" :title="`新增${product?'产品':'案例'}`" :width="product?'min(680px, calc(100% - 24px))':'760px'" :class="{'product-create-dialog':product}" :body-class="product?'product-create-body':undefined" :align-center="product" :close-on-click-modal="!product" :before-close="closeCreate" append-to-body destroy-on-close>
+   <ItemEditor v-if="creating" ref="createEditor" id="new" :kind="kind" embedded @saved="created" @cancel="creating=false" />
+ </el-dialog>
  <section class="panel table-frame"><div class="section-head"><h2>{{product?'产品列表':'案例列表'}}</h2><small>共 {{total}} {{product?'款':'条'}}</small></div>
  <form @submit.prevent="search"><div :class="['list-filters',{'case-list':!product}]"><label class="field">搜索{{product?'产品':'案例'}}<input v-model.trim="filters.q" :placeholder="product?'产品名称或配方编号':'品牌名或案例产品名'" type="search" @search="search" @change="search"></label>
  <label v-if="product" class="field">展示分类<select v-model="filters.node_id" @change="search"><option value="">全部分类</option><option v-for="node in nodes" :key="node.id" :value="node.id">{{nodePath(nodes,node.id)}}</option></select></label>
@@ -100,4 +104,13 @@ onMounted(()=>{void load();if(product.value)void loadNodes();});
 </template>
 <style scoped>
 .list-filters{display:grid;grid-template-columns:minmax(180px,2fr) minmax(130px,1.45fr) repeat(2,minmax(106px,1fr));gap:12px}.list-filters.case-list{grid-template-columns:2fr 1fr 1fr}.filter-foot,.bulk-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.filter-foot{margin-top:12px}.filter-foot .toolbar,.bulk-bar .toolbar{margin:0}.btn.small{min-height:29px;font-size:12px;padding:4px 9px}.bulk-bar{padding:13px 15px;background:var(--soft);border-radius:7px;margin:15px 0 4px}.bulk-bar label{font-weight:600}.bulk-bar small,.item-name small{display:block;margin-top:3px}.filter-note{display:block;margin:6px 0}.actions{display:flex;align-items:center;gap:5px;flex-wrap:wrap}.item-name{display:flex;align-items:center;gap:10px;min-height:49px}.item-name img{width:39px;height:39px;object-fit:cover;border-radius:5px}.table-frame :deep(.el-table__cell .cell){padding-left:0;color:var(--ink);font-size:13px}.table-frame :deep(th .cell){color:var(--muted);font-weight:500}.table-frame :deep(.el-table__row td){border-color:var(--line)}@media(max-width:900px){.list-filters,.list-filters.case-list{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:600px){.list-filters .field:first-child{grid-column:1/-1}.filter-foot .toolbar{gap:5px}}
+/* Dialog is teleported to body; keep the size and scroll rules scoped to product creation. */
+:global(.el-dialog.product-create-dialog){--form-inset:24px;--el-dialog-padding-primary:0;display:flex;flex-direction:column;height:min(456px, calc(100dvh - 24px));overflow:hidden;border-radius:14px;color:var(--ink)}
+:global(.product-create-dialog .el-dialog__header){flex:none;margin:0;padding:18px 52px 0 var(--form-inset)}
+:global(.product-create-dialog .el-dialog__title){font-size:20px;font-weight:650;color:var(--ink)}
+:global(.product-create-dialog .el-dialog__headerbtn){top:6px;right:6px}
+:global(.product-create-dialog .product-create-body){display:flex;flex-direction:column;min-height:0;color:var(--ink)}
+@media(max-width:560px){
+  :global(.el-dialog.product-create-dialog){--form-inset:14px}
+}
 </style>

@@ -8,7 +8,7 @@ const props=defineProps<{item:Item}>();
 const emit=defineEmits<{restored:[item:Item]}>();
 const versions=ref<Version[]>([]), selected=ref<Version|null>(null), busy=ref(false), error=ref(''), note=ref('');
 const page=ref(1),total=ref(0);
-const selectedImage=computed(()=>{const version=selected.value;if(!version)return '';const id=text(version.body.thumbnail_asset_id??version.body.cover_asset_id??version.body.image_asset_id??version.body.qr_asset_id);return id?`/api/admin/media/${id}?item_id=${props.item.id}&seq=${version.seq}`:'';});
+const selectedImage=computed(()=>{const version=selected.value;if(!version)return '';const id=text(version.body.cover_asset_id??version.body.thumbnail_asset_id??version.body.image_asset_id??version.body.qr_asset_id);return id?`/api/admin/media/${id}?item_id=${props.item.id}&seq=${version.seq}`:'';});
 async function load(){busy.value=true;error.value='';try{const data=await request<Page<Version>>(withQuery(`/api/admin/items/${props.item.id}/versions`,{page:page.value,page_size:10}));versions.value=data.items;total.value=data.total;}catch(cause){error.value=message(cause);}finally{busy.value=false;}}
 /** Restore a snapshot as a new draft. Publication always requires a separate confirmation. */
 async function restore(version:Version){

@@ -11,7 +11,7 @@ from app.repositories import releases
 from app.repositories.items import get_draft
 from app.schemas.releases import PublishDraft
 from app.services.auth import publisher_now
-from app.services.checks import inspect
+from app.services.checks import review_snapshot
 from app.services.media import asset_ids
 
 
@@ -38,13 +38,15 @@ def _commit_one(db: Session, actor_id: int, item_id: int, data: PublishDraft) ->
     source = parse_id(data.expected_revision, "expected_revision", zero=True)
     if item.revision != source or item.archived_at is not None:
         raise AppError(409, "draft_conflict", "草稿已变化或条目已归档，请重新核对")
-    check = inspect(db, item)
+    snapshot, check = review_snapshot(db, item)
     if not check["eligible"]:
         raise AppError(422, "cannot_publish", "草稿不满足发布条件", check["issues"])
 
     # Eligibility required a draft, and every draft writer takes the same target lock.
+    assert snapshot is not None
     draft = cast(Draft, get_draft(db, item_id))
-    release = releases.install_snapshot(db, item, draft, actor_id, source, check["place_ids"], asset_ids(draft.body))
+    release = releases.install_snapshot(db, item, draft, actor_id, source, check["place_ids"],
+                                        asset_ids(snapshot), body=snapshot)
     receipt = {"id": str(item_id), "revision": str(item.revision), "release_id": str(release.id),
                "seq": release.seq, "request_key": data.request_key}
     releases.add_publish_audit(db, actor_id, item, data.expected_revision, receipt)
