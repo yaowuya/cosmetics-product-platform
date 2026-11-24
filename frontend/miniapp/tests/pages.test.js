@@ -239,7 +239,8 @@ test('home rotates only while idle at the top and drops broken posters without r
   const stale = posterEvent(0,0);
   page.onPosterError(posterEvent(1,0));
   page.onPosterError(posterEvent(0,0));
-  assert.equal(page.data.phase,'empty');
+  assert.equal(page.data.phase,'error');
+  assert.match(page.data.message,/图片/);
   await page.retry();
   page.onPosterError(stale);
   assert.equal(page.data.posters.length,2);

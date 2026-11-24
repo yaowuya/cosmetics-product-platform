@@ -96,7 +96,7 @@ Page({
     this._reading.delete(src);
     this.setData(remaining.length
       ? { posters: remaining, current: next }
-      : { posters: [], current: 0, phase: 'empty', message: '' });
+      : { posters: [], current: 0, phase: 'error', message: '图片加载失败，请检查连接后重试。' });
     this._schedule();
   },
 

@@ -1,7 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { resolveOrigin } = require('../lib/config');
-const { createPublicApi } = require('../lib/public-api');
+const { createPublicApi, pageApi } = require('../lib/public-api');
 
 const origin = 'https://showcase.example.com';
 const largeId = '9007199254740993';
@@ -11,6 +11,18 @@ function client(respond) {
   const api = createPublicApi({ origin, request(options) { calls.push(options); respond(options); } });
   return { api, calls };
 }
+
+test('the simulator uses HTTPS for API requests and published images', async () => {
+  const api = pageApi({
+    getAccountInfoSync: () => ({ miniProgram: { envVersion: 'develop' } }),
+    request({ url, success }) {
+      assert.equal(url, 'https://127.0.0.1:5145/api/public/pages/home');
+      success({ statusCode: 200, data: { page: 'home', body: {} } });
+    },
+  });
+  assert.equal(api.mediaUrl('/api/public/media/6'), 'https://127.0.0.1:5145/api/public/media/6');
+  assert.deepEqual(await api.page('home'), {});
+});
 
 test('a misconfigured release does not inherit develop or use IP, paths or arbitrary ports', () => {
   const config = { develop: 'http://127.0.0.1:5155', trial: origin };
