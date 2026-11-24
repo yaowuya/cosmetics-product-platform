@@ -26,13 +26,14 @@
               <image src="{{item.displayIcon}}" mode="aspectFit" data-id="{{item.id}}" data-src="{{item.displayIcon}}" binderror="onBoardIconError" />
             </view>
             <text class="board-label">{{item.name}}</text>
+            <view wx:if="{{board === item.id}}" class="board-indicator" aria-hidden="true"></view>
           </button>
         </view>
       </scroll-view>
     </view>
     <view class="catalog-body">
       <scroll-view wx:if="{{categories.length}}" class="catalog-rail" scroll-y scroll-top="{{leftTop}}" bindscroll="onLeftScroll">
-        <button wx:for="{{categories}}" wx:key="id" data-id="{{item.id}}" class="category-button {{category === item.id ? 'active' : ''}}" bindtap="onCategory" aria-pressed="{{category === item.id}}">{{item.name}}</button>
+        <button wx:for="{{categories}}" wx:key="id" data-id="{{item.id}}" class="category-button {{category === item.id ? 'active' : ''}}" bindtap="onCategory" aria-pressed="{{category === item.id}}"><text>{{item.name}}</text></button>
       </scroll-view>
       <scroll-view class="catalog-results" scroll-y scroll-top="{{rightTop}}" bindscroll="onRightScroll" refresher-enabled refresher-triggered="{{refreshing}}" bindrefresherrefresh="onRefresh">
         <view wx:if="{{searchActive}}" class="filter-row search-result">
@@ -42,8 +43,8 @@
         <view wx:else class="filter-row">
           <scroll-view class="fine-strip" scroll-x enable-flex show-scrollbar="{{false}}">
             <view class="fine-items">
-              <button class="fine-button {{fine ? '' : 'active'}}" bindtap="onFine" aria-pressed="{{!fine}}">全部</button>
-              <button wx:for="{{fineChoices}}" wx:key="id" class="fine-button {{fine === item.id ? 'active' : ''}}" data-id="{{item.id}}" bindtap="onFine" aria-pressed="{{fine === item.id}}">{{item.name}}</button>
+              <button class="fine-button {{fine ? '' : 'active'}}" bindtap="onFine" aria-pressed="{{!fine}}"><text>全部</text></button>
+              <button wx:for="{{fineChoices}}" wx:key="id" class="fine-button {{fine === item.id ? 'active' : ''}}" data-id="{{item.id}}" bindtap="onFine" aria-pressed="{{fine === item.id}}"><text>{{item.name}}</text></button>
             </view>
           </scroll-view>
           <text class="catalog-count">{{count}} 款</text>
