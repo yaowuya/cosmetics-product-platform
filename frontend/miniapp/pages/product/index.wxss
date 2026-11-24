@@ -1,0 +1,15 @@
+.product-detail { padding-bottom:36rpx; }
+.product-cover { position:relative; height:0; padding-top:56.25%; background:#edf2f6; overflow:hidden; }
+.product-cover image,.product-cover-fallback { position:absolute; top:0; left:0; width:100%; height:100%; }
+.product-cover-fallback { display:flex; align-items:center; justify-content:center; color:#58636e; }
+.detail-content { padding:28rpx 32rpx; }
+.detail-name { margin:8rpx 0 24rpx; font-size:48rpx; font-weight:700; line-height:1.23; overflow-wrap:anywhere; }
+.field { display:flex; align-items:baseline; gap:18rpx; padding:16rpx 0; border-top:1rpx solid #e6edf2; font-size:27rpx; }
+.field-label { flex:none; min-width:138rpx; color:#517895; font-weight:650; font-size:25rpx; }
+.field-value { white-space:pre-wrap; overflow-wrap:anywhere; min-width:0; }
+.formula-value { flex:1; min-width:0; display:flex; flex-wrap:wrap; align-items:center; gap:12rpx; overflow-wrap:anywhere; }
+.formula-value .soft-button { min-height:56rpx; font-size:22rpx; }
+.detail-pill { border-radius:30rpx; padding:7rpx 17rpx; color:#29668f; background:#edf6fc; font-size:24rpx; }
+.fallback-note { padding:0 0 14rpx; font-size:25rpx; }
+.detail-long { display:block; width:100%; }
+.detail-back { display:flex; width:max-content; margin:24rpx auto 0; }

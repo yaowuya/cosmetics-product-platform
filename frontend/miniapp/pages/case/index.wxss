@@ -1,0 +1,17 @@
+.case-detail-cover { position: relative; width: 100%; padding-top: 56.25%; }
+.case-detail-image, .case-detail-no-image {
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+.case-detail-no-image { display: flex; align-items: center; justify-content: center; color: #58636e; font-size: 24rpx; }
+.case-detail-info { padding: 38rpx 36rpx; line-height: 1.5; overflow-wrap: anywhere; }
+.case-detail-brand, .case-detail-label { font-size: 24rpx; }
+.case-detail-title { margin: 8rpx 0 28rpx; font-size: 36rpx; font-weight: 600; }
+.case-detail-field { display: flex; align-items: baseline; gap: 20rpx; padding: 14rpx 0; }
+.case-detail-label { flex: 0 0 23%; min-width: 130rpx; }
+.case-detail-value { flex: 1; min-width: 0; font-size: 28rpx; white-space: pre-wrap; overflow-wrap: anywhere; }
+.case-detail-return { display: flex; justify-content: center; padding: 0 24rpx 36rpx; }

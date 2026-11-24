@@ -13,7 +13,7 @@ const sorted = values => [...values].sort();
 const byId = rows => new Map(rows.map(row => [row.id, row]));
 const bodyOf = row => row?.draft ?? row?.live;
 const nameOf = row => row?.summary?.name ?? bodyOf(row)?.name;
-const rowFor = (page, name) => page.locator('.el-table__row').filter({ has: page.getByRole('link', { name, exact: true }) });
+const rowFor = (page, name) => page.locator('.el-table__row').filter({ has: page.getByRole('button', { name, exact: true }) });
 const button = (scope, name) => scope.getByRole('button', { name, exact: true });
 const page1 = { page: '1', page_size: '20' };
 const daily = { ...page1, state: null, has_draft: null, node_id: null };

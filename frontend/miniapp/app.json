@@ -1,0 +1,21 @@
+{
+  "pages": ["pages/home/index", "pages/catalog/index", "pages/product/index", "pages/cases/index", "pages/case/index", "pages/contact/index"],
+  "window": {
+    "navigationBarTitleText": "产品展示",
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f7f9fb"
+  },
+  "tabBar": {
+    "color": "#58636e",
+    "selectedColor": "#29668f",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      { "pagePath": "pages/home/index", "text": "首页" },
+      { "pagePath": "pages/catalog/index", "text": "产品目录" },
+      { "pagePath": "pages/cases/index", "text": "品牌案例" },
+      { "pagePath": "pages/contact/index", "text": "联系我们" }
+    ]
+  }
+}

@@ -1,0 +1,75 @@
+<view class="screen cases-page">
+  <view class="cases-hero">
+    <image wx:if="{{header.image && !headerImageFailed}}" class="cases-hero-image" src="{{header.image}}" mode="aspectFill" data-src="{{header.image}}" binderror="onHeaderImageError" />
+    <view class="cases-hero-copy">
+      <view class="cases-title">{{header.title}}</view>
+      <view wx:if="{{header.intro}}" class="cases-intro">{{header.intro}}</view>
+    </view>
+  </view>
+
+  <view class="cases-tools" wx:if="{{configPhase === 'ready'}}">
+    <view class="cases-search">
+      <view class="search-icon" aria-hidden="true"></view>
+      <input class="cases-input" type="text" value="{{q}}" maxlength="140" confirm-type="search"
+        placeholder="搜索品牌、产品或功效案例" aria-label="搜索品牌、产品或功效案例" bindinput="onSearch" />
+      <button wx:if="{{q || tag}}" class="cases-clear" aria-label="清空关键词和标签" bindtap="onClear">×</button>
+    </view>
+    <scroll-view class="case-filters" scroll-x="{{true}}" enhanced="{{true}}" show-scrollbar="{{false}}" aria-label="案例分类">
+      <view class="case-filter-track">
+        <button class="case-filter {{!tag ? 'case-filter-active' : ''}}" aria-pressed="{{!tag}}" data-tag="" bindtap="onSelectTag">精选案例</button>
+        <button wx:for="{{header.tags}}" wx:key="key" class="case-filter {{tag === item.key ? 'case-filter-active' : ''}}"
+          aria-pressed="{{tag === item.key}}" data-tag="{{item.key}}" bindtap="onSelectTag">{{item.label}}</button>
+      </view>
+    </scroll-view>
+  </view>
+
+  <view wx:if="{{configPhase === 'error'}}" class="notice">
+    <view class="notice-title">{{configMessage}}</view>
+    <button class="soft-button" bindtap="onRetry">重试</button>
+  </view>
+  <view wx:elif="{{configPhase === 'loading'}}" class="notice">正在加载案例…</view>
+  <view wx:else class="case-results">
+    <button wx:if="{{items.length}}" class="case-card case-featured" hover-class="case-card-pressed" data-id="{{items[0].id}}" bindtap="onOpenCase">
+      <view class="case-card-media placeholder">
+        <image wx:if="{{items[0].image && brokenImages[items[0].id] !== items[0].image}}" class="case-card-image"
+          src="{{items[0].image}}" mode="aspectFit" data-id="{{items[0].id}}" data-src="{{items[0].image}}" binderror="onCardImageError" />
+      </view>
+      <view class="case-copy">
+        <text class="case-brand">{{items[0].brand}}</text>
+        <text wx:if="{{items[0].name}}" class="case-name">{{items[0].name}}</text>
+        <text wx:if="{{items[0].highlight}}" class="case-highlight">{{items[0].highlight}}</text>
+      </view>
+    </button>
+    <block wx:if="{{items.length > 1}}">
+      <view class="cases-grid-title">更多品牌案例</view>
+      <view class="case-grid">
+        <block wx:for="{{items}}" wx:key="id">
+          <button wx:if="{{index > 0}}" class="case-card" hover-class="case-card-pressed" data-id="{{item.id}}" bindtap="onOpenCase">
+            <view class="case-card-media placeholder">
+              <image wx:if="{{item.image && brokenImages[item.id] !== item.image}}" class="case-card-image" lazy-load="{{true}}"
+                src="{{item.image}}" mode="aspectFill" data-id="{{item.id}}" data-src="{{item.image}}" binderror="onCardImageError" />
+            </view>
+            <view class="case-copy">
+              <text class="case-brand">{{item.brand}}</text>
+              <text wx:if="{{item.name}}" class="case-name">{{item.name}}</text>
+            </view>
+          </button>
+        </block>
+      </view>
+    </block>
+
+    <view wx:if="{{phase === 'loading'}}" class="notice">正在加载案例…</view>
+    <view wx:elif="{{phase === 'empty'}}" class="notice">
+      <view class="notice-title">{{tag || searchActive ? '没有找到相关案例' : '暂无展示案例'}}</view>
+      <button wx:if="{{tag || searchActive}}" class="soft-button" bindtap="onClear">重新查找</button>
+    </view>
+    <view wx:elif="{{phase === 'error' || phase === 'append-error'}}" class="notice">
+      <view class="notice-title">{{phase === 'append-error' ? '加载更多案例失败' : '案例加载失败'}}</view>
+      <button class="soft-button" bindtap="onRetry">重试</button>
+    </view>
+    <view wx:elif="{{phase === 'appending'}}" class="notice">正在加载更多案例…</view>
+    <view wx:elif="{{hasMore}}" class="cases-more">
+      <button class="soft-button" bindtap="onLoadMore">加载更多</button>
+    </view>
+  </view>
+</view>

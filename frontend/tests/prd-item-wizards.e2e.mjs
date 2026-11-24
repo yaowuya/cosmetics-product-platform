@@ -18,6 +18,7 @@ const scenarios = [
 ];
 
 const rowNamed = (page, name) => page.getByRole('row').filter({ has: page.getByText(name, { exact: true }) });
+const rowAction = (row, name) => button(row, name).or(row.getByRole('link', { name, exact: true }));
 const footerAction = (dialog, action) => button(dialog.locator('footer'), action);
 
 async function assertStep(dialog, visible, { previous = false, last = false } = {}) {
@@ -146,8 +147,7 @@ async function addDraft(h, scenario, name, endpoint) {
 async function editDraft(h, scenario, name, original) {
   const page = h.E;
   const row = rowNamed(page, name);
-  const edit = button(row, '编辑').or(row.getByRole('link', { name: '编辑', exact: true }));
-  const dialog = await openWizard(page, scenario, '编辑', () => edit.click());
+  const dialog = await openWizard(page, scenario, '编辑', () => rowAction(row, '编辑').click());
   await field(dialog, scenario.nameField).and(dialog.locator('input:enabled')).waitFor();
   assert.equal(await field(dialog, scenario.nameField).inputValue(), name, '编辑应载入所选行的草稿');
   const nextName = `${name}-修订`;
@@ -162,6 +162,100 @@ async function editDraft(h, scenario, name, original) {
   draftMatches(item, scenario, { name: nextName, details, image });
   await dialog.waitFor({ state: 'hidden' });
   await rowNamed(page, nextName).getByText('有草稿', { exact: true }).waitFor();
+  return item;
+}
+
+/** Verify the actual private image decodes; merely rendering an img can hide a broken or public URL. */
+async function assertPrivateImage(dialog, { name, id, itemId, revision, seq }) {
+  const image = dialog.getByRole('img', { name, exact: true });
+  await image.scrollIntoViewIfNeeded();
+  const src = new URL(await image.getAttribute('src'), 'https://fixture.invalid');
+  assert.equal(src.pathname, `/api/admin/media/${id}`);
+  assert.deepEqual(Object.fromEntries(src.searchParams), revision
+    ? { item_id: itemId, revision } : { item_id: itemId, seq: String(seq) });
+  await image.evaluate(element => element.decode());
+}
+
+async function viewSavedItem(page, { noun, name, entry, version, listUrl, searchValue, image }) {
+  const row = rowNamed(page, name);
+  const dialog = page.getByRole('dialog', { name: `查看${noun}`, exact: true });
+  const savedName = dialog.getByText(name, { exact: true });
+  const editActions = { name: /保存|上传|编辑/, includeHidden: true };
+
+  await rowAction(row, entry).click();
+  await dialog.waitFor();
+  assert.equal(page.url(), listUrl, `点击「${entry}」应在原列表打开查看弹窗`);
+  await savedName.waitFor();
+  await dialog.getByText(version, { exact: true }).waitFor();
+  await assertPrivateImage(dialog, image);
+  assert.equal(await dialog.locator('form, [role="form"], input, select, textarea').count(), 0, '查看弹窗不得包含表单或输入控件');
+  assert.equal(await dialog.getByRole('button', editActions).or(dialog.getByRole('link', editActions)).count(), 0,
+    '查看弹窗不得提供保存、上传或编辑操作');
+
+  // Move away from any focused close button before testing Enter in the read-only content.
+  await savedName.click();
+  await page.keyboard.press('Enter');
+  await button(dialog, '关闭').click();
+  await dialog.waitFor({ state: 'hidden' });
+  assert.equal(page.url(), listUrl, '关闭查看不应改变列表 URL');
+  assert.equal(await field(page, `搜索${noun}`).inputValue(), searchValue, '关闭查看后应保留搜索词');
+  await row.waitFor();
+}
+
+/** An image failure must refresh the snapshot instead of retrying a possibly stale draft URL. */
+async function retryDraftMedia(h, page, scenario, saved, name) {
+  const key = scenario.imageKey;
+  const asset = saved.draft[key];
+  const dialog = page.getByRole('dialog', { name: `查看${scenario.noun}`, exact: true });
+  const mediaPath = url => url.origin === h.base && url.pathname === `/api/admin/media/${asset}`;
+  const failMedia = route => route.fulfill({ status: 503, contentType: 'text/plain', body: 'test image unavailable' });
+  await page.route(mediaPath, failMedia);
+  try {
+    await rowAction(rowNamed(page, name), '查看').click();
+    await dialog.getByText(scenario.imageField, { exact: true }).scrollIntoViewIfNeeded();
+    await dialog.getByRole('alert').getByText('图片无法加载', { exact: true }).waitFor();
+  } finally {
+    await page.unroute(mediaPath, failMedia);
+  }
+  await h.observe(page, 'GET', `/api/admin/items/${saved.id}`,
+    () => button(dialog, '重试加载').click());
+  await assertPrivateImage(dialog, { name: scenario.imageField, id: asset, itemId: saved.id, revision: saved.revision });
+  await button(dialog, '关闭').click();
+  await dialog.waitFor({ state: 'hidden' });
+}
+
+/** A failed or inconsistent history read must not expose a public fallback for a live item. */
+async function retryReleaseHistory(h, page, row, name, item, receipt, imageName) {
+  const dialog = page.getByRole('dialog', { name: '查看产品', exact: true });
+  const versionsPath = `/api/admin/items/${item.id}/versions`;
+  const match = url => url.origin === h.base && url.pathname === versionsPath;
+  const retry = () => button(dialog, '重试加载').click();
+  for (const [status, text, action] of [
+    [503, '历史版本暂时无法加载', () => rowAction(row, '查看').click()],
+    [200, '版本资料已变化，请重试加载。', retry],
+  ]) {
+    const routeHandler = async route => {
+      if (status === 503) return route.fulfill({ status, json: { code: 'temporary_failure', message: text } });
+      const response = await route.fetch();
+      const page = await response.json();
+      page.items[0].release_id = String(BigInt(receipt.release_id) + 1n);
+      return route.fulfill({ response, json: page });
+    };
+    await page.route(match, routeHandler);
+    try {
+      await h.observe(page, 'GET', versionsPath, action, status);
+      await dialog.getByRole('alert').filter({ hasText: text }).waitFor();
+      assert.equal(await dialog.getByText(name, { exact: true }).count(), 0, '不可退回到未经确认的线上资料');
+      assert.equal(await dialog.getByRole('img').count(), 0);
+    } finally {
+      await page.unroute(match, routeHandler);
+    }
+  }
+  await h.observe(page, 'GET', versionsPath, retry);
+  await dialog.getByText(`版本 ${receipt.seq}`, { exact: true }).waitFor();
+  await assertPrivateImage(dialog, { name: imageName, id: item.draft.cover_asset_id, itemId: item.id, seq: receipt.seq });
+  await button(dialog, '关闭').click();
+  await dialog.waitFor({ state: 'hidden' });
 }
 
 /** A list refresh failure must not let the earlier release check survive an edit. */
@@ -176,6 +270,9 @@ async function releaseCheckAfterEdit(h) {
   assert.ok(place, '隔离环境需要已发布的展示分类');
   const name = `向导发布检查-${randomUUID().slice(0, 8)}`;
   const original = await h.createProduct(page, { name, code: name, places: [place] });
+  const search = field(page, '搜索产品');
+  await search.fill(name);
+  await search.press('Enter');
   const row = rowNamed(page, name);
   const panel = page.locator('section[aria-label="发布检查"]');
   const checkPath = `/api/admin/items/${original.id}/check`;
@@ -185,8 +282,9 @@ async function releaseCheckAfterEdit(h) {
   const confirm = button(panel, '确认发布');
   await confirm.and(panel.locator('button:enabled')).waitFor();
 
+  const savedName = `${name}-修订`;
   const dialog = await openWizard(page, scenario, '编辑', () => button(row, '编辑').click());
-  await field(dialog, scenario.nameField).fill(`${name}-修订`);
+  await field(dialog, scenario.nameField).fill(savedName);
   await lastStep(dialog, scenario);
   const listRequests = url => url.origin === h.base && url.pathname === endpoint;
   const failList = route => route.request().method() === 'GET'
@@ -206,7 +304,29 @@ async function releaseCheckAfterEdit(h) {
   } finally {
     await page.unroute(listRequests, failList);
   }
-  return '列表刷新失败也会失效旧发布检查；再次检查使用刚保存的修订';
+  // Reuse the eligible product so the archived view exercises the real published snapshot, not a mocked list row.
+  const itemPath = `/api/admin/items/${original.id}`;
+  const receipt = await (await h.observe(page, 'POST', `${itemPath}/publish`, () => confirm.click())).json();
+  const revisedRow = rowNamed(page, savedName);
+  await revisedRow.getByText('已上线', { exact: true }).waitFor();
+  await retryReleaseHistory(h, page, revisedRow, savedName, original, receipt, scenario.imageField);
+  await h.observe(page, 'POST', `${itemPath}/unlist`, () => button(revisedRow, '下架').click());
+  await revisedRow.getByText('已下架', { exact: true }).waitFor();
+  const archived = await (await h.observe(page, 'POST', `${itemPath}/archive`, () => button(revisedRow, '归档').click())).json();
+  assert.ok(archived.archived_at && !archived.live_id && !archived.draft, '归档前置数据必须只保留历史版本');
+  await revisedRow.waitFor({ state: 'hidden' });
+
+  const state = page.getByRole('combobox', { name: '线上状态', exact: true });
+  await search.fill(savedName);
+  await search.press('Enter');
+  await state.selectOption('archived');
+  await revisedRow.getByText('已归档', { exact: true }).waitFor();
+  assert.equal(await rowAction(revisedRow, '编辑').count(), 0, '归档条目不得提供编辑入口');
+  await viewSavedItem(page, { noun: '产品', name: savedName, entry: '查看', version: `版本 ${receipt.seq}`,
+    listUrl: h.base + '/admin/products', searchValue: savedName,
+    image: { name: scenario.imageField, id: original.draft[scenario.imageKey], itemId: original.id, seq: receipt.seq } });
+  assert.equal(await state.inputValue(), 'archived', '关闭查看后应保留归档筛选');
+  return '列表刷新失败后重新检查使用刚保存的修订；真实归档后可只读查看最后发布的版本';
 }
 
 /** Exercise both list wizards against a signed-in editor and the disposable fixture's actual API. */
@@ -233,19 +353,31 @@ export async function runItemWizards(h) {
       const writes = [];
       const watchWrites = request => {
         const { origin, pathname } = new URL(request.url());
-        if (origin === h.base && /^\/api\/admin\/(?:products|cases|items)(?:\/|$)/.test(pathname)
-          && request.method() !== 'GET') writes.push([request.method(), pathname]);
+        const method = request.method();
+        if (origin === h.base && pathname.startsWith('/api/') && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+          writes.push([method, pathname]);
+        }
       };
       page.on('request', watchWrites);
       try {
         const item = await addDraft(h, scenario, name, endpoint);
         assert.equal(page.url(), listUrl, '新增成功后应停留在当前列表');
-        await editDraft(h, scenario, name, item);
+        const saved = await editDraft(h, scenario, name, item);
         assert.equal(page.url(), listUrl, '编辑成功后应停留在当前列表');
         assert.equal(await search.inputValue(), name, '保存后保留当前列表筛选条件');
-        assert.deepEqual(writes, [['POST', endpoint], ['POST', endpoint], ['PUT', `/api/admin/items/${item.id}/draft`]],
-          '取消和步骤切换不写入，保存只创建或更新草稿');
-        return '从当前列表新增及编辑同一草稿；步骤、取消、失败保留及重试、草稿与列表刷新均通过';
+        assert.deepEqual(writes, [['POST', '/api/admin/media'], ['POST', endpoint], ['POST', endpoint],
+          ['PUT', `/api/admin/items/${item.id}/draft`]], '取消和步骤切换不写入；只有上传和保存可写入');
+        const savedName = saved.draft[scenario.nameKey];
+        const beforeView = writes.length;
+        const image = { name: scenario.imageField, id: saved.draft[scenario.imageKey], itemId: saved.id, revision: saved.revision };
+        for (const entry of [savedName, '查看']) {
+          await viewSavedItem(page, { noun: scenario.noun, name: savedName, entry, version: `修订 ${saved.revision}`,
+            listUrl, searchValue: name, image });
+          assert.deepEqual(writes.slice(beforeView), [], `通过「${entry}」打开、按 Enter 和关闭查看弹窗不得发出 API 写入`);
+        }
+        if (scenario.collection === 'products') await retryDraftMedia(h, page, scenario, saved, savedName);
+        assert.deepEqual(writes.slice(beforeView), [], '重试图片不得发出 API 写入');
+        return '新增、编辑及两种入口查看同一草稿；步骤、取消、重试、已保存修订、只读和列表筛选均通过';
       } finally {
         page.off('request', watchWrites);
       }

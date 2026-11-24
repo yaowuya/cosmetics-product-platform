@@ -1,0 +1,99 @@
+<template name="service-art">
+  <view class="service-art tone-{{card.tone}}">
+    <view class="service-copy">
+      <text class="service-label">{{card.eyebrow}}</text>
+      <text class="service-headline">{{card.headline}}</text>
+      <text class="service-points">{{card.points}}</text>
+    </view>
+    <view class="service-visual" aria-hidden="true">
+      <view class="service-symbol symbol-{{card.tone}}" />
+    </view>
+  </view>
+</template>
+
+<view class="screen contact-screen">
+  <view class="contact-header">
+    <view>
+      <view class="contact-title">服务与合作</view>
+      <view class="contact-subtitle">从产品想法，到成品落地</view>
+    </view>
+    <button wx:if="{{phase === 'ready' && canContact}}" class="consult-button" bindtap="openContact">
+      <view class="consult-icon" aria-hidden="true" />合作咨询
+    </button>
+  </view>
+
+  <view class="contact-content">
+    <view class="service-heading">
+      <view class="section-title">我们能为你做什么</view>
+      <text class="sample-label">服务内容示例</text>
+    </view>
+    <view class="service-list">
+      <button wx:for="{{services}}" wx:key="tone" class="service-button" data-index="{{index}}" bindtap="openService"
+        aria-label="查看{{item.title}}服务示例">
+        <template is="service-art" data="{{card: item}}" />
+        <view class="service-caption"><text>{{item.title}}</text><text class="service-arrow" aria-hidden="true">↗</text></view>
+      </button>
+    </view>
+
+    <view class="business-section">
+      <view class="section-title">聊聊你的产品想法</view>
+      <view class="business-intro">配方打样、生产合作、品牌开发，欢迎沟通。</view>
+      <view wx:if="{{phase === 'ready'}}" class="business-card">
+        <button wx:if="{{contact.qr && !qrFailed}}" class="qr-button qr-small" bindtap="previewQr" aria-label="预览商务联系二维码">
+          <image class="qr-image" src="{{contact.qr}}" mode="aspectFit" data-src="{{contact.qr}}" binderror="onQrError" />
+        </button>
+        <view class="business-copy">
+          <view class="business-title">商务合作</view>
+          <view wx:if="{{contact.qr && !qrFailed}}" class="business-description">扫码添加企业微信</view>
+          <view wx:if="{{qrFailed}}" class="business-description">二维码加载失败</view>
+          <button wx:if="{{canContact}}" class="contact-link" bindtap="openContact">查看联系方式</button>
+          <view wx:else class="business-description">暂无其他联系方式</view>
+        </view>
+      </view>
+      <view wx:elif="{{phase === 'loading'}}" class="notice">正在加载商务联系方式…</view>
+      <view wx:elif="{{phase === 'error'}}" class="notice">
+        <view class="notice-title">商务联系方式加载失败</view>
+        <text wx:if="{{message}}">{{message}}</text>
+        <button class="soft-button" bindtap="retry">重试</button>
+      </view>
+      <view wx:else class="notice">暂无公开商务联系方式</view>
+    </view>
+  </view>
+</view>
+
+<view wx:if="{{dialog}}" class="contact-overlay">
+  <view class="dialog-mask" bindtap="closeDialog" catchtouchmove="blockBackgroundScroll" />
+  <view class="contact-dialog" aria-role="dialog" aria-label="{{dialog === 'service' ? selectedCard.title : '联系商务合作'}}">
+    <view class="dialog-heading">
+      <view class="section-title">{{dialog === 'service' ? selectedCard.title : '联系商务合作'}}</view>
+      <button class="dialog-close" bindtap="closeDialog" aria-label="关闭弹层">×</button>
+    </view>
+    <block wx:if="{{dialog === 'service'}}">
+      <template is="service-art" data="{{card: selectedCard}}" />
+    </block>
+    <scroll-view wx:else class="dialog-body {{contact.qr && !qrFailed ? 'dialog-body-with-qr' : ''}}" scroll-y>
+      <button wx:if="{{contact.qr && !qrFailed}}" class="qr-button qr-large" bindtap="previewQr" aria-label="预览商务联系二维码">
+        <image class="qr-image" src="{{contact.qr}}" mode="aspectFit" data-src="{{contact.qr}}" binderror="onQrError" />
+      </button>
+      <view wx:if="{{contact.qr && !qrFailed}}" class="qr-hint">扫码添加企业微信，点击预览二维码</view>
+      <view wx:if="{{qrFailed}}" class="business-description">二维码加载失败</view>
+      <view wx:if="{{!canContact}}" class="business-description">暂无其他联系方式</view>
+      <view wx:if="{{contact.wechat}}" class="contact-entry">
+        <view class="entry-copy"><text class="entry-label">微信号</text><text class="entry-value" user-select>{{contact.wechat}}</text></view>
+        <button class="soft-button contact-action" bindtap="copyWechat" aria-label="复制微信号">复制</button>
+      </view>
+      <view wx:if="{{contact.phone}}" class="contact-entry">
+        <view class="entry-copy"><text class="entry-label">电话</text><text class="entry-value" user-select>{{contact.phone}}</text></view>
+        <button wx:if="{{dialNumber}}" class="soft-button contact-action" bindtap="dialPhone">拨打</button>
+      </view>
+      <view wx:if="{{contact.email}}" class="contact-entry">
+        <view class="entry-copy"><text class="entry-label">邮箱</text><text class="entry-value" user-select>{{contact.email}}</text></view>
+        <button class="soft-button contact-action" bindtap="copyEmail" aria-label="复制邮箱">复制</button>
+      </view>
+      <view wx:if="{{fallback}}" class="copy-fallback">
+        <view>无法自动复制，请长按选中文字：</view>
+        <text class="entry-value" user-select>{{fallback}}</text>
+      </view>
+    </scroll-view>
+  </view>
+</view>

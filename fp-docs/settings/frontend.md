@@ -1,6 +1,6 @@
 # FeaturePilot Frontend Settings
 
-公开 H5 和 PC 管理后台是同一 npm 工作区中的两个应用。两者分别构建，均从部署站点的 `/api` 访问后端。
+公开 H5 和 PC 管理后台仍是同一 npm 工作区中的两个应用，分别构建并从部署站点的 `/api` 访问后端。微信原生小程序是独立工程，仅读取同一套已发布内容。
 
 ## Frontend Framework and Source Locations
 
@@ -8,6 +8,7 @@
 | --- | --- | --- |
 | `frontend/admin` | Vue 3.4.21、Vite；`src/main.ts` | `src/routes.ts`；部署在 `/admin/` |
 | `frontend/h5` | Vue 3.4.21、uni-app H5；`src/main.ts` | `src/pages.json` 声明页面，`src/main.ts` 登记公开地址 |
+| `frontend/miniapp` | 微信原生小程序；`app.js`、`app.json`；微信开发者工具直接编译 | `app.json` 声明页面和原生 Tab |
 
 ## Code Standards
 
@@ -25,6 +26,14 @@
 - Rule resources: `skills/_shared/code-standards/common.md`, `skills/_shared/code-standards/vue.md`
 - Applies to: `frontend/h5`；Vue 3.4.21、uni-app H5，依据 `frontend/h5/package.json` 和 `frontend/h5/src/main.ts`。
 - Project rule sources: `README.md` 的“构建和验证”，适用于工作区命令、静态部署路径和同源 API。
+- Confirmed overrides: none
+
+### 微信原生小程序及本地转发工具
+
+- Built-in preset: `none`
+- Rule resources: N/A
+- Applies to: `frontend/miniapp`（微信原生，依据 `app.json` 和 `package.json`）；`frontend/tools/miniapp-local.cjs`（Node.js 本地调试工具）。
+- Project rule sources: `frontend/miniapp/README.md`，约束仅访问已发布内容、调试与发布环境隔离、本地转发边界、测试与交付验证。
 - Confirmed overrides: none
 
 ## Component Library and Imports

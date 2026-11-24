@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 
 const button = (root, name) => root.getByRole('button', { name, exact: true });
 const link = (root, name) => root.getByRole('link', { name, exact: true });
-const itemRow = (page, name) => page.locator('tr.el-table__row').filter({ has: link(page, name) });
+const itemRow = (page, name) => page.locator('tr.el-table__row').filter({ has: button(page, name) });
 const versionRow = (page, seq) => page.locator('.list-line').filter({ has: button(page, `查看版本 ${seq}`) });
 const privateFrame = 'iframe[title*="草稿"]';
 

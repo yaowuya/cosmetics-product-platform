@@ -9,6 +9,7 @@ import { request } from '../session.ts';
 import { useRoute, useRouter } from 'vue-router';
 import History from '../panels/History.vue';
 import Release from '../panels/Release.vue';
+import { basicFields, caseBasicFields, caseDetails, caseExtraFields, caseMedia, detailFields, productMedia } from './item-fields.ts';
 
 const props=defineProps<{id:string;kind?:'product'|'case';history?:boolean;embedded?:boolean}>();
 const emit=defineEmits<{saved:[item:Item];cancel:[]}>();
@@ -31,16 +32,7 @@ const ready=computed(()=>newItem.value||Boolean(item.value));
 const showBasic=computed(()=>!props.embedded||step.value===0);
 const showDetails=computed(()=>!props.embedded||step.value===1);
 const showFinal=computed(()=>!props.embedded||lastStep.value);
-const basicFields=[{key:'name',label:'产品名称'},{key:'english_name',label:'英文名称（选填）'},{key:'formula_no',label:'配方编号'}];
-const detailFields=[{key:'benefit',label:'功效'},{key:'ingredients',label:'核心成分'},{key:'highlights',label:'产品亮点'}];
-const caseBasicFields=[{key:'brand_name',label:'品牌名称'},{key:'product_name',label:'案例产品名称'}];
-const caseExtraFields=[{key:'case_no',label:'案例编号（选填）'},{key:'series',label:'系列（选填）'}];
-const caseDetails=[{key:'highlight',label:'案例亮点'},{key:'description',label:'案例说明（选填）'}];
-const productMedia=[
-  {key:'cover_asset_id',label:'产品封面图',hint:'用于 H5 列表和详情页顶部，建议 16:9。'},
-  {key:'detail_asset_id',label:'产品详情长图',hint:'展示在详情页文字下方。'},
-];
-const media=computed<{key:string;label:string;hint?:string}[]>(()=>yes.value?productMedia:[{key:'image_asset_id',label:'案例图片'}]);
+const media=computed<{key:string;label:string;hint?:string}[]>(()=>yes.value?productMedia:caseMedia);
 const placeProps={multiple:true,checkStrictly:true,emitPath:false};
 const display=computed(()=>text(body.value.name??body.value.product_name, newItem.value?(yes.value?'新增产品':'新增案例'):'未命名草稿'));
 const subtitle=computed(()=>{
