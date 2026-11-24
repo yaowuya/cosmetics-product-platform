@@ -36,3 +36,18 @@ test('public media, cards and controls never fill in missing business contacts',
   assert.equal(item.long,media(path));
   assert.deepEqual(caseHeader({filters:[{key:'skin',label:'护肤'},{key:' skin ',label:'重复'},{key:'missing'}]},media).tags,[{key:'skin',label:'护肤'}]);
 });
+
+test('case categories show the default 精选案例 only once and keep published filters in order', () => {
+  const header = caseHeader({filters:[
+    {key:'featured',label:'精选案例'}, {key:'freeze',label:'冻干案例'},
+    {key:'medical',label:'二类案例'}, {key:'export',label:'外贸案例'},
+    {key:'another-recommendation',label:' 精选案例 '}, {key:'customer',label:'客户共创案例'},
+  ]},media);
+  assert.deepEqual(header.tags, [
+    {key:'freeze',label:'冻干案例'}, {key:'medical',label:'二类案例'},
+    {key:'export',label:'外贸案例'}, {key:'customer',label:'客户共创案例'},
+  ]);
+  assert.equal(header.allLabel, '精选案例');
+  assert.deepEqual(caseHeader({filters:[{key:'featured',label:'品牌推荐'}]},media).tags,
+    [{key:'featured',label:'品牌推荐'}]);
+});

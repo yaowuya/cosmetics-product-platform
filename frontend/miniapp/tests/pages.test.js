@@ -102,6 +102,32 @@ test('catalog treats whitespace as category browsing while retaining the text be
   page.onUnload();
 });
 
+test('catalog uses bundled board icons and falls back when the current upload fails', async () => {
+  let uploaded = '/api/public/media/61';
+  const names = ['护肤','冻干','二类','洗护','外贸','其他'];
+  const { page } = harness('catalog', url => {
+    if (!url.pathname.endsWith('/catalog') || url.pathname.endsWith('/pages/catalog')) return directory(url);
+    return { nodes:names.map((name,index) => ({
+      id:String(index+1), parent_id:null, level:'board', name, icon_url:index === 0 ? uploaded : '',
+    })), counts:{} };
+  });
+  await page.onLoad();
+  const oldUpload = `https://published.example.cn${uploaded}`;
+  assert.equal(page.data.boards[0].displayIcon,oldUpload);
+  assert.deepEqual(page.data.boards.slice(1).map(board => board.displayIcon),
+    ['snowflake','shield','bubbles','globe','briefcase'].map(name => `/assets/catalog/${name}.png`));
+
+  uploaded = '/api/public/media/62';
+  await page.onRefresh();
+  const currentUpload = `https://published.example.cn${uploaded}`;
+  page.onBoardIconError(event({id:'1',src:oldUpload}));
+  assert.equal(page.data.boards[0].displayIcon,currentUpload);
+  page.onBoardIconError(event({id:'1',src:currentUpload}));
+  assert.equal(page.data.boards[0].displayIcon,'/assets/catalog/droplets.png');
+  assert.equal(page.data.boards[0].icon,currentUpload);
+  page.onUnload();
+});
+
 test('catalog ignores media errors from a previous published image', async () => {
   let media = '1';
   const { page } = harness('catalog', url => {

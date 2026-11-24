@@ -22,8 +22,10 @@
       <scroll-view class="board-strip" scroll-x enable-flex show-scrollbar="{{false}}">
         <view class="board-items">
           <button wx:for="{{boards}}" wx:key="id" class="board-button {{board === item.id ? 'active' : ''}}" data-id="{{item.id}}" bindtap="onBoard" aria-pressed="{{board === item.id}}">
-            <image wx:if="{{item.icon && broken[item.id] !== item.icon}}" src="{{item.icon}}" mode="aspectFit" data-id="{{item.id}}" data-src="{{item.icon}}" binderror="onImageError" />
-            <view wx:else class="board-icon" aria-hidden="true"></view><text>{{item.name}}</text>
+            <view class="board-icon" aria-hidden="true">
+              <image src="{{item.displayIcon}}" mode="aspectFit" data-id="{{item.id}}" data-src="{{item.displayIcon}}" binderror="onBoardIconError" />
+            </view>
+            <text class="board-label">{{item.name}}</text>
           </button>
         </view>
       </scroll-view>

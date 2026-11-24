@@ -16,7 +16,7 @@
     </view>
     <scroll-view class="case-filters" scroll-x="{{true}}" enhanced="{{true}}" show-scrollbar="{{false}}" aria-label="案例分类">
       <view class="case-filter-track">
-        <button class="case-filter {{!tag ? 'case-filter-active' : ''}}" aria-pressed="{{!tag}}" data-tag="" bindtap="onSelectTag">精选案例</button>
+        <button class="case-filter {{!tag ? 'case-filter-active' : ''}}" aria-pressed="{{!tag}}" data-tag="" bindtap="onSelectTag">{{header.allLabel}}</button>
         <button wx:for="{{header.tags}}" wx:key="key" class="case-filter {{tag === item.key ? 'case-filter-active' : ''}}"
           aria-pressed="{{tag === item.key}}" data-tag="{{item.key}}" bindtap="onSelectTag">{{item.label}}</button>
       </view>

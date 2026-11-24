@@ -4,7 +4,7 @@ const { caseHeader, caseView, inputText } = require('../../lib/model');
 const { createPaging } = require('../../lib/paging');
 const { detailUrl } = require('../../lib/page-feedback');
 
-const FALLBACK_HEADER = { title: '品牌案例', intro: '', image: '', tags: [] };
+const FALLBACK_HEADER = caseHeader({}, () => '');
 const KEYWORD_LIMIT = 140;
 const KEYWORD_DELAY = 160;
 

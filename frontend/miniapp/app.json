@@ -12,10 +12,30 @@
     "backgroundColor": "#ffffff",
     "borderStyle": "black",
     "list": [
-      { "pagePath": "pages/home/index", "text": "首页" },
-      { "pagePath": "pages/catalog/index", "text": "产品目录" },
-      { "pagePath": "pages/cases/index", "text": "品牌案例" },
-      { "pagePath": "pages/contact/index", "text": "联系我们" }
+      {
+        "pagePath": "pages/home/index",
+        "text": "首页",
+        "iconPath": "assets/tab-bar/home.png",
+        "selectedIconPath": "assets/tab-bar/home-selected.png"
+      },
+      {
+        "pagePath": "pages/catalog/index",
+        "text": "产品目录",
+        "iconPath": "assets/tab-bar/catalog.png",
+        "selectedIconPath": "assets/tab-bar/catalog-selected.png"
+      },
+      {
+        "pagePath": "pages/cases/index",
+        "text": "品牌案例",
+        "iconPath": "assets/tab-bar/cases.png",
+        "selectedIconPath": "assets/tab-bar/cases-selected.png"
+      },
+      {
+        "pagePath": "pages/contact/index",
+        "text": "联系我们",
+        "iconPath": "assets/tab-bar/contact.png",
+        "selectedIconPath": "assets/tab-bar/contact-selected.png"
+      }
     ]
   }
 }

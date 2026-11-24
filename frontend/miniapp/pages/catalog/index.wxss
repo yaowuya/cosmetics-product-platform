@@ -10,11 +10,13 @@
 .magnifier::after { content:''; position:absolute; width:13rpx; height:3rpx; right:-10rpx; bottom:-5rpx; background:#4888b5; transform:rotate(45deg); }
 .search-clear { width:54rpx; min-height:64rpx; font-size:38rpx; color:#4e5e69; }
 .board-strip { width:100%; }
-.board-items { display:inline-flex; min-width:100%; gap:14rpx; padding:14rpx 0; }
-.board-button { flex:1 0 auto; min-width:128rpx; max-width:240rpx; min-height:76rpx; display:flex; align-items:center; justify-content:center; gap:9rpx; padding:8rpx 16rpx; color:#33444f; font-size:24rpx; border-radius:14rpx; }
-.board-button.active { background:#edf6fc; color:#29668f; font-weight:700; }
-.board-button image,.board-icon { flex:none; width:31rpx; height:31rpx; }
-.board-icon { border:2rpx solid #4888b5; border-radius:7rpx; }
+.board-items { display:inline-flex; min-width:100%; padding-top:6rpx; }
+.board-button { position:relative; flex:1 0 130rpx; min-width:0; min-height:104rpx; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4rpx; padding:4rpx 8rpx 8rpx; font-size:23rpx; }
+.board-icon { display:flex; align-items:center; justify-content:center; flex:none; width:64rpx; height:48rpx; border-radius:16rpx; }
+.board-icon image { width:36rpx; height:36rpx; }
+.board-label { display:block; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.board-button.active .board-icon { background:#edf6fc; }
+.board-button.active::after { content:''; position:absolute; inset:auto auto 0; width:36rpx; height:4rpx; border-radius:4rpx; background:#69a6ca; }
 .catalog-body { flex:auto; min-height:0; display:flex; }
 .catalog-rail { width:168rpx; height:100%; flex:none; background:#f7f9fb; }
 .category-button { width:100%; min-height:92rpx; padding:15rpx 16rpx; border-left:5rpx solid transparent; color:#43515b; font-size:25rpx; overflow-wrap:anywhere; }

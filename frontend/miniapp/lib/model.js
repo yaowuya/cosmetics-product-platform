@@ -65,16 +65,19 @@ function productView(item, mediaUrl) {
   };
 }
 
+/** Project case categories alongside the single unfiltered entry. */
 function caseHeader(body, mediaUrl) {
+  const allLabel = '精选案例';
   const tags = [];
   const keys = new Set();
   for (const raw of rows(body.filters).map(object)) {
     const key = text(raw.key), label = text(raw.label);
-    if (!key || Array.from(key).length > 80 || !label || keys.has(key)) continue;
+    // The published seed may also supply this label for a tag.
+    if (!key || Array.from(key).length > 80 || !label || label === allLabel || keys.has(key)) continue;
     tags.push({key,label});
     keys.add(key);
   }
-  return { image: mediaUrl(body.background_asset_url), title: text(body.title,'品牌案例'), intro: text(body.intro), tags };
+  return { image: mediaUrl(body.background_asset_url), title: text(body.title,'品牌案例'), intro: text(body.intro), allLabel, tags };
 }
 
 function caseView(item, mediaUrl) {

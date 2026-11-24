@@ -6,6 +6,20 @@ const root = resolve(__dirname,'..');
 const read = file => readFileSync(resolve(root,file),'utf8');
 const json = file => JSON.parse(read(file));
 
+test('native tabs ship local PNG icons for both selection states', () => {
+  const signature = Buffer.from([137,80,78,71,13,10,26,10]);
+  for (const { text, iconPath, selectedIconPath } of json('app.json').tabBar.list) {
+    assert.match(iconPath || '', /^assets\/tab-bar\/.+\.png$/, text);
+    assert.match(selectedIconPath || '', /^assets\/tab-bar\/.+\.png$/, text);
+    assert.notEqual(iconPath,selectedIconPath,text);
+    for (const path of [iconPath, selectedIconPath]) {
+      const image = readFileSync(resolve(root,path));
+      assert.deepEqual(image.subarray(0,8),signature,path);
+      assert.ok(image.length <= 40 * 1024,path);
+    }
+  }
+});
+
 test('project imports as six native pages with four tab entries, without package dependencies', () => {
   const config = json('project.config.example.json');
   assert.equal(config.appid,'touristappid');

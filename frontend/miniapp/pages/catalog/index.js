@@ -4,6 +4,16 @@ const { projectCatalog, selectBoard, inputText, catalogCover, productView } = re
 const { createPaging } = require('../../lib/paging');
 const { detailUrl } = require('../../lib/page-feedback');
 
+// Native image assets mirror the H5 board marks for the five standard names.
+const BOARD_ICON_FILES = new Map([
+  ['护肤','droplets'], ['冻干','snowflake'], ['二类','shield'], ['洗护','bubbles'], ['外贸','globe'],
+]);
+
+/** Return the packaged mark for a standard board, or the generic mark for a custom board. */
+function defaultBoardIcon(name) {
+  return `/assets/catalog/${BOARD_ICON_FILES.get(name) || 'briefcase'}.png`;
+}
+
 Page({
   data: {
     configPhase:'loading', configMessage:'', cover:{}, coverFailed:false, broken:{},
@@ -40,7 +50,7 @@ Page({
       const [body,tree] = await Promise.all([this._api.page('catalog'),this._api.catalog()]);
       if (version !== this._bootVersion) return;
       this._tree = projectCatalog(tree,this._api.mediaUrl);
-      const boards = this._tree.boards;
+      const boards = this._tree.boards.map(item => ({...item,displayIcon:item.icon || defaultBoardIcon(item.name)}));
       const selected = boards.find(item => item.id === board) || boards[0];
       this.setData({boards,cover:catalogCover(body,this._api.mediaUrl),configPhase:'ready'});
       if (selected) await this.enterBoard(selected.id,selected.id === board ? {...activeView,right:0} : {});
@@ -127,11 +137,18 @@ Page({
   onCoverError(event) {
     if (event.currentTarget.dataset.src === this.data.cover.image) this.setData({coverFailed:true});
   },
+  /** Replace only the failed upload that the board is still displaying. */
+  onBoardIconError(event) {
+    const {id,src} = event.currentTarget.dataset;
+    const index = this.data.boards.findIndex(item => item.id === id && item.icon === src && item.displayIcon === src);
+    if (index < 0) return;
+    const item = this.data.boards[index];
+    this.setData({[`boards[${index}].displayIcon`]:defaultBoardIcon(item.name)});
+  },
   onImageError(event) {
     const {id,src} = event.currentTarget.dataset;
     // A detached image can finish after refresh. Only suppress the currently projected asset.
-    if (this.data.boards.some(board => board.id === id && board.icon === src)
-      || this.data.items.some(item => item.id === id && item.image === src)) {
+    if (this.data.items.some(item => item.id === id && item.image === src)) {
       this.setData({broken:{...this.data.broken,[id]:src}});
     }
   },
