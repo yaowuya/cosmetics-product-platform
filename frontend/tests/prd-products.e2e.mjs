@@ -47,8 +47,9 @@ function evidence() {
   };
 }
 function missingLong(check) {
-  return check?.eligible === false && check.issues.some(issue => issue.field === 'detail_asset_id');
+  return check?.eligible === false && check.issues.some(issue => ['detail_asset_id', 'detail_asset_ids'].includes(issue.field));
 }
+const longIds = body => Array.isArray(body?.detail_asset_ids) ? body.detail_asset_ids : [body?.detail_asset_id].filter(Boolean);
 function matchesMedia(url, id) {
   if (!url || !id) return false;
   const u = new URL(url, origin);
@@ -56,11 +57,12 @@ function matchesMedia(url, id) {
 }
 function cardMatches(record, body) {
   return !!record && record.body.name === body.name && record.body.short_benefit === body.short_benefit &&
-    matchesMedia(record.body.cover_asset_url, body.cover_asset_id);
+    matchesMedia(record.body.catalog_image_url, body.thumbnail_asset_id);
 }
 function detailMatches(record, body) {
+  const images = record?.body.detail_asset_urls ?? [record?.body.detail_asset_url].filter(Boolean);
   return !!record && ['name', 'formula_no', 'benefit', 'ingredients', 'highlights', 'production_status'].every(k => record.body[k] === body[k]) &&
-    matchesMedia(record.body.cover_asset_url, body.cover_asset_id) && matchesMedia(record.body.detail_asset_url, body.detail_asset_id);
+    matchesMedia(record.body.cover_asset_url, body.cover_asset_id) && same(images, longIds(body).map(id => `/api/public/media/${id}`));
 }
 function recordedPublish(row, receipt, sourceRevision, actorId) {
   return row.action === 'publish' && row.target_kind === 'product' && row.target_id === receipt.id && row.actor_id === actorId &&
@@ -111,13 +113,13 @@ export async function runProducts(h) {
     return firstRelease[key];
   }
   async function revise(row, { benefit, short, removeLong = false, uploadLong = false }) {
-    await readItem(E, row);
+    const item = await readItem(E, row);
     if (benefit) await E.getByLabel('功效', { exact: true }).fill(benefit);
     if (short) await E.getByLabel('简短功效', { exact: true }).fill(short);
     if (removeLong) {
-      await button(E, '移除产品详情长图').click();
+      for (const _ of longIds(bodyOf(item))) await button(E, '移除详情竖图 1').click();
     }
-    if (uploadLong) await h.upload(E, 1, h.files.long);
+    if (uploadLong) await h.upload(E, E.getByLabel('添加详情竖图', { exact: true }), h.files.long);
     return h.save(E);
   }
   async function adminList(page) {
@@ -211,8 +213,12 @@ export async function runProducts(h) {
     const detail = await uiGet(V, `${publicProducts}/${row.id}`, {}, () => link.click());
     assert.ok(detail.id === row.id && detailMatches(detail, body), `从分类 ${key} 打开的详情图文不是预期版本`);
     await V.locator('.detail-info').getByText(body.benefit, { exact: true }).waitFor();
-    await V.locator('.detail-long-slot').scrollIntoViewIfNeeded();
-    await V.locator('.detail-long').waitFor();
+    const pictureSlots = await V.locator('.detail-long-slot').all();
+    assert.equal(pictureSlots.length, longIds(body).length);
+    for (const slot of pictureSlots) {
+      await slot.scrollIntoViewIfNeeded();
+      await slot.locator('.detail-long').waitFor();
+    }
     return detail;
   }
   async function publicCase(row) {
@@ -247,7 +253,7 @@ export async function runProducts(h) {
     const row = await create('cross', '双分类精华', [t.a, t.b]);
     const v1 = await publishFirst('cross');
     const edit = await revise(row, { benefit: tag('精华新版功效'), short: tag('精华新版卡片'), removeLong: true });
-    assert.ok(edit.draft && !edit.draft.detail_asset_id, '未实际保存缺长图的新稿');
+    assert.ok(edit.draft && !longIds(edit.draft).length, '未实际保存缺长图的新稿');
     const since = h.events.length;
     const check = await h.check(P, editor(row.id));
     e.expect(missingLong(check) && same(sorted(check.place_ids), sorted([t.a, t.b])), '检查没有同时指出缺长图和两个影响位置');
@@ -266,7 +272,7 @@ export async function runProducts(h) {
     const row = await create('incomplete', '缺图新品', [t.a], { omitLong: true });
     e.expect(missingLong(await h.check(P, editor(row.id))) && await button(P, '确认发布').isDisabled(), '新品缺图未被检查拦下');
     const stored = await readItem(E, row);
-    e.expect(!!stored.draft && !stored.draft.detail_asset_id && !stored.live_id && !stored.has_history, '新品草稿或未上架状态不符');
+    e.expect(!!stored.draft && !longIds(stored.draft).length && !stored.live_id && !stored.has_history, '新品草稿或未上架状态不符');
     for (const q of ['', row.draft.name, row.draft.formula_no]) {
       await e.read(q ? '新品搜索' : '新品所在分类', async () => assert.ok(!(await catalog('a', q)).some(x => x.id === row.id), '公开结果包含新品'));
     }
@@ -410,7 +416,7 @@ export async function runProducts(h) {
     h.require([alpha,beta,cross,steady].every(x => initial.get(x.id)?.live_id) && !initial.get(steady.id)?.draft && initial.get(hold.id)?.draft, '混合清单的线上及草稿前置状态不齐');
     await revise(alpha, { benefit: tag('批次甲二版'), short: tag('批次甲新卡片') });
     await revise(beta, { benefit: tag('批次乙二版'), short: tag('批次乙新卡片') });
-    await revise(cross, { benefit: tag('缺项不得上线'), removeLong: !!bodyOf(initial.get(cross.id)).detail_asset_id });
+    await revise(cross, { benefit: tag('缺项不得上线'), removeLong: longIds(bodyOf(initial.get(cross.id))).length > 0 });
     const eligible = [alpha, beta];
     for (let n = 3; n <= 8; n++) eligible.push(await create(`batch${n}`, `合格第${n}款`, [t.a]));
     const skip = [cross, steady], selected = [...eligible, ...skip], controls = [...skip, hold];
@@ -436,7 +442,7 @@ export async function runProducts(h) {
     const lines = await panel.locator('.list-line').allInnerTexts();
     e.expect(selected.every(x => lines.some(s => s.includes(nameOf(x)) && s.includes(bodyOf(x).formula_no))), '逐款检查清单未同时展示产品名和配方编号');
     e.expect(eligible.every(x => lines.some(s => s.includes(nameOf(x)) && s.includes('可发布'))), '可发布结论未逐款可见');
-    e.expect(lines.some(s => s.includes(nameOf(cross)) && /长图|detail_asset_id/.test(s)) && lines.some(s => s.includes(nameOf(steady)) && /草稿/.test(s)), '清单未指明缺长图与无草稿的各自原因');
+    e.expect(lines.some(s => s.includes(nameOf(cross)) && /长图|详情竖图|detail_asset_id/.test(s)) && lines.some(s => s.includes(nameOf(steady)) && /草稿/.test(s)), '清单未指明缺长图与无草稿的各自原因');
     await e.read('检查后线上状态', async () => {
       const current = byId(await familyList(E));
       assert.ok([...selected,hold].every(x => same(state(before.get(x.id)), state(current.get(x.id)))), '仅检查便改变了产品状态');
@@ -465,7 +471,7 @@ export async function runProducts(h) {
     const resultLines = await panel.locator('.list-line').allInnerTexts();
     h.write('batch-feedback-observed.json', { checks: lines, results: resultLines, submittedIds: posts });
     e.expect(selected.every(x => resultLines.some(s => s.includes(nameOf(x)) && s.includes(bodyOf(x).formula_no))), '发布后的清单没有保留每款对应的产品名与配方编号');
-    e.expect(resultLines.some(s => s.includes(nameOf(cross)) && /长图|detail_asset_id/.test(s)), '跳过的缺图款在刷新后丢失具体缺项');
+    e.expect(resultLines.some(s => s.includes(nameOf(cross)) && /长图|详情竖图|detail_asset_id/.test(s)), '跳过的缺图款在刷新后丢失具体缺项');
     e.expect(eligible.every(x => resultLines.some(s => s.includes(nameOf(x)) && s.includes('已发布') && s.includes(`版本 ${batchReceipts.get(x.id)?.seq}`))), '结果清单未逐款标明成功版本');
     e.expect(skip.every(x => resultLines.some(s => s.includes(nameOf(x)) && /缺|草稿|未发布|跳过/.test(s))), '发布结果清单未保留两款未发条目及原因');
     const after = byId(await familyList(E));

@@ -1,6 +1,6 @@
 /** Published product directory; the Tab instance owns independent in-memory views per board. */
 const { pageApi } = require('../../lib/public-api');
-const { projectCatalog, selectBoard, inputText, catalogCover, productView } = require('../../lib/model');
+const { projectCatalog, selectBoard, inputText, catalogCover, productCard } = require('../../lib/model');
 const { createPaging } = require('../../lib/paging');
 const { detailUrl } = require('../../lib/page-feedback');
 
@@ -32,9 +32,7 @@ Page({
     this._paging = createPaging({
       load: async (filter,page) => {
         const result = await this._api.products(filter,page);
-        return { ...result, items:result.items.map(item => ({
-          ...productView(item,this._api.mediaUrl), thumbnail:this._api.thumbnailUrl(item.body.cover_thumbnail_url),
-        })) };
+        return { ...result, items:result.items.map(item => productCard(item,this._api)) };
       },
       render: state => {
         const {imageVersion} = this.data;

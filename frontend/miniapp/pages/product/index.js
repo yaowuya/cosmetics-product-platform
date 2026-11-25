@@ -4,13 +4,15 @@ const { productView } = require('../../lib/model');
 const { createResource, backToTab, copyValue } = require('../../lib/page-feedback');
 
 Page({
-  data:{ phase:'loading', message:'', detail:null, coverFailed:false, longFailed:false, fallback:'' },
+  data:{ phase:'loading', message:'', detail:null, coverFailed:false, failedGallery:{}, galleryVersion:0, fallback:'' },
   onLoad(options = {}) {
     const api = pageApi(wx);
     this._alive = true;
     this._resource = createResource({
       load: async () => productView(await api.product(options.id),api.mediaUrl),
-      render: state => this.setData(state.phase === 'ready' ? state : {...state,detail:null,fallback:'',coverFailed:false,longFailed:false}),
+      render: state => this.setData(state.phase === 'ready' ? state : {
+        ...state,detail:null,fallback:'',coverFailed:false,failedGallery:{},galleryVersion:this.data.galleryVersion + 1,
+      }),
       onReady: detail => this.setData({detail}),
     });
     return this._resource.refresh();
@@ -18,7 +20,14 @@ Page({
   onRetry() { return this._resource.refresh(); },
   onBack() { backToTab(wx,'/pages/catalog/index'); },
   onCoverError() { this.setData({coverFailed:true}); },
-  onLongError() { this.setData({longFailed:true}); },
+  /** Mark only the failing gallery image from the current published detail. */
+  onLongError(event) {
+    const {src,version} = event.currentTarget.dataset;
+    const {detail,galleryVersion,failedGallery} = this.data;
+    if (version === galleryVersion && detail && detail.gallery.includes(src)) {
+      this.setData({failedGallery:{...failedGallery,[src]:true}});
+    }
+  },
   onCopyFormula() {
     if (!this.data.detail) return;
     copyValue(wx,this.data.detail.formula,fallback => {

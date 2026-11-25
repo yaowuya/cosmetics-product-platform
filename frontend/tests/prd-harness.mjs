@@ -66,7 +66,7 @@ export async function createHarness(stage,directory) {
     const page=h.A=await h.newPage('A');await h.open(page,'/admin/accounts');await button(page,'开通账号').click();await field(page,'登录名').fill(a.login);await field(page,'临时密码').fill(a.temporary);await field(page,'内容编辑').check();await field(page,'发布').check();await h.observe(page,'POST','/api/admin/accounts',()=>button(page,'确认开通').click(),201);return h.newPage(role);
   };
   h.firstAccounts=async()=>{h.A=await h.newPage('A');await h.open(h.A,'/admin/accounts');await h.A.getByText(actors.A.login,{exact:true}).waitFor();for(const role of ['E','P']){const a=actors[role];if(await h.A.getByText(a.login,{exact:true}).count())continue;await button(h.A,'开通账号').click();await field(h.A,'登录名').fill(a.login);await field(h.A,'临时密码').fill(a.temporary);await field(h.A,'内容编辑').check();if(role==='P')await field(h.A,'发布').check();await h.observe(h.A,'POST','/api/admin/accounts',()=>button(h.A,'确认开通').click(),201);await h.A.getByText(a.login,{exact:true}).waitFor();}await h.roles();};
-  h.upload=async(page,index,file)=>{assert.ok(file&&path.dirname(fs.realpathSync(file))===fs.realpathSync(path.join(box,'assets')));const result=await h.observe(page,'POST','/api/admin/media',()=>page.locator('input[type=file]').nth(index).setInputFiles(file),201);await page.waitForFunction(()=>!document.querySelector('input[type=file]:disabled'));return result.json();};
+  h.upload=async(page,selector,file)=>{assert.ok(file&&path.dirname(fs.realpathSync(file))===fs.realpathSync(path.join(box,'assets')));const input=typeof selector==='number'?page.locator('input[type=file]').nth(selector):selector;const result=await h.observe(page,'POST','/api/admin/media',()=>input.setInputFiles(file),201);await page.waitForFunction(()=>!document.querySelector('input[type=file]:disabled'));return result.json();};
   h.save=async page=>(await h.observe(page,'PUT',/\/draft$/,()=>button(page,'保存草稿').first().click())).json();
   h.check=async(page,address)=>{await h.open(page,address);const tab=page.locator('nav.seg');await button(tab,'发布检查').click();return (await h.observe(page,'POST',/\/check$/,()=>button(page,'检查发布').click())).json();};
   h.publish=async(page,address)=>{const r=await h.check(page,address);assert.ok(r.eligible,JSON.stringify(r.issues));return (await h.observe(page,'POST',`/api/admin/items/${r.id}/publish`,()=>button(page,'确认发布').click())).json();};
@@ -81,9 +81,14 @@ export async function createHarness(stage,directory) {
     await next();
     for(const [key,value] of [['功效',o.benefit??'本轮功效说明'],['核心成分','测试成分'],['产品亮点','测试亮点']]) await field(dialog,key).fill(value);
     await next();
-    assert.equal(await dialog.locator('input[type=file]').count(),2);
-    await h.upload(page,0,h.files.cover);
-    if(!o.omitLong) await h.upload(page,1,h.files.long);
+    const square=await h.upload(page,field(dialog,'目录方图'),h.files.square);
+    const cover=await h.upload(page,field(dialog,'产品封面图'),h.files.cover);
+    const detailIds=[];
+    if(!o.omitLong) {
+      for(const file of o.detailFiles??[h.files.long]) {
+        detailIds.push((await h.upload(page,field(dialog,'添加详情竖图'),file)).id);
+      }
+    }
     const ids=new Map((directory.live??directory.draft)?.nodes?.map(node=>[node.id,node])??[]);
     if(o.places?.length){
       await dialog.locator('.place-cascader').click();
@@ -101,7 +106,10 @@ export async function createHarness(stage,directory) {
     }
     const save=button(dialog.locator('footer'),'保存');
     const response=await h.observe(page,'POST','/api/admin/products',()=>save.click(),201);
-    assert.ok(!('thumbnail_asset_id' in response.request().postDataJSON().body));
+    const body=response.request().postDataJSON().body;
+    assert.equal(body.thumbnail_asset_id,square.id);
+    assert.equal(body.cover_asset_id,cover.id);
+    assert.deepEqual(body.detail_asset_ids??[],detailIds);
     await dialog.waitFor({state:'hidden'});
     assert.equal(page.url(),`${base}/admin/products`);
     return response.json();

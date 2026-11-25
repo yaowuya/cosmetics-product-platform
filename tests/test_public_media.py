@@ -17,7 +17,12 @@ def test_public_cover_thumbnail_serves_original_when_missing_and_checks_access(m
 
     monkeypatch.setenv("ASSET_ROOT", str(tmp_path))
     source = tmp_path / "original-cover"
-    Image.new("RGB", (960, 540), "green").save(source, format="PNG")
+    original_image = Image.new("RGB", (960, 540), "green")
+    original_image.paste("red", (0, 0, 180, 540))
+    original_image.save(source, format="PNG")
+    old = tmp_path / ".thumbnails" / f"{source.name}.v1.webp"
+    old.parent.mkdir()
+    Image.new("RGB", (320, 320), "green").save(old, format="WEBP")
     asset = Asset(id=42, storage_key=source.name, mime="image/png")
     visible = True
 
@@ -43,6 +48,8 @@ def test_public_cover_thumbnail_serves_original_when_missing_and_checks_access(m
         assert derivative.headers["cache-control"] == "no-store"
         with Image.open(BytesIO(derivative.content)) as image:
             assert image.format == "WEBP" and image.size == (320, 320)
+            assert min(image.getpixel((10, 20))) > 240
+            assert image.getpixel((10, 160))[0] > 240
         assert visitor.get("/api/public/media/42").content == original.content
 
         visible = False

@@ -133,41 +133,50 @@ test('catalog ignores media errors from a previous published image', async () =>
   const { page } = harness('catalog', url => {
     if (url.pathname.endsWith('/pages/catalog')) return {page:'catalog',body:{cover_asset_url:`/api/public/media/${media}`}};
     if (url.pathname.endsWith('/catalog')) return directory(url);
-    return {items:[{id,body:{name:'面霜',cover_asset_url:`/api/public/media/${media}`}}],total:1,page:1,page_size:20};
+    return {items:[{id,body:{name:'面霜',catalog_image_url:`/api/public/media/1${media}`}}],total:1,page:1,page_size:20};
   });
   await page.onLoad();
   const stale = page.data.cover.image;
+  const staleImage = page.data.items[0].image;
   const staleVersion = page.data.imageVersion;
   media = '2';
   await page.onRefresh();
   page.onCoverError(event({src:stale}));
-  page.onImageError(event({id,src:stale,version:staleVersion}));
+  page.onImageError(event({id,src:staleImage,version:staleVersion}));
   assert.equal(page.data.coverFailed,false);
   assert.equal(page.data.broken[id],undefined);
   const current = page.data.cover.image;
+  const currentImage = page.data.items[0].image;
   page.onCoverError(event({src:current}));
-  page.onImageError(event({id,src:current,version:page.data.imageVersion}));
+  page.onImageError(event({id,src:currentImage,version:page.data.imageVersion}));
   assert.equal(page.data.coverFailed,true);
-  assert.equal(page.data.broken[id],current);
+  assert.equal(page.data.broken[id],currentImage);
   page.onUnload();
 });
 
-test('catalog falls back once from a thumbnail and ignores old errors for the same product', async () => {
+test('catalog falls back from a thumbnail only to its independent square original', async () => {
   const originalPath = '/api/public/media/62';
   const thumbnailPath = `${originalPath}/thumbnail`;
+  const wideCover = '/api/public/media/63';
   const origin = 'https://published.example.cn';
   const { page } = harness('catalog', url => {
     if (url.pathname.endsWith('/catalog')) return directory(url);
-    return { ...response(1,[id,'72']), items:[
-      {id,body:{name:'面霜',cover_asset_url:originalPath,cover_thumbnail_url:thumbnailPath}},
-      {id:'72',body:{name:'面膜',cover_asset_url:'/api/public/media/63'}},
+    return { ...response(1,[id,'72','73','74','75']), items:[
+      {id,body:{name:'面霜',cover_asset_url:originalPath,thumbnail_asset_url:originalPath,catalog_image_url:originalPath,cover_thumbnail_url:thumbnailPath}},
+      {id:'72',body:{name:'面膜',cover_asset_url:wideCover,thumbnail_asset_url:wideCover,cover_thumbnail_url:`${wideCover}/thumbnail`}},
+      {id:'73',body:{name:'乳液',cover_asset_url:wideCover,thumbnail_asset_url:originalPath,cover_thumbnail_url:`${wideCover}/thumbnail`}},
+      {id:'74',body:{name:'精华',cover_asset_url:wideCover,catalog_image_url:originalPath,cover_thumbnail_url:`${wideCover}/thumbnail`}},
+      {id:'75',body:{name:'洁面',cover_asset_url:wideCover,thumbnail_asset_url:wideCover,catalog_image_url:`https://untrusted.example.cn${wideCover}`,cover_thumbnail_url:`${wideCover}/thumbnail`}},
     ] };
   });
   await page.onLoad();
-  assert.equal(page.data.items[0].thumbnail,origin + thumbnailPath);
-  assert.equal(page.data.items[0].image,origin + originalPath);
-  assert.equal(page.data.items[1].thumbnail,'');
-  assert.equal(page.data.items[1].image,`${origin}/api/public/media/63`);
+  assert.deepEqual(page.data.items.map(({image,thumbnail}) => ({image,thumbnail})), [
+    {image:origin + originalPath,thumbnail:origin + thumbnailPath},
+    {image:'',thumbnail:''},
+    {image:origin + originalPath,thumbnail:''},
+    {image:origin + originalPath,thumbnail:''},
+    {image:'',thumbnail:''},
+  ]);
 
   const firstVersion = page.data.imageVersion;
   const firstNodeKey = page.data.items[0].imageKey;
@@ -184,6 +193,8 @@ test('catalog falls back once from a thumbnail and ignores old errors for the sa
   const thumbnailError = event({id,src:origin + thumbnailPath,version:currentVersion});
   page.onImageError(thumbnailError);
   assert.equal(page.data.failedThumbnails[id],origin + thumbnailPath);
+  assert.equal(page.data.broken[id],undefined);
+  page.onImageError(event({id,src:origin + wideCover,version:currentVersion}));
   assert.equal(page.data.broken[id],undefined);
   page.onImageError(event({id,src:origin + originalPath,version:currentVersion}));
   assert.equal(page.data.broken[id],origin + originalPath);
@@ -215,6 +226,25 @@ test('product re-reads the current publication and never substitutes the previou
   assert.equal(calls.length,2);
   page.onBack();
   assert.deepEqual(actions.at(-1),['switchTab','/pages/catalog/index']);
+  page.onUnload();
+});
+
+test('product gallery errors affect only the failed original and reset on retry', async () => {
+  const urls = ['67','68','69'].map(number => `/api/public/media/${number}`);
+  const origin = 'https://published.example.cn';
+  const { page } = harness('product', () => ({id,body:{
+    cover_asset_url:'/api/public/media/66',detail_asset_urls:urls,
+  }}));
+  await page.onLoad({id});
+  assert.deepEqual(page.data.detail.gallery,urls.map(url => origin + url));
+  const error = event({src:origin + urls[1],version:page.data.galleryVersion});
+  page.onLongError(error);
+  assert.deepEqual(page.data.failedGallery,{[origin + urls[1]]:true});
+  assert.equal(page.data.coverFailed,false);
+  await page.onRetry();
+  page.onLongError(error);
+  assert.deepEqual(page.data.failedGallery,{});
+  assert.deepEqual(page.data.detail.gallery,urls.map(url => origin + url));
   page.onUnload();
 });
 

@@ -20,13 +20,25 @@ test('native tabs ship local PNG icons for both selection states', () => {
   }
 });
 
-test('product details eagerly display the cover and lazily load the original long image', () => {
+test('product details eagerly display the cover and lazily load each original gallery image', () => {
   const template = read('pages/product/index.wxml');
   const cover = template.match(/<image\b[^>]+src="\{\{detail\.image\}\}"[^>]*>/)?.[0] || '';
-  const longImage = template.match(/<image\b[^>]+src="\{\{detail\.long\}\}"[^>]*>/)?.[0] || '';
+  const longImage = template.match(/<image\b[^>]+src="\{\{item\}\}"[^>]*>/)?.[0] || '';
   assert.ok(cover);
   assert.doesNotMatch(cover,/\blazy-load\b/);
+  assert.match(template,/wx:for="\{\{detail\.gallery\}\}"/);
   assert.match(longImage,/\blazy-load="\{\{true\}\}"/);
+  assert.match(longImage,/\bmode="widthFix"/);
+});
+
+test('catalog renders both directory image variants as white square contain', () => {
+  const template = read('pages/catalog/index.wxml');
+  for (const source of ['thumbnail','image']) {
+    const binding = `src="{{item.${source}}}"`;
+    const image = template.match(/<image\b[^>]+class="product-thumb"[^>]*>/g)?.find(tag => tag.includes(binding)) || '';
+    assert.match(image,/\bmode="aspectFit"/);
+  }
+  assert.match(read('pages/catalog/index.wxss'),/image\.product-thumb\s*\{[^}]*background:\s*#fff\b/);
 });
 
 test('project imports as six native pages with four tab entries, without package dependencies', () => {

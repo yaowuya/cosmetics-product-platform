@@ -12,11 +12,16 @@ const tallImage = '<svg xmlns="http://www.w3.org/2000/svg" width="390" height="1
 const media = id => `/api/public/media/${id}`;
 const posterPaths = [media(1), media(2), media(3)];
 const cover = media(8);
-const long = media(9);
-const thumbnail = `${cover}/thumbnail`;
+const longPaths = [media(9), media(10), media(11)];
+const square = media(12);
+const thumbnail = `${square}/thumbnail`;
+const privateMedia = id => `/api/admin/media/${id}?item_id=1&revision=2`;
 const product = { id: '1', body: {
   name: '验证用产品', benefit: '用于留出真实滚动的图文详情。'.repeat(240),
-  cover_asset_url: cover, detail_asset_url: long, cover_thumbnail_url: thumbnail,
+  cover_asset_url: cover, detail_asset_urls: longPaths,
+} };
+const listing = { id: '1', body: {
+  name: product.body.name, catalog_image_url: square, cover_asset_url: square, cover_thumbnail_url: thumbnail,
 } };
 
 function holdResponse() {
@@ -31,13 +36,17 @@ const imageRequests = [];
 let posterOne = holdResponse();
 const posterTwo = holdResponse();
 let failThumbnail = false;
+let failSquare = false;
 let failPosters = false;
 const api = {
   '/api/public/pages/home': { page: 'home', body: { poster_asset_urls: posterPaths } },
   '/api/public/pages/catalog': { page: 'catalog', body: {} },
   '/api/public/catalog': { nodes: [{ id: '1', parent_id: null, level: 'board', name: '护肤' }], counts: { 1: 1 } },
-  '/api/public/products': { items: [product], total: 1, page: 1, page_size: 20 },
+  '/api/public/products': { items: [listing], total: 1, page: 1, page_size: 20 },
   '/api/public/products/1': product,
+  '/api/admin/items/1/preview': { id: '1', revision: '2', kind: 'product', config_slot: null, place_ids: [], body: {
+    name: '验证用预览', thumbnail_asset_id: '12', cover_asset_id: '8', detail_asset_ids: ['9', '10', '11'],
+  }, media_urls: Object.fromEntries([8, 9, 10, 11, 12].map(id => [id, privateMedia(id)])) },
 };
 
 try {
@@ -45,15 +54,17 @@ try {
     const { origin, pathname } = new URL(route.request().url());
     if (origin !== site) return route.abort();
     if (api[pathname]) return route.fulfill({ json: api[pathname] });
-    if (pathname.startsWith('/api/public/media/')) {
+    if (/^\/api\/(?:public|admin)\/media\//.test(pathname)) {
       imageRequests.push(pathname);
       if (pathname === media(1)) await posterOne.pending;
       if (pathname === media(2)) await posterTwo.pending;
       if (pathname === thumbnail && failThumbnail) return route.fulfill({ status: 404 });
+      if (pathname === square && failSquare) return route.fulfill({ status: 404 });
       if (posterPaths.includes(pathname)) {
         if (failPosters) return route.fulfill({ status: 404 });
         return route.fulfill({ contentType: 'image/svg+xml', headers: { 'Cache-Control': 'no-store' }, body: tallImage });
       }
+      if (longPaths.includes(pathname)) return route.fulfill({ contentType: 'image/svg+xml', body: tallImage });
       return route.fulfill({ contentType: 'image/png', headers: { 'Cache-Control': 'no-store' }, body: image });
     }
     if (pathname.startsWith('/assets/')) return route.fulfill({ path: fileURLToPath(new URL(pathname.slice(1), bundle)) });
@@ -110,32 +121,72 @@ try {
 
   imageRequests.length = 0;
   await page.goto(`${site}/catalog`, { waitUntil: 'domcontentloaded' });
-  const card = page.locator('.product-thumb').first();
+  const card = page.locator('img.product-thumb').first();
   await card.evaluate(node => node.decode());
   assert.equal(await card.getAttribute('src'), thumbnail);
-  assert.deepEqual(imageRequests, [thumbnail], '目录有缩略图时不下载封面原图');
+  assert.equal(await card.evaluate(node => getComputedStyle(node).objectFit), 'contain');
+  assert.deepEqual(imageRequests, [thumbnail], '目录只请求由独立方图生成的缩略图');
 
   imageRequests.length = 0;
   failThumbnail = true;
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(expected => document.querySelector('.product-thumb')?.getAttribute('src') === expected, cover);
+  await page.waitForFunction(expected => document.querySelector('.product-thumb')?.getAttribute('src') === expected, square);
   await card.evaluate(node => node.decode());
-  assert.deepEqual(imageRequests, [thumbnail, cover], '目录缩略图失败时回退原图一次');
+  assert.deepEqual(imageRequests, [thumbnail, square], '缩略图失败只回退独立方图原图');
 
   imageRequests.length = 0;
-  delete product.body.cover_thumbnail_url;
+  failSquare = true;
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.locator('.product-thumb.no-image').waitFor();
+  assert.deepEqual(imageRequests, [thumbnail, square], '方图原图失败后展示占位，不尝试宽封面');
+  failSquare = false;
+
+  imageRequests.length = 0;
+  delete listing.body.catalog_image_url;
+  listing.body.cover_asset_url = cover;
+  listing.body.cover_thumbnail_url = `${cover}/thumbnail`;
+  listing.body.thumbnail_asset_url = cover;
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.locator('.product-thumb.no-image').waitFor();
+  assert.deepEqual(imageRequests, [], '旧 API 的封面别名和宽图派生不用于目录');
+
+  imageRequests.length = 0;
+  listing.body.thumbnail_asset_url = square;
   await page.reload({ waitUntil: 'domcontentloaded' });
   await card.evaluate(node => node.decode());
-  assert.deepEqual(imageRequests, [cover], '旧版 API 可继续展示封面原图');
+  assert.deepEqual(imageRequests, [square], '旧版 API 真实的独立缩略图可继续展示');
 
   imageRequests.length = 0;
   await page.goto(`${site}/products?id=1`, { waitUntil: 'domcontentloaded' });
   await page.locator('.detail-photo').evaluate(node => node.decode());
   assert.deepEqual(imageRequests, [cover], '远离视口的详情长图不在首屏下载');
-  await page.locator('.detail-long-slot').scrollIntoViewIfNeeded();
+  const slots = page.locator('.detail-long-slot');
+  assert.equal(await slots.count(), 3);
+  for (const [index, expected] of longPaths.entries()) {
+    await slots.nth(index).evaluate(node => window.scrollBy(0, node.getBoundingClientRect().top - innerHeight + 100));
+    const shown = slots.nth(index).locator('.detail-long');
+    await shown.evaluate(node => node.decode());
+    assert.equal(await shown.getAttribute('src'), expected);
+    assert.deepEqual(imageRequests, [cover, ...longPaths.slice(0, index + 1)], '详情图片按各自视口位置请求，保留顺序和原图');
+  }
+
+  imageRequests.length = 0;
+  delete product.body.detail_asset_urls;
+  product.body.detail_asset_url = longPaths[0];
+  await page.goto(`${site}/products?id=1`, { waitUntil: 'domcontentloaded' });
+  await slots.first().scrollIntoViewIfNeeded();
   await page.locator('.detail-long').evaluate(node => node.decode());
-  assert.deepEqual(imageRequests, [cover, long], '长图接近视口后请求原图');
-  console.log('H5 homepage image order, catalog fallback, and detail lazy loading passed.');
+  assert.deepEqual(imageRequests, [cover, longPaths[0]], '旧单图详情仍加载原图');
+
+  await page.goto(`${site}/preview?id=1&revision=2&mode=card`, { waitUntil: 'domcontentloaded' });
+  await card.evaluate(node => node.decode());
+  assert.equal(await card.getAttribute('src'), privateMedia(12), '草稿卡片展示授权的独立方图');
+  await page.goto(`${site}/preview?id=1&revision=2`, { waitUntil: 'domcontentloaded' });
+  await page.locator('.detail-long').last().waitFor();
+  assert.equal(await page.locator('.detail-photo').getAttribute('src'), privateMedia(8));
+  assert.deepEqual(await page.locator('.detail-long').evaluateAll(nodes => nodes.map(node => node.getAttribute('src'))),
+    [9, 10, 11].map(privateMedia), '草稿详情保留授权原图、顺序和立即挂载');
+  console.log('H5 homepage, independent catalog images, ordered lazy detail, and private previews passed.');
 } finally {
   posterOne.release();
   posterTwo.release();

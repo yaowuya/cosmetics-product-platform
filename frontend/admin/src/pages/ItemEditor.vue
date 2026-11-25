@@ -9,7 +9,7 @@ import { request } from '../session.ts';
 import { useRoute, useRouter } from 'vue-router';
 import History from '../panels/History.vue';
 import Release from '../panels/Release.vue';
-import { basicFields, caseBasicFields, caseDetails, caseExtraFields, caseMedia, detailFields, productMedia } from './item-fields.ts';
+import { basicFields, caseBasicFields, caseDetails, caseExtraFields, caseMedia, detailFields, productDetailAssets, productDetailPictureLimit, productMedia } from './item-fields.ts';
 
 const props=defineProps<{id:string;kind?:'product'|'case';history?:boolean;embedded?:boolean}>();
 const emit=defineEmits<{saved:[item:Item];cancel:[]}>();
@@ -33,6 +33,7 @@ const showBasic=computed(()=>!props.embedded||step.value===0);
 const showDetails=computed(()=>!props.embedded||step.value===1);
 const showFinal=computed(()=>!props.embedded||lastStep.value);
 const media=computed<{key:string;label:string;hint?:string}[]>(()=>yes.value?productMedia:caseMedia);
+const detailImages = computed(() => productDetailAssets(body.value));
 const placeProps={multiple:true,checkStrictly:true,emitPath:false};
 const display=computed(()=>text(body.value.name??body.value.product_name, newItem.value?(yes.value?'新增产品':'新增案例'):'未命名草稿'));
 const subtitle=computed(()=>{
@@ -49,6 +50,23 @@ const activePreview=computed(()=>{
 const itemPath=computed(()=>`/api/admin/items/${props.id}`);
 function assign(key:string,event:Event){body.value[key]=(event.currentTarget as HTMLInputElement|HTMLTextAreaElement).value;}
 function clear(key:string){delete body.value[key];}
+
+/** Preserve a legacy long image until the editor actually changes the gallery. */
+function setDetailImages(images: string[]) {
+  delete body.value.detail_asset_id;
+  body.value.detail_asset_ids = images;
+}
+function addDetailImage(event: Event) {
+  if (locked.value || detailImages.value.length >= productDetailPictureLimit) return;
+  void choose(event, id => setDetailImages([...detailImages.value, id]));
+}
+function moveDetailImage(index: number, step: -1 | 1) {
+  const next = [...detailImages.value];
+  const destination = index + step;
+  if (!next[destination]) return;
+  [next[index], next[destination]] = [next[destination], next[index]];
+  setDetailImages(next);
+}
 const placeOptions=computed(()=>{
   function build(parent:string|null):{value:string;label:string;children?:{value:string;label:string}[]}[]{
     return nodes.value.filter(node=>(node.parent_id||null)===parent&&node.enabled!==false).sort((a,b)=>a.sort_order-b.sort_order).map(node=>{
@@ -142,13 +160,31 @@ onMounted(async()=>{await refresh();await options();});
             <div v-for="{key,label:caption,hint} in media" :key="key" class="media-field">
               <label class="asset-label" :for="`editor-file-${key}`">{{ caption }}</label>
               <div class="media-row">
-                <img v-if="draftImage(item,body[key],pending)" :src="draftImage(item,body[key],pending)" :alt="caption">
+                <img v-if="draftImage(item,body[key],pending)" :class="{'catalog-image-preview':key==='thumbnail_asset_id'}" :src="draftImage(item,body[key],pending)" :alt="caption">
                 <span v-else class="muted">未上传</span>
                 <input :id="`editor-file-${key}`" type="file" accept="image/png,image/jpeg,image/webp" :disabled="locked" @change="choose($event,id=>body[key]=id)">
                 <button v-if="body[key]&&!readonly" type="button" class="btn" :disabled="busy" :aria-label="`移除${caption}`" @click="clear(key)">移除</button>
               </div>
-              <small v-if="embedded&&hint">{{ hint }}</small>
+              <small v-if="hint">{{ hint }}</small>
             </div>
+            <section v-if="yes" class="detail-assets" aria-labelledby="editor-detail-images">
+              <div>
+                <h3 id="editor-detail-images">详情竖图</h3>
+                <small>最多 {{ productDetailPictureLimit }} 张，按下方顺序展示在详情文字之后。</small>
+              </div>
+              <div v-for="(id,index) in detailImages" :key="id" class="media-row detail-asset-row">
+                <img v-if="draftImage(item,id,pending)" :src="draftImage(item,id,pending)" :alt="`详情竖图 ${index+1}`">
+                <span class="detail-asset-number">第 {{ index+1 }} 张</span>
+                <div v-if="!readonly" class="toolbar">
+                  <button type="button" class="btn" :disabled="busy||index===0" :aria-label="`上移详情竖图 ${index+1}`" @click="moveDetailImage(index,-1)">上移</button>
+                  <button type="button" class="btn" :disabled="busy||index===detailImages.length-1" :aria-label="`下移详情竖图 ${index+1}`" @click="moveDetailImage(index,1)">下移</button>
+                  <button type="button" class="btn" :disabled="busy" :aria-label="`移除详情竖图 ${index+1}`" @click="setDetailImages(detailImages.filter((_,i)=>i!==index))">移除</button>
+                </div>
+              </div>
+              <label v-if="!readonly&&detailImages.length<productDetailPictureLimit" class="field">添加详情竖图
+                <input type="file" accept="image/png,image/jpeg,image/webp" :disabled="locked" @change="addDetailImage">
+              </label>
+            </section>
             <label v-if="!yes" class="field">展示顺序<input type="number" min="0" step="1" :disabled="locked" :value="Number(body.sort_order??0)" @input="body.sort_order=Number(($event.target as HTMLInputElement).value)"></label>
           </div>
           <section v-if="yes" class="editor-place">
@@ -214,6 +250,12 @@ onMounted(async()=>{await refresh();await options();});
 .wizard-content .media-row input{font-size:12px;padding:4px;min-height:34px}
 .wizard-content .media-row img{width:46px;height:38px}
 .wizard-content .media-row .btn{padding:4px 6px;min-height:34px}
+.media-row .catalog-image-preview{width:65px;height:65px;object-fit:contain;background:#fff}
+.wizard-content .media-row .catalog-image-preview{width:38px;height:38px}
+.detail-assets{grid-column:1/-1;display:grid;gap:8px;min-width:0}
+.detail-asset-row{flex-wrap:wrap}
+.detail-asset-row img{object-fit:contain}
+.detail-asset-number{font-size:13px;min-width:42px}
 .wizard-content .editor-place{gap:6px}
 .wizard-content .editor-place h2{font-size:15px}
 .wizard-content :deep(.place-cascader .el-input__inner){border:0;background:transparent;padding:0}

@@ -11,6 +11,7 @@ from app.core.ids import parse_id
 from app.models import Asset, Draft
 from app.repositories import releases
 from app.repositories.items import get_draft
+from app.schemas.content import catalog_image_id
 from app.schemas.releases import PublishDraft
 from app.services.auth import publisher_now
 from app.services.checks import review_snapshot
@@ -56,17 +57,17 @@ def _commit_one(db: Session, actor_id: int, item_id: int, data: PublishDraft) ->
     receipt = {"id": str(item_id), "revision": str(item.revision), "release_id": str(release.id),
                "seq": release.seq, "request_key": data.request_key}
     releases.add_publish_audit(db, actor_id, item, data.expected_revision, receipt)
-    return receipt, snapshot.get("cover_asset_id") if item.kind == "product" else None
+    return receipt, catalog_image_id(snapshot) if item.kind == "product" else None
 
 
-def _prepare_cover(db: Session, cover_id: str) -> None:
+def _prepare_catalog_image(db: Session, image_id: str) -> None:
     # Run after commit so optional image conversion never holds publication locks or invalidates a receipt.
     try:
-        asset = db.get(Asset, int(cover_id))
+        asset = db.get(Asset, int(image_id))
         if asset is not None:
             ensure_cover_thumbnail(asset)
     except (AppError, OSError, ValueError, Image.DecompressionBombError, SQLAlchemyError):
-        _logger.warning("Could not prepare product cover thumbnail for asset %s", cover_id)
+        _logger.warning("Could not prepare catalog thumbnail for asset %s", image_id)
 
 
 def publish_one(db: Session, actor_id: int, item_id: int, data: PublishDraft) -> dict:
@@ -74,7 +75,7 @@ def publish_one(db: Session, actor_id: int, item_id: int, data: PublishDraft) ->
     with releases.read_committed_session(db) as write:
         try:
             with write.begin():
-                receipt, cover_id = _commit_one(write, actor_id, item_id, data)
+                receipt, image_id = _commit_one(write, actor_id, item_id, data)
         except IntegrityError as exc:
             if exc.orig.args[0] != 1062:  # Only MySQL duplicate keys can represent another winner.
                 raise
@@ -85,6 +86,6 @@ def publish_one(db: Session, actor_id: int, item_id: int, data: PublishDraft) ->
                 if replay is not None:
                     return replay
             raise AppError(409, "draft_conflict", "此修订已被另一发布处理") from None
-        if cover_id is not None:
-            _prepare_cover(write, cover_id)
+        if image_id is not None:
+            _prepare_catalog_image(write, image_id)
         return receipt

@@ -33,8 +33,16 @@ test('public media, cards and controls never fill in missing business contacts',
   const item = productView({id:'9007199254740999',body:{name:'面霜',formula_no:'290',detail_asset_url:path}},media);
   assert.equal(item.id,'9007199254740999');
   assert.equal(item.formula,'290');
-  assert.equal(item.long,media(path));
+  assert.deepEqual(item.gallery,[media(path)]);
   assert.deepEqual(caseHeader({filters:[{key:'skin',label:'护肤'},{key:' skin ',label:'重复'},{key:'missing'}]},media).tags,[{key:'skin',label:'护肤'}]);
+});
+
+test('product gallery keeps up to three valid originals in their published order', () => {
+  const images = ['2','1','3','4','9'].map(id => `/api/public/media/${id}`);
+  const item = {id:'1',body:{cover_asset_url:images[4],detail_asset_url:images[4],
+    detail_asset_urls:[images[0],'//else.cn/image',images[1],images[0],images[2],images[3]]}};
+  assert.deepEqual(productView(item,media).gallery,images.slice(0,3).map(media));
+  assert.equal(productView(item,media).image,media(images[4]));
 });
 
 test('case categories show the default 精选案例 only once and keep published filters in order', () => {

@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
 import { message, rows, text, withQuery, type Body, type CatalogNode, type Item, type Page, type Version } from '../../../shared/contracts.ts';
 import { draftImage, nodePath } from '../editor.ts';
 import { request } from '../session.ts';
-import { basicFields, caseBasicFields, caseDetails, caseExtraFields, caseMedia, detailFields, productMedia } from './item-fields.ts';
+import { basicFields, caseBasicFields, caseDetails, caseExtraFields, caseMedia, detailFields, productDetailAssets, productMedia } from './item-fields.ts';
 
 /** Read-only list dialog for one item ID: show its saved draft, or its actual release snapshot if there is no draft. */
 const props=defineProps<{id:string;nodes:readonly CatalogNode[]}>();
@@ -26,7 +26,12 @@ const sourceLabel=computed(()=>{
   return state+source;
 });
 const revisionLabel=computed(()=>version.value?`版本 ${version.value.seq}`:`修订 ${item.value?.revision??''}`);
-const media=computed(()=>(product.value?productMedia:caseMedia).map(({key,label})=>({key,label,url:imageUrl(body.value?.[key])})));
+const media = computed(() => {
+  const slots = (product.value ? productMedia : caseMedia).map(({key,label}) => ({key,label,url:imageUrl(body.value?.[key])}));
+  if (!product.value) return slots;
+  const detail = productDetailAssets(body.value);
+  return [...slots, ...detail.map((id, index) => ({key:`detail-${index}`,label:`详情竖图 ${index+1}`,url:imageUrl(id)}))];
+});
 
 function imageUrl(value:unknown){
   const current=item.value;

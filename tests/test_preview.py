@@ -18,7 +18,7 @@ def test_private_upload_preview(mysql_engine, monkeypatch, tmp_path):
         actors = [db.execute(text("INSERT INTO account (login,password_hash,can_edit,can_manage,must_change_password) VALUES (:name,:hash,:edit,:manage,0)"),
                              {"name": name, "hash": password_hash, "edit": edit, "manage": not edit}).lastrowid
                   for name, edit in (("image-uploader", True), ("image-editor", True), ("image-manager", False))]
-    asset = item = None
+    asset = second_asset = item = None
     image = BytesIO()
     Image.new("RGB", (4, 4), "white").save(image, format="PNG")
     png = image.getvalue()
@@ -67,8 +67,19 @@ def test_private_upload_preview(mysql_engine, monkeypatch, tmp_path):
             assert two.get(bound).content == png
             assert two.get(location, params={"item_id": item, "revision": "0"}).status_code == 404
             assert manager.get(route, params=params).status_code == 403
+            made = one.post(endpoint, headers=upload, files={"file": ("second.png", png, "image/png")})
+            assert made.status_code == 201
+            second_asset = made.json()["id"]
+            gallery = [second_asset, asset]
+            updated = one.put(f"/api/admin/items/{item}/draft", headers=upload,
+                              json={"expected_revision": product["revision"], "body": {"detail_asset_ids": gallery}}).json()
+            gallery_preview = two.get(route, params={"revision": updated["revision"]}).json()
+            assert gallery_preview["body"]["detail_asset_ids"] == gallery
+            assert one.get(made.json()["url"]).status_code == 404
+            for ident in gallery:
+                assert two.get(gallery_preview["media_urls"][ident]).content == png
             assert one.put(f"/api/admin/items/{item}/draft", headers=upload,
-                           json={"expected_revision": product["revision"], "body": {"name": "移除图片"}}).status_code == 200
+                           json={"expected_revision": updated["revision"], "body": {"name": "移除图片"}}).status_code == 200
             assert two.get(route, params=params).status_code == 409
             assert two.get(bound).status_code == 404
             with mysql_engine.begin() as db:
@@ -85,8 +96,9 @@ def test_private_upload_preview(mysql_engine, monkeypatch, tmp_path):
                 db.execute(text("DELETE FROM release_asset WHERE release_id IN (SELECT id FROM `release` WHERE item_id=:id)"), {"id": item})
                 db.execute(text("DELETE FROM `release` WHERE item_id=:id"), {"id": item})
                 db.execute(text("DELETE FROM content_item WHERE id=:id"), {"id": item})
-            if asset is not None:
-                db.execute(text("DELETE FROM asset WHERE id=:id"), {"id": asset})
+            for ident in (asset, second_asset):
+                if ident is not None:
+                    db.execute(text("DELETE FROM asset WHERE id=:id"), {"id": ident})
             for actor in actors:
                 db.execute(text("DELETE FROM `session` WHERE account_id=:id"), {"id": actor})
                 db.execute(text("DELETE FROM account WHERE id=:id"), {"id": actor})

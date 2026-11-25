@@ -269,7 +269,8 @@ async function releaseCheckAfterEdit(h) {
   const place = h.places?.a ?? directory.live?.nodes?.find(node => node.level === 'category' && node.enabled)?.id;
   assert.ok(place, '隔离环境需要已发布的展示分类');
   const name = `向导发布检查-${randomUUID().slice(0, 8)}`;
-  const original = await h.createProduct(page, { name, code: name, places: [place] });
+  const original = await h.createProduct(page, { name, code: name, places: [place], detailFiles: [h.files.long, h.files.poster1, h.files.poster2] });
+  const [firstDetail, secondDetail, thirdDetail] = original.draft.detail_asset_ids;
   const search = field(page, '搜索产品');
   await search.fill(name);
   await search.press('Enter');
@@ -286,6 +287,8 @@ async function releaseCheckAfterEdit(h) {
   const dialog = await openWizard(page, scenario, '编辑', () => button(row, '编辑').click());
   await field(dialog, scenario.nameField).fill(savedName);
   await lastStep(dialog, scenario);
+  assert.equal(await field(dialog, '添加详情竖图').count(), 0, '三张竖图时不能继续上传');
+  await button(dialog, '上移详情竖图 3').click();
   const listRequests = url => url.origin === h.base && url.pathname === endpoint;
   const failList = route => route.request().method() === 'GET'
     ? route.fulfill({ status: 503, json: { code: 'temporary_failure', message: '产品列表暂时无法刷新' } })
@@ -295,6 +298,7 @@ async function releaseCheckAfterEdit(h) {
     const saved = await (await h.observe(page, 'PUT', `/api/admin/items/${original.id}/draft`,
       () => footerAction(dialog, '保存').click(), 200)).json();
     assert.notEqual(saved.revision, original.revision);
+    assert.deepEqual(saved.draft.detail_asset_ids, [firstDetail, thirdDetail, secondDetail]);
     await dialog.waitFor({ state: 'hidden' });
     await page.getByRole('alert').filter({ hasText: '产品列表暂时无法刷新' }).waitFor();
     assert.equal(await confirm.isDisabled(), true, '刷新失败也不能继续确认旧修订');

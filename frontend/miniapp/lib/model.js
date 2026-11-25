@@ -55,11 +55,30 @@ function catalogCover(body, mediaUrl) {
     top: text(body.slogan_top), bottom: text(body.slogan_bottom) };
 }
 
+/** Render a catalog card from its own square image or a genuinely separate legacy image. */
+function productCard(item, { mediaUrl, thumbnailUrl }) {
+  const body = object(item.body);
+  const cover = mediaUrl(body.cover_asset_url);
+  const square = mediaUrl(body.catalog_image_url);
+  const legacy = mediaUrl(body.thumbnail_asset_url);
+  // The current card payload aliases cover_asset_url to the square; only the legacy fallback can be the wide cover.
+  const image = square || (legacy !== cover ? legacy : '');
+  // Older servers used cover_thumbnail_url for the wide cover. Trust only this square's variant.
+  const thumbnail = square ? thumbnailUrl(body.cover_thumbnail_url) : '';
+  return {
+    id: item.id, name: text(body.name,'未命名产品'), short: text(body.short_benefit), image,
+    thumbnail: thumbnail === `${square}/thumbnail` ? thumbnail : '',
+  };
+}
+
+/** Keep the detail cover and up to three original gallery images in published order. */
 function productView(item, mediaUrl) {
   const body = object(item.body);
+  const gallery = [...new Set(rows(body.detail_asset_urls).map(mediaUrl).filter(Boolean))].slice(0,3);
+  const legacy = gallery.length ? '' : mediaUrl(body.detail_asset_url);
   return {
     id: item.id, name: text(body.name,'未命名产品'), short: text(body.short_benefit),
-    image: mediaUrl(body.cover_asset_url), long: mediaUrl(body.detail_asset_url),
+    image: mediaUrl(body.cover_asset_url), gallery: legacy ? [legacy] : gallery,
     benefit: text(body.benefit,'—'), ingredients: text(body.ingredients,'—'), highlights: text(body.highlights,'—'),
     formula: text(body.formula_no), production: text(body.production_status,'待确认'),
   };
@@ -93,4 +112,4 @@ function contactView(body, mediaUrl) {
   return { qr: mediaUrl(contact.qr_asset_url), wechat: text(contact.wechat_id), phone: text(contact.phone), email: text(contact.email) };
 }
 
-module.exports = { inputText, projectCatalog, selectBoard, homeView, catalogCover, productView, caseHeader, caseView, contactView };
+module.exports = { inputText, projectCatalog, selectBoard, homeView, catalogCover, productCard, productView, caseHeader, caseView, contactView };

@@ -204,14 +204,18 @@ export async function runPublic(h) {
     assert.ok(values.every(v => v && !/^(?:—|待补充|复制)$/.test(v)), '五个字段必须有内容，不能用空值或复制按钮占位');
     const cover = await imageMetrics(page.locator('.detail-photo'));
     assert.ok(Math.abs(cover.height - cover.width * 9 / 16) <= 2, '详情封面为 16:9');
-    await page.locator('.detail-long-slot').scrollIntoViewIfNeeded();
-    proportional(await imageMetrics(page.locator('.detail-long')), '详情长图');
-    assert.equal(await page.locator('.detail-view img').count(), 2, '详情仅一张封面和一张长图');
+    const longSlots = await page.locator('.detail-long-slot').all();
+    assert.ok(longSlots.length >= 1 && longSlots.length <= 3, '详情保留一至三张竖图');
+    for (const slot of longSlots) {
+      await slot.scrollIntoViewIfNeeded();
+      proportional(await imageMetrics(slot.locator('.detail-long')), '详情长图');
+    }
+    assert.equal(await page.locator('.detail-view img').count(), 1 + longSlots.length, '详情只渲染封面和已发布的竖图');
     assert.doesNotMatch(await page.locator('.detail-view').innerText(), /意向清单|加入购物车|立即购买/);
     await backToProducts(page);
     await navigate(page, '品牌案例'); await ready(page, '.case-results');
     await navigate(page, '联系我们'); await page.getByRole('heading', { name: '服务与合作' }).waitFor();
-    return `四个入口按序访问，四张海报、五板块共 ${sum} 类；产品名称加五项资料和单张长图已核对。`;
+    return `四个入口按序访问，四张海报、五板块共 ${sum} 类；产品名称、五项资料及 ${longSlots.length} 张详情长图已核对。`;
   });
 
   await h.runCase('SAMPLE-CATALOG-MIX', async () => narrow(h, async page => {

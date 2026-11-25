@@ -6,13 +6,12 @@ from sqlalchemy.orm import Session
 from app.core.errors import AppError
 from app.core.ids import parse_id
 from app.repositories import public_catalog as releases
-from app.schemas.content import CONFIG_FIELDS
+from app.schemas.content import CONFIG_FIELDS, catalog_image_id, effective_product_body
 from app.services.directory import active_directory
 
-# The legacy field also keeps a real thumbnail publicly readable while its release is live.
-PRODUCT_CARD = ("name", "short_benefit", "cover_asset_id", "thumbnail_asset_id")
+PRODUCT_CARD = ("name", "short_benefit", "thumbnail_asset_id")
 PRODUCT_DETAIL = ("name", "benefit", "ingredients", "highlights", "formula_no", "production_status",
-                  "cover_asset_id", "detail_asset_id")
+                  "cover_asset_id", "detail_asset_id", "detail_asset_ids")
 CASE_FIELDS = ("brand_name", "product_name", "highlight", "series", "description", "case_no",
                "category_key", "image_asset_id")
 
@@ -37,11 +36,14 @@ def _project(body: dict, fields: tuple[str, ...] | dict) -> dict:
 
 
 def _product_card(body: dict) -> dict:
-    """Project a card-sized cover and keep the original URLs readable by older clients."""
+    """Expose the square and point every card alias to the same independent image."""
     result = _project(body, PRODUCT_CARD)
-    if cover_url := result.get("cover_asset_url"):
-        result.setdefault("thumbnail_asset_url", cover_url)
-        result["cover_thumbnail_url"] = f"{cover_url}/thumbnail"
+    if catalog_image_id(body) is None:
+        result.pop("thumbnail_asset_url", None)
+        return result
+    square_url = result["thumbnail_asset_url"]
+    result.update(catalog_image_url=square_url, cover_asset_url=square_url,
+                  cover_thumbnail_url=f"{square_url}/thumbnail")
     return result
 
 
@@ -148,11 +150,16 @@ def list_products(db: Session, board_id: str | None, node_id: str | None, q: str
 
 
 def product_detail(db: Session, item_id: int) -> dict:
-    """Return public detail only if the live product has at least one active placement."""
+    """Expose the wide cover and ordered long images for a product with an active placement."""
     entry = releases.products_in_nodes(db, set(active_directory(db)), item_id).get(item_id)
     if entry is None:
         raise AppError(404, "not_found", "内容不存在")
-    return {"id": str(item_id), "body": _project(entry[0], PRODUCT_DETAIL)}
+    result = _project(effective_product_body(entry[0]), PRODUCT_DETAIL)
+    legacy = result.get("detail_asset_url")
+    gallery = result.setdefault("detail_asset_urls", [legacy] if legacy else [])
+    if gallery:
+        result["detail_asset_url"] = gallery[0]
+    return {"id": str(item_id), "body": result}
 
 
 def list_cases(db: Session, tag: str | None, q: str | None, page: int, page_size: int) -> dict:

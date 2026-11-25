@@ -9,13 +9,14 @@ from app.models import Asset, ContentItem
 from app.repositories import releases
 from app.repositories.items import get_item
 from app.schemas.common import Choice
+from app.schemas.content import effective_product_body
 from app.services.directory import active_directory
 from app.services.items import item_view
 from app.services.media import resolve_asset_file
 
 PRODUCT_REQUIRED = (
     "name", "short_benefit", "benefit", "ingredients", "highlights", "formula_no", "production_status",
-    "cover_asset_id", "detail_asset_id",
+    "cover_asset_id",
 )
 CASE_REQUIRED = ("brand_name", "product_name", "highlight", "image_asset_id")
 
@@ -87,6 +88,10 @@ def _body_issues(db: Session, item: ContentItem, draft: dict | None, place_ids: 
         return [{"field": "draft", "reason": "没有可发布的草稿"}]
     if item.kind == "product":
         issues = _required(draft, PRODUCT_REQUIRED)
+        # A legacy editor may still send the singular field. An explicit gallery owns the answer.
+        gallery_field = "detail_asset_ids" if "detail_asset_ids" in draft else "detail_asset_id"
+        if not draft.get(gallery_field):
+            issues.append({"field": gallery_field, "reason": "至少要有一张详情长图"})
         if not place_ids or not set(place_ids) <= active_directory(db).keys():
             issues.append({"field": "place_ids", "reason": "产品须关联当前有效展示位置"})
         return issues
@@ -118,8 +123,7 @@ def review_snapshot(db: Session, item: ContentItem) -> tuple[dict | None, dict]:
     view = item_view(db, item)
     snapshot = view["draft"]
     if item.kind == "product" and snapshot is not None:
-        # Legacy drafts and restores may still carry a square image; it neither blocks nor enters a new release.
-        snapshot = {key: value for key, value in snapshot.items() if key != "thumbnail_asset_id"}
+        snapshot = effective_product_body(snapshot)
     issues = [{"field": "id", "reason": "条目已归档"}] if item.archived_at is not None else []
     issues.extend(_body_issues(db, item, snapshot, view["place_ids"]))
     issues.extend(_asset_issues(db, snapshot))

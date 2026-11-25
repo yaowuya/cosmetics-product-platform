@@ -13,7 +13,7 @@ _EDGE = 320
 
 def _thumbnail_path(source: Path) -> Path:
     # The versioned recipe and immutable storage key also make restored caches safe to reuse.
-    return source.parent / ".thumbnails" / f"{source.name}.v1.webp"
+    return source.parent / ".thumbnails" / f"{source.name}.v2.webp"
 
 
 def existing_cover_thumbnail(source: Path) -> Path | None:
@@ -43,9 +43,13 @@ def ensure_cover_thumbnail(asset: Asset) -> bool:
         with Image.open(source) as image, NamedTemporaryFile(dir=destination.parent, delete=False) as output:
             temporary = Path(output.name)
             ImageOps.exif_transpose(image, in_place=True)
-            # Match the catalog's centered cover crop, without enlarging a small source.
-            edge = min(_EDGE, *image.size)
-            ImageOps.fit(image, (edge, edge), Image.Resampling.LANCZOS).save(output, format="WEBP", quality=80)
+            # Fit the whole source, retaining edges and compositing transparency onto white.
+            scale = _EDGE / max(image.size)
+            size = tuple(max(1, round(side * scale)) for side in image.size)
+            fitted = image.resize(size, Image.Resampling.LANCZOS).convert("RGBA")
+            square = Image.new("RGB", (_EDGE, _EDGE), "white")
+            square.paste(fitted, ((_EDGE - fitted.width) // 2, (_EDGE - fitted.height) // 2), fitted)
+            square.save(output, format="WEBP", quality=80)
         # Publish only complete files. An overlapping rerun can only replace an equivalent variant.
         temporary.replace(destination)
     finally:
