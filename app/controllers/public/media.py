@@ -1,6 +1,7 @@
 """Deliver a registered image only while a current public projection exposes it."""
 from pathlib import Path
 from stat import S_ISREG
+from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import FileResponse
@@ -31,12 +32,14 @@ def _matches_etag(value: str, etag: str) -> bool:
     return value.strip() == "*" or any(tag.strip().removeprefix("W/") == etag for tag in value.split(","))
 
 
-def _public_image(id: int, request: Request, db: Db, *, thumbnail: bool = False) -> Response:
+def _public_image(id: int, request: Request, db: Db, *, thumbnail: Literal["preferred", "required"] | None = None) -> Response:
     """Revalidate bytes only after checking the current public reference and selected file."""
     try:
         asset = public_asset(db, id)
         source = resolve_asset_file(asset)
         variant = existing_cover_thumbnail(source) if thumbnail else None
+        if thumbnail == "required" and variant is None:
+            raise media_not_found()
         response = _cacheable_image(variant, "image/webp") if variant else _cacheable_image(source, asset.mime)
     except AppError as error:
         if error.status_code != 404:
@@ -63,4 +66,11 @@ def public_media(id: ItemId, request: Request, db: Db) -> Response:
 def public_thumbnail(id: ItemId, request: Request, db: Db) -> Response:
     """Check current visibility of the source asset and serve its card variant when available."""
     only_query(request)
-    return _public_image(id, request, db, thumbnail=True)
+    return _public_image(id, request, db, thumbnail="preferred")
+
+
+@router.get("/media/{id}/catalog-thumbnail")
+def public_catalog_thumbnail(id: ItemId, request: Request, db: Db) -> Response:
+    """Serve a generated card image without putting a full detail cover in the list."""
+    only_query(request)
+    return _public_image(id, request, db, thumbnail="required")

@@ -133,6 +133,11 @@ def catalog_image_id(body: dict) -> str | None:
     return square if square and square != body.get("cover_asset_id") else None
 
 
+def catalog_thumbnail_source(body: dict) -> str | None:
+    """Choose input for a square derivative, preferring the independent catalog image."""
+    return catalog_image_id(body) or body.get("cover_asset_id")
+
+
 def shape_body(kind: str, config_slot: str | None, body: dict) -> dict:
     """Clean wire fields using the locked item's contract; missing draft fields are allowed."""
     if kind == "config":

@@ -6,7 +6,7 @@ const { resolve } = require('node:path');
 
 const host = '127.0.0.1';
 const port = 5145;
-const publicPath = /^\/api\/public\/(?:pages\/(?:home|catalog|cases|contact)|catalog|(?:products|cases)(?:\/[1-9][0-9]{0,18})?|media\/[1-9][0-9]{0,18}(?:\/thumbnail)?)$/;
+const publicPath = /^\/api\/public\/(?:pages\/(?:home|catalog|cases|contact)|catalog|(?:products|cases)(?:\/[1-9][0-9]{0,18})?|media\/[1-9][0-9]{0,18}(?:\/(?:thumbnail|catalog-thumbnail))?)$/;
 const responseHeaders = ['content-type', 'content-length', 'cache-control', 'x-content-type-options'];
 
 /** Serve published GETs on loopback, using HTTPS when supplied the local TLS certificate and key. */

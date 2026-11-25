@@ -115,7 +115,9 @@ def test_two_connections(mysql_engine, monkeypatch, tmp_path):
             assert live_body["thumbnail_asset_id"] == catalog_image and live_body["cover_asset_id"] == asset
             assert live_body["detail_asset_ids"] == [asset] and "detail_asset_id" not in live_body
             assert visitor.get(f"/api/public/media/{catalog_image}/thumbnail").headers["content-type"] == "image/webp"
-            assert visitor.get(f"/api/public/media/{asset}/thumbnail").headers["content-type"] == "image/png"
+            # The earlier cover-only release prepared its own square derivative.
+            assert visitor.get(f"/api/public/media/{asset}/catalog-thumbnail").headers["content-type"] == "image/webp"
+            assert visitor.get(f"/api/public/media/{asset}").headers["content-type"] == "image/png"
             restored = editor.post(path + "/versions/1/restore", headers=edit,
                                    json={"expected_revision": delivered["revision"], "confirm_overwrite": False})
             assert restored.status_code == 200 and restored.json()["draft"]["name"] == "首次线上"

@@ -9,15 +9,15 @@ from app.core.db import engine
 from app.core.errors import AppError
 from app.models import Asset
 from app.repositories.public_catalog import products_in_nodes
-from app.schemas.content import catalog_image_id
+from app.schemas.content import catalog_thumbnail_source
 from app.services.directory import active_directory
 from app.services.thumbnails import ensure_cover_thumbnail
 
 
 def visible_covers(db: Session) -> list[Asset]:
-    """Find distinct independent card images used by currently visible products."""
+    """Find distinct thumbnail sources, including covers of products without a square image."""
     products = products_in_nodes(db, set(active_directory(db)))
-    ids = {int(ident) for body, _ in products.values() if (ident := catalog_image_id(body)) is not None}
+    ids = {int(ident) for body, _ in products.values() if (ident := catalog_thumbnail_source(body)) is not None}
     return list(db.scalars(select(Asset).where(Asset.id.in_(ids)).order_by(Asset.id))) if ids else []
 
 

@@ -55,8 +55,8 @@ function catalogCover(body, mediaUrl) {
     top: text(body.slogan_top), bottom: text(body.slogan_bottom) };
 }
 
-/** Render a catalog card from its own square image or a genuinely separate legacy image. */
-function productCard(item, { mediaUrl, thumbnailUrl }) {
+/** Keep an independent card image ahead of the generated-only thumbnail for older listings. */
+function productCard(item, { mediaUrl, thumbnailUrl, catalogThumbnailUrl }) {
   const body = object(item.body);
   const cover = mediaUrl(body.cover_asset_url);
   const square = mediaUrl(body.catalog_image_url);
@@ -64,10 +64,12 @@ function productCard(item, { mediaUrl, thumbnailUrl }) {
   // The current card payload aliases cover_asset_url to the square; only the legacy fallback can be the wide cover.
   const image = square || (legacy !== cover ? legacy : '');
   // Older servers used cover_thumbnail_url for the wide cover. Trust only this square's variant.
-  const thumbnail = square ? thumbnailUrl(body.cover_thumbnail_url) : '';
+  const variant = square ? thumbnailUrl(body.cover_thumbnail_url) : '';
+  const thumbnail = variant === `${square}/thumbnail` ? variant : '';
   return {
     id: item.id, name: text(body.name,'未命名产品'), short: text(body.short_benefit), image,
-    thumbnail: thumbnail === `${square}/thumbnail` ? thumbnail : '',
+    // Returning an empty original for this case lets the image error handler show the placeholder.
+    thumbnail: image ? thumbnail : catalogThumbnailUrl(body.catalog_thumbnail_url),
   };
 }
 

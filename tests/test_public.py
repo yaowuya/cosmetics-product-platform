@@ -96,7 +96,20 @@ def test_live_projection(mysql_engine, monkeypatch, tmp_path):
             with mysql_engine.begin() as db:
                 db.execute(text("UPDATE content_item SET live_id=:v WHERE id=:i"), {"v": replacement, "i": product})
             after = visitor.get("/api/public/products", params={"board_id": str(board)}).json()["items"][0]["body"]
-            assert set(after) == {"name", "short_benefit"}
+            fallback = f"{cover_url}/catalog-thumbnail"
+            assert after == {"name": "正式精华", "short_benefit": "保湿", "catalog_thumbnail_url": fallback}
+            assert visitor.get(fallback).status_code == 404
+            with Session(mysql_engine) as db:
+                covers = visible_covers(db)
+                assert [str(asset.id) for asset in covers] == [cover]
+                assert ensure_cover_thumbnail(covers[0]) is True
+                assert ensure_cover_thumbnail(covers[0]) is False
+            generated = visitor.get(fallback)
+            assert generated.status_code == 200 and generated.headers["content-type"] == "image/webp"
+            with Image.open(BytesIO(generated.content)) as image:
+                assert image.size == (320, 320)
+            validator = {"If-None-Match": generated.headers["etag"]}
+            assert visitor.get(fallback, headers=validator).status_code == 304
             for withdrawn in (thumbnail_url, variant_url, detail_url):
                 assert visitor.get(withdrawn).status_code == 404
             assert visitor.get(cover_url).content == images["green"][1]
@@ -109,6 +122,11 @@ def test_live_projection(mysql_engine, monkeypatch, tmp_path):
             assert "related_product_id" not in visitor.get(f"/api/public/cases/{case}").json()["body"]
             for page in ("home", "catalog", "cases", "contact"):
                 assert visitor.get(f"/api/public/pages/{page}").status_code == 200
+            with mysql_engine.begin() as db:
+                db.execute(text("UPDATE content_item SET live_id=NULL WHERE id=:i"), {"i": product})
+            withdrawn_fallback = visitor.get(fallback, headers=validator)
+            assert withdrawn_fallback.status_code == 404
+            assert withdrawn_fallback.headers["cache-control"] == "no-store"
     finally:
         with mysql_engine.begin() as db:
             for ident in (product, missing, case, directory):

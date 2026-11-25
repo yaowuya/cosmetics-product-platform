@@ -11,7 +11,7 @@ from app.core.ids import parse_id
 from app.models import Asset, Draft
 from app.repositories import releases
 from app.repositories.items import get_draft
-from app.schemas.content import catalog_image_id
+from app.schemas.content import catalog_thumbnail_source
 from app.schemas.releases import PublishDraft
 from app.services.auth import publisher_now
 from app.services.checks import review_snapshot
@@ -57,7 +57,7 @@ def _commit_one(db: Session, actor_id: int, item_id: int, data: PublishDraft) ->
     receipt = {"id": str(item_id), "revision": str(item.revision), "release_id": str(release.id),
                "seq": release.seq, "request_key": data.request_key}
     releases.add_publish_audit(db, actor_id, item, data.expected_revision, receipt)
-    return receipt, catalog_image_id(snapshot) if item.kind == "product" else None
+    return receipt, catalog_thumbnail_source(snapshot) if item.kind == "product" else None
 
 
 def _prepare_catalog_image(db: Session, image_id: str) -> None:

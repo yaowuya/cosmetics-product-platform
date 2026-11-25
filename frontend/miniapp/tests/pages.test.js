@@ -158,15 +158,17 @@ test('catalog falls back from a thumbnail only to its independent square origina
   const originalPath = '/api/public/media/62';
   const thumbnailPath = `${originalPath}/thumbnail`;
   const wideCover = '/api/public/media/63';
+  const generatedPath = `${wideCover}/catalog-thumbnail`;
   const origin = 'https://published.example.cn';
   const { page } = harness('catalog', url => {
     if (url.pathname.endsWith('/catalog')) return directory(url);
-    return { ...response(1,[id,'72','73','74','75']), items:[
-      {id,body:{name:'面霜',cover_asset_url:originalPath,thumbnail_asset_url:originalPath,catalog_image_url:originalPath,cover_thumbnail_url:thumbnailPath}},
+    return { ...response(1,[id,'72','73','74','75','76']), items:[
+      {id,body:{name:'面霜',cover_asset_url:originalPath,thumbnail_asset_url:originalPath,catalog_image_url:originalPath,cover_thumbnail_url:thumbnailPath,catalog_thumbnail_url:generatedPath}},
       {id:'72',body:{name:'面膜',cover_asset_url:wideCover,thumbnail_asset_url:wideCover,cover_thumbnail_url:`${wideCover}/thumbnail`}},
       {id:'73',body:{name:'乳液',cover_asset_url:wideCover,thumbnail_asset_url:originalPath,cover_thumbnail_url:`${wideCover}/thumbnail`}},
       {id:'74',body:{name:'精华',cover_asset_url:wideCover,catalog_image_url:originalPath,cover_thumbnail_url:`${wideCover}/thumbnail`}},
       {id:'75',body:{name:'洁面',cover_asset_url:wideCover,thumbnail_asset_url:wideCover,catalog_image_url:`https://untrusted.example.cn${wideCover}`,cover_thumbnail_url:`${wideCover}/thumbnail`}},
+      {id:'76',body:{name:'旧商品',cover_asset_url:wideCover,thumbnail_asset_url:wideCover,catalog_thumbnail_url:generatedPath}},
     ] };
   });
   await page.onLoad();
@@ -176,6 +178,7 @@ test('catalog falls back from a thumbnail only to its independent square origina
     {image:origin + originalPath,thumbnail:''},
     {image:origin + originalPath,thumbnail:''},
     {image:'',thumbnail:''},
+    {image:'',thumbnail:origin + generatedPath},
   ]);
 
   const firstVersion = page.data.imageVersion;
@@ -190,6 +193,9 @@ test('catalog falls back from a thumbnail only to its independent square origina
   assert.equal(page.data.failedThumbnails[id],undefined);
 
   const currentVersion = page.data.imageVersion;
+  page.onImageError(event({id:'76',src:origin + generatedPath,version:currentVersion}));
+  assert.equal(page.data.failedThumbnails['76'],origin + generatedPath);
+  assert.equal(page.data.items.find(item => item.id === '76').image,'');
   const thumbnailError = event({id,src:origin + thumbnailPath,version:currentVersion});
   page.onImageError(thumbnailError);
   assert.equal(page.data.failedThumbnails[id],origin + thumbnailPath);

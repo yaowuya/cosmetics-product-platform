@@ -98,3 +98,17 @@ test('cover thumbnails accept only canonical thumbnail paths from the configured
   }
   assert.equal(createPublicApi({ origin: '', request() {} }).thumbnailUrl(path), '');
 });
+
+test('generated-only catalog thumbnails accept their own canonical same-origin route', () => {
+  const { api } = client(() => assert.fail('thumbnail URL resolution is pure'));
+  const path = `/api/public/media/${largeId}/catalog-thumbnail`;
+  assert.equal(api.catalogThumbnailUrl(path), origin + path);
+  assert.equal(api.catalogThumbnailUrl(origin + path), origin + path);
+  assert.equal(api.thumbnailUrl(path), '');
+  assert.equal(api.mediaUrl(path), '');
+  for (const invalid of [`${origin}.outside.test${path}`, `https://other.example.com${path}`,
+    path.replace(largeId, '04'), path.replace(largeId, '9223372036854775808'), `${path}?v=1`,
+    `${path}\n`, `/api/admin/media/${largeId}/catalog-thumbnail`, `/api/public/media/${largeId}/thumbnail`]) {
+    assert.equal(api.catalogThumbnailUrl(invalid), '', invalid);
+  }
+});

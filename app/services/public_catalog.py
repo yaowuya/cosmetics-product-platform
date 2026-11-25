@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.errors import AppError
 from app.core.ids import parse_id
 from app.repositories import public_catalog as releases
-from app.schemas.content import CONFIG_FIELDS, catalog_image_id, effective_product_body
+from app.schemas.content import CONFIG_FIELDS, catalog_image_id, catalog_thumbnail_source, effective_product_body
 from app.services.directory import active_directory
 
 PRODUCT_CARD = ("name", "short_benefit", "thumbnail_asset_id")
@@ -36,10 +36,12 @@ def _project(body: dict, fields: tuple[str, ...] | dict) -> dict:
 
 
 def _product_card(body: dict) -> dict:
-    """Expose the square and point every card alias to the same independent image."""
+    """Use the independent square when set, or expose a generated-only card thumbnail."""
     result = _project(body, PRODUCT_CARD)
     if catalog_image_id(body) is None:
         result.pop("thumbnail_asset_url", None)
+        if (source := catalog_thumbnail_source(body)) is not None:
+            result["catalog_thumbnail_url"] = f"/api/public/media/{source}/catalog-thumbnail"
         return result
     square_url = result["thumbnail_asset_url"]
     result.update(catalog_image_url=square_url, cover_asset_url=square_url,

@@ -15,6 +15,7 @@ const cover = media(8);
 const longPaths = [media(9), media(10), media(11)];
 const square = media(12);
 const thumbnail = `${square}/thumbnail`;
+const generatedCatalog = `${cover}/catalog-thumbnail`;
 const privateMedia = id => `/api/admin/media/${id}?item_id=1&revision=2`;
 const product = { id: '1', body: {
   name: '验证用产品', benefit: '用于留出真实滚动的图文详情。'.repeat(240),
@@ -22,6 +23,7 @@ const product = { id: '1', body: {
 } };
 const listing = { id: '1', body: {
   name: product.body.name, catalog_image_url: square, cover_asset_url: square, cover_thumbnail_url: thumbnail,
+  catalog_thumbnail_url: generatedCatalog,
 } };
 
 function holdResponse() {
@@ -36,6 +38,7 @@ const imageRequests = [];
 let posterOne = holdResponse();
 const posterTwo = holdResponse();
 let failThumbnail = false;
+let failGeneratedCatalog = false;
 let failSquare = false;
 let failPosters = false;
 const api = {
@@ -59,6 +62,7 @@ try {
       if (pathname === media(1)) await posterOne.pending;
       if (pathname === media(2)) await posterTwo.pending;
       if (pathname === thumbnail && failThumbnail) return route.fulfill({ status: 404 });
+      if (pathname === generatedCatalog && failGeneratedCatalog) return route.fulfill({ status: 404 });
       if (pathname === square && failSquare) return route.fulfill({ status: 404 });
       if (posterPaths.includes(pathname)) {
         if (failPosters) return route.fulfill({ status: 404 });
@@ -143,6 +147,7 @@ try {
 
   imageRequests.length = 0;
   delete listing.body.catalog_image_url;
+  delete listing.body.catalog_thumbnail_url;
   listing.body.cover_asset_url = cover;
   listing.body.cover_thumbnail_url = `${cover}/thumbnail`;
   listing.body.thumbnail_asset_url = cover;
@@ -155,6 +160,25 @@ try {
   await page.reload({ waitUntil: 'domcontentloaded' });
   await card.evaluate(node => node.decode());
   assert.deepEqual(imageRequests, [square], '旧版 API 真实的独立缩略图可继续展示');
+
+  imageRequests.length = 0;
+  listing.body.thumbnail_asset_url = cover;
+  listing.body.catalog_thumbnail_url = generatedCatalog;
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await card.evaluate(node => node.decode());
+  assert.deepEqual(imageRequests, [generatedCatalog], '旧产品只请求生成后的目录缩略图');
+
+  imageRequests.length = 0;
+  failGeneratedCatalog = true;
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.locator('.product-thumb.no-image').waitFor();
+  assert.deepEqual(imageRequests, [generatedCatalog], '生成后的目录缩略图缺失时直接展示占位');
+
+  imageRequests.length = 0;
+  listing.body.catalog_thumbnail_url = `${generatedCatalog}?v=1`;
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.locator('.product-thumb.no-image').waitFor();
+  assert.deepEqual(imageRequests, [], '生成缩略图只接受规范公开路径');
 
   imageRequests.length = 0;
   await page.goto(`${site}/products?id=1`, { waitUntil: 'domcontentloaded' });

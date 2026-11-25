@@ -20,10 +20,19 @@ const square = computed(() => {
   return legacy === photo.value ? '' : legacy;
 });
 const thumbnail = computed(() => {
-  const src = text(props.item.body.cover_thumbnail_url);
-  // Older backends derived this same field from the wide cover, without an explicit catalog image.
-  return !props.preview && square.value && square.value === props.item.body.catalog_image_url
-    && src === `${square.value}/thumbnail` ? src : '';
+  if (props.preview) return '';
+  if (square.value) {
+    const src = text(props.item.body.cover_thumbnail_url);
+    // Older backends derived this same field from the wide cover, without an explicit catalog image.
+    return square.value === props.item.body.catalog_image_url && src === `${square.value}/thumbnail` ? src : '';
+  }
+  const generated = props.item.body.catalog_thumbnail_url;
+  if (typeof generated !== 'string') return '';
+  const match = /^\/api\/public\/media\/([1-9]\d{0,18})\/catalog-thumbnail$/.exec(generated);
+  if (!match || match[0] !== generated) return '';
+  const id = match[1];
+  // The generated-only route may return a placeholder-triggering 404, never the detail cover.
+  return id.length < 19 || id <= '9223372036854775807' ? generated : '';
 });
 const failedImages = ref<string[]>([]);
 const cardPhoto = computed(() => [thumbnail.value, square.value].find(src => src && !failedImages.value.includes(src)) ?? '');
@@ -33,7 +42,7 @@ async function copy(){if(await copyText(code.value)){notice.value='配方编号�
 
 watch([thumbnail, square], () => { failedImages.value = []; });
 
-/** Fall back from a derivative to its own original, then show the card placeholder. */
+/** An independent square may fall back to its original. A generated-only image leaves the placeholder. */
 function onCardImageError(event: Event) {
   const image = event.currentTarget as HTMLImageElement;
   if (image.isConnected && image.getAttribute('src') === cardPhoto.value) failedImages.value.push(cardPhoto.value);

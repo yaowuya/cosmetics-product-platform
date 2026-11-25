@@ -22,8 +22,8 @@ def test_gallery_draft_is_ordered_bounded_and_displaces_legacy_field():
         assert error.value.status_code == 422
 
 
-def test_catalog_never_falls_back_to_detail_cover_and_gallery_projects_in_order(monkeypatch):
-    """Older clients' aliases use the catalog image on cards and first long image on details."""
+def test_catalog_uses_only_generated_variant_of_legacy_cover_and_gallery_projects_in_order(monkeypatch):
+    """Keep separate card images preferred and expose only a generated derivative of a cover."""
     body = {"name": "Square", "cover_asset_id": "1", "thumbnail_asset_id": "2",
             "detail_asset_id": "9", "detail_asset_ids": ["5", "3", "4"]}
     monkeypatch.setattr(public_catalog, "active_directory", lambda _db: {"1": {}})
@@ -42,13 +42,16 @@ def test_catalog_never_falls_back_to_detail_cover_and_gallery_projects_in_order(
                         "detail_asset_url": "/api/public/media/5",
                         "detail_asset_urls": [f"/api/public/media/{id}" for id in (5, 3, 4)]}
     body["thumbnail_asset_id"] = body["cover_asset_id"]
-    assert card() == {"name": "Square"}
+    legacy = {"name": "Square", "catalog_thumbnail_url": "/api/public/media/1/catalog-thumbnail"}
+    assert card() == legacy
     del body["thumbnail_asset_id"]
-    assert card() == {"name": "Square"}
+    assert card() == legacy
     body["detail_asset_ids"] = []
     assert detail()["detail_asset_urls"] == [] and "detail_asset_url" not in detail()
     del body["detail_asset_ids"]
     assert detail()["detail_asset_urls"] == [detail()["detail_asset_url"]] == ["/api/public/media/9"]
+    del body["cover_asset_id"]
+    assert card() == {"name": "Square"}
 
 
 def test_publish_review_requires_explicit_nonempty_gallery(monkeypatch):
