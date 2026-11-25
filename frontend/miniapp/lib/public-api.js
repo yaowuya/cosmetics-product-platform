@@ -4,6 +4,7 @@ const PAGES = ['home', 'catalog', 'cases', 'contact'];
 const PAGE_SIZE = 20;
 const MAX_ID = '9223372036854775807';
 const MEDIA_PREFIX = '/api/public/media/';
+const THUMBNAIL_SUFFIX = '/thumbnail';
 
 /** Match canonical positive BIGINT wire IDs without converting them to a JS number. */
 function validId(id) {
@@ -105,7 +106,16 @@ function createPublicApi({ request, origin }) {
       ? origin + path : '';
   }
 
-  return { page, catalog, products, cases, product: id => detail('products', id), case: id => detail('cases', id), mediaUrl };
+  /** Accept the list cover variant only on the configured origin and its canonical route. */
+  function thumbnailUrl(value) {
+    if (!origin || typeof value !== 'string') return '';
+    const path = value.startsWith(origin) ? value.slice(origin.length) : value;
+    if (!path.startsWith(MEDIA_PREFIX) || !path.endsWith(THUMBNAIL_SUFFIX)) return '';
+    const id = path.slice(MEDIA_PREFIX.length, -THUMBNAIL_SUFFIX.length);
+    return validId(id) ? origin + path : '';
+  }
+
+  return { page, catalog, products, cases, product: id => detail('products', id), case: id => detail('cases', id), mediaUrl, thumbnailUrl };
 }
 
 /** Resolve the environment at page load; unknown or unavailable account info must fail closed. */

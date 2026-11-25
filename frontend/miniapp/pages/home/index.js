@@ -5,19 +5,22 @@ const { createResource } = require('../../lib/page-feedback');
 
 const IDLE_MS = 4000;
 
+const nextPosterIndex = (current, count) => (current + 1) % count;
+
 Page({
-  data: { phase: 'loading', message: '', posters: [], current: 0, posterVersion: 0 },
+  data: { phase: 'loading', message: '', posters: [], current: 0, mountedPosters: {}, posterVersion: 0 },
 
   /** 新建页面实例时请求当前发布结果；空数组交给共享空态。 */
   onLoad() {
     const api = pageApi(wx);
     this._reading = new Set();
+    this._loadedPosters = new Set();
     this._resource = createResource({
       load: async () => {
         const posters = homeView(await api.page('home'), api.mediaUrl);
         return posters.length ? posters : null;
       },
-      onReady: posters => this.setData({ posters, current: 0 }),
+      onReady: posters => this.setData(this._posterPatch(posters,0)),
       render: patch => {
         this.setData(patch);
         this._schedule();
@@ -48,7 +51,8 @@ Page({
   /** 重试重新读取发布结果，允许重新加载此前失败的图片。 */
   retry() {
     this._reading.clear();
-    this.setData({ posters: [], current: 0, posterVersion: this.data.posterVersion + 1 });
+    this._loadedPosters.clear();
+    this.setData({ posters: [], current: 0, mountedPosters: {}, posterVersion: this.data.posterVersion + 1 });
     return this._resource.refresh();
   },
 
@@ -85,6 +89,19 @@ Page({
     this._goTo(event.currentTarget.dataset.index);
   },
 
+  /** 当前图加载后才预取下一张，下一张加载完成后才开启自动轮播。 */
+  onPosterLoad(event) {
+    const { src } = event.currentTarget.dataset;
+    if (!this._isCurrentImage(event) || this._loadedPosters.has(src)) return;
+    this._loadedPosters.add(src);
+    const { posters, current } = this.data;
+    if (src === posters[current]) {
+      const { mountedPosters } = this._posterPatch(posters,current);
+      this.setData({ mountedPosters });
+    }
+    this._schedule();
+  },
+
   /** 跳过断图；若当前图未失败则保留其身份，而不是旧数组下标。 */
   onPosterError(event) {
     if (!this._isCurrentImage(event)) return;
@@ -94,28 +111,45 @@ Page({
     const retained = remaining.indexOf(posters[current]);
     const next = retained < 0 ? Math.max(0, Math.min(current, remaining.length - 1)) : retained;
     this._reading.delete(src);
+    this._loadedPosters.delete(src);
+    const patch = this._posterPatch(remaining,next);
     this.setData(remaining.length
-      ? { posters: remaining, current: next }
-      : { posters: [], current: 0, phase: 'error', message: '图片加载失败，请检查连接后重试。' });
+      ? patch
+      : { ...patch, phase: 'error', message: '图片加载失败，请检查连接后重试。' });
     this._schedule();
+  },
+
+  /** Keep decoded posters and mount at most the current request and its next slide. */
+  _posterPatch(posters,current) {
+    const mountedPosters = {};
+    for (const src of this._loadedPosters) mountedPosters[src] = true;
+    const src = posters[current];
+    if (src) {
+      mountedPosters[src] = true;
+      if (this._loadedPosters.has(src) && posters.length > 1) {
+        mountedPosters[posters[nextPosterIndex(current,posters.length)]] = true;
+      }
+    }
+    return { posters, current, mountedPosters };
   },
 
   _isCurrentImage(event) {
     const { src, version } = event.currentTarget.dataset;
     // 重试可能重新拉到同一 URL，旧节点的延迟事件不能移除新图片。
-    return version === this.data.posterVersion && this.data.posters.includes(src);
+    return version === this.data.posterVersion && !!this.data.mountedPosters[src];
   },
 
   _goTo(index) {
     if (!Number.isInteger(index) || index < 0 || index >= this.data.posters.length) return;
-    if (index !== this.data.current) this.setData({ current: index });
+    if (index !== this.data.current) this.setData(this._posterPatch(this.data.posters,index));
     this._schedule();
   },
 
   _canAdvance() {
     const { phase, posters, current } = this.data;
     return this._visible && !this._held && phase === 'ready' && posters.length > 1
-      && !this._reading.has(posters[current]);
+      && this._loadedPosters.has(posters[current]) && !this._reading.has(posters[current])
+      && this._loadedPosters.has(posters[nextPosterIndex(current,posters.length)]);
   },
 
   _clearTimer() {
@@ -128,7 +162,7 @@ Page({
     if (!this._canAdvance()) return;
     this._timer = setTimeout(() => {
       this._timer = undefined;
-      if (this._canAdvance()) this._goTo((this.data.current + 1) % this.data.posters.length);
+      if (this._canAdvance()) this._goTo(nextPosterIndex(this.data.current,this.data.posters.length));
     }, IDLE_MS);
   },
 });

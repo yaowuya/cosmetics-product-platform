@@ -22,7 +22,7 @@
         <view class="field"><text class="field-label">是否生产过</text><text class="detail-pill">{{detail.production}}</text></view>
       </view>
     </view>
-    <image wx:if="{{detail.long && !longFailed}}" class="detail-long" src="{{detail.long}}" mode="widthFix" binderror="onLongError" aria-label="{{detail.name}}的详情长图" />
+    <image wx:if="{{detail.long && !longFailed}}" class="detail-long" src="{{detail.long}}" mode="widthFix" lazy-load="{{true}}" binderror="onLongError" aria-label="{{detail.name}}的详情长图" />
     <view wx:if="{{longFailed}}" class="notice">详情长图暂不可用</view>
     <button class="soft-button detail-back" bindtap="onBack">返回产品目录</button>
   </block>

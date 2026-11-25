@@ -211,6 +211,7 @@ export async function runProducts(h) {
     const detail = await uiGet(V, `${publicProducts}/${row.id}`, {}, () => link.click());
     assert.ok(detail.id === row.id && detailMatches(detail, body), `从分类 ${key} 打开的详情图文不是预期版本`);
     await V.locator('.detail-info').getByText(body.benefit, { exact: true }).waitFor();
+    await V.locator('.detail-long-slot').scrollIntoViewIfNeeded();
     await V.locator('.detail-long').waitFor();
     return detail;
   }

@@ -3,8 +3,8 @@
     <swiper class="poster-track" current="{{current}}" circular="{{posters.length > 1}}" bindchange="onSlideChange">
       <swiper-item wx:for="{{posters}}" wx:key="*this">
         <scroll-view class="poster-scroll" scroll-y bindscroll="onPosterScroll" data-src="{{item}}" data-version="{{posterVersion}}">
-          <image class="poster-image" mode="widthFix" src="{{item}}" webp="{{true}}" aria-label="企业产品海报，第 {{index + 1}} 张"
-            binderror="onPosterError" data-src="{{item}}" data-version="{{posterVersion}}" />
+          <image wx:if="{{mountedPosters[item]}}" class="poster-image" mode="widthFix" src="{{item}}" webp="{{true}}" aria-label="企业产品海报，第 {{index + 1}} 张"
+            bindload="onPosterLoad" binderror="onPosterError" data-src="{{item}}" data-version="{{posterVersion}}" />
         </scroll-view>
       </swiper-item>
     </swiper>

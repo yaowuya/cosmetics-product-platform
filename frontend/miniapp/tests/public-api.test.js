@@ -83,3 +83,18 @@ test('remote images accept only canonical same-origin published media paths', ()
     assert.equal(api.mediaUrl(path), '', path);
   }
 });
+
+test('cover thumbnails accept only canonical thumbnail paths from the configured origin', () => {
+  const { api } = client(() => assert.fail('thumbnail URL resolution is pure'));
+  const path = `/api/public/media/${largeId}/thumbnail`;
+  assert.equal(api.thumbnailUrl(path), origin + path);
+  assert.equal(api.thumbnailUrl(origin + path), origin + path);
+  assert.equal(api.mediaUrl(path), '');
+  for (const invalid of [undefined, `${origin}.outside.test${path}`, `//showcase.example.com${path}`,
+    `https://other.example.com${path}`, '/api/public/media/42', '/api/public/media/042/thumbnail',
+    '/api/public/media/9223372036854775808/thumbnail', `/api/admin/media/${largeId}/thumbnail`,
+    `${path}?size=96`, `${path}#poster`, `${path}/`, `${path}\n`, path.replace(largeId, '%34')]) {
+    assert.equal(api.thumbnailUrl(invalid), '', invalid);
+  }
+  assert.equal(createPublicApi({ origin: '', request() {} }).thumbnailUrl(path), '');
+});

@@ -1,16 +1,20 @@
 """Public projections are release-only, scoped to active directory paths and whitelisted fields."""
 import json
+from io import BytesIO
 
 from fastapi.testclient import TestClient
 from PIL import Image
 from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 
 def test_live_projection(mysql_engine, monkeypatch, tmp_path):
     """Keep public product images consistent across both snapshots and legacy clients."""
     monkeypatch.setenv("DATABASE_URL", mysql_engine.url.render_as_string(hide_password=False))
     monkeypatch.setenv("ASSET_ROOT", str(tmp_path))
+    from app.cli.backfill_thumbnails import visible_covers
     from app.core.security import hash_password
+    from app.services.thumbnails import ensure_cover_thumbnail
     from main import app
 
     with mysql_engine.begin() as db:
@@ -33,7 +37,7 @@ def test_live_projection(mysql_engine, monkeypatch, tmp_path):
         images = {}
         for color in ("blue", "green", "red"):
             image = tmp_path / f"{color}.png"
-            Image.new("RGB", (3, 3), color).save(image)
+            Image.new("RGB", (640, 360), color).save(image)
             ident = db.execute(text("INSERT INTO asset(storage_key,mime,bytes,created_by) VALUES (:key,'image/png',:b,:a)"),
                                {"key": image.name, "b": image.stat().st_size, "a": actor}).lastrowid
             images[color] = str(ident), image.read_bytes()
@@ -66,6 +70,18 @@ def test_live_projection(mysql_engine, monkeypatch, tmp_path):
             card = listing["items"][0]["body"]
             assert card["cover_asset_url"] == detail["cover_asset_url"] == cover_url
             assert card["thumbnail_asset_url"] == thumbnail_url and detail["detail_asset_url"] == detail_url
+            variant_url = card["cover_thumbnail_url"]
+            assert variant_url == f"{cover_url}/thumbnail" and "cover_thumbnail_url" not in detail
+            assert visitor.get(variant_url).content == images["green"][1]
+            with Session(mysql_engine) as db:
+                covers = visible_covers(db)
+                assert [str(asset.id) for asset in covers] == [cover]
+                assert ensure_cover_thumbnail(covers[0]) is True
+                assert ensure_cover_thumbnail(covers[0]) is False
+            variant = visitor.get(variant_url)
+            assert variant.status_code == 200 and variant.headers["content-type"] == "image/webp"
+            with Image.open(BytesIO(variant.content)) as image:
+                assert image.size == (320, 320) and image.getpixel((1, 1))[1] > 120
             assert visitor.get(thumbnail_url).content == images["blue"][1]
             assert visitor.get(cover_url).content == images["green"][1]
             assert visitor.get(detail_url).content == images["red"][1]

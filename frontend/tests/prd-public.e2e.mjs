@@ -166,9 +166,14 @@ export async function runPublic(h) {
     await visit(h, page, '/');
     await checkNav(page, '首页');
     await page.locator('.poster-track img').first().waitFor();
-    const posters = page.locator('.poster-slide img');
-    assert.equal(await posters.count(), 4, '样例应有四张海报');
-    const images = await Promise.all((await posters.all()).map(imageMetrics));
+    const slides = page.locator('.poster-slide');
+    const dots = page.locator('.poster-dots button');
+    assert.equal(await slides.count(), 4, '样例应有四张海报');
+    const images = [];
+    for (let index = 0; index < 4; index++) {
+      await dots.nth(index).click();
+      images.push(await imageMetrics(slides.nth(index).locator('img')));
+    }
     assert.equal(new Set(images.map(m => m.src)).size, 4, '四张有效的独立海报');
     assert.equal(await page.locator('main :is(header,h1,[role="banner"])').count(), 0, '不得恢复旧首页标题栏');
     assert.doesNotMatch(await page.locator('main').innerText(), /公司介绍|意向清单/);
@@ -197,11 +202,11 @@ export async function runPublic(h) {
     const values = await labels(page.locator('.detail-fields dd'));
     assert.equal(values.length, 5);
     assert.ok(values.every(v => v && !/^(?:—|待补充|复制)$/.test(v)), '五个字段必须有内容，不能用空值或复制按钮占位');
-    assert.equal(await page.locator('.detail-view img').count(), 2, '详情仅一张封面和一张长图');
-    assert.equal(await page.locator('.detail-long').count(), 1);
     const cover = await imageMetrics(page.locator('.detail-photo'));
     assert.ok(Math.abs(cover.height - cover.width * 9 / 16) <= 2, '详情封面为 16:9');
+    await page.locator('.detail-long-slot').scrollIntoViewIfNeeded();
     proportional(await imageMetrics(page.locator('.detail-long')), '详情长图');
+    assert.equal(await page.locator('.detail-view img').count(), 2, '详情仅一张封面和一张长图');
     assert.doesNotMatch(await page.locator('.detail-view').innerText(), /意向清单|加入购物车|立即购买/);
     await backToProducts(page);
     await navigate(page, '品牌案例'); await ready(page, '.case-results');

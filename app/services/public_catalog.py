@@ -37,10 +37,11 @@ def _project(body: dict, fields: tuple[str, ...] | dict) -> dict:
 
 
 def _product_card(body: dict) -> dict:
-    """Project the shared cover and keep the old list URL field readable by older clients."""
+    """Project a card-sized cover and keep the original URLs readable by older clients."""
     result = _project(body, PRODUCT_CARD)
-    if "cover_asset_url" in result:
-        result.setdefault("thumbnail_asset_url", result["cover_asset_url"])
+    if cover_url := result.get("cover_asset_url"):
+        result.setdefault("thumbnail_asset_url", cover_url)
+        result["cover_thumbnail_url"] = f"{cover_url}/thumbnail"
     return result
 
 

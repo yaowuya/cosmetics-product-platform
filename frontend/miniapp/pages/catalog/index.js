@@ -16,7 +16,8 @@ function defaultBoardIcon(name) {
 
 Page({
   data: {
-    configPhase:'loading', configMessage:'', cover:{}, coverFailed:false, broken:{},
+    configPhase:'loading', configMessage:'', cover:{}, coverFailed:false,
+    imageVersion:0, failedThumbnails:{}, broken:{},
     board:'', boards:[], category:'', categories:[], fine:'', fineChoices:[], count:0,
     q:'', searchActive:false, items:[], total:0, page:0, phase:'idle', hasMore:false,
     leftTop:0, rightTop:0, refreshing:false,
@@ -31,9 +32,16 @@ Page({
     this._paging = createPaging({
       load: async (filter,page) => {
         const result = await this._api.products(filter,page);
-        return { ...result, items:result.items.map(item => productView(item,this._api.mediaUrl)) };
+        return { ...result, items:result.items.map(item => ({
+          ...productView(item,this._api.mediaUrl), thumbnail:this._api.thumbnailUrl(item.body.cover_thumbnail_url),
+        })) };
       },
-      render: state => this.setData(state),
+      render: state => {
+        const {imageVersion} = this.data;
+        // Bind the generation to each native node so reusing the same product ID cannot relabel an old request.
+        const items = state.items.map(item => ({...item,imageVersion,imageKey:`${imageVersion}:${item.id}`}));
+        this.setData({...state,items});
+      },
     });
     return this.loadDirectory();
   },
@@ -45,7 +53,7 @@ Page({
     // Manual refresh reloads publication metadata and never reuses an old content snapshot.
     this._views.clear();
     this._paging.invalidate();
-    this.setData({configPhase:'loading',configMessage:'',coverFailed:false,broken:{}});
+    this.setData({configPhase:'loading',configMessage:'',coverFailed:false,...this.nextImageView()});
     try {
       const [body,tree] = await Promise.all([this._api.page('catalog'),this._api.catalog()]);
       if (version !== this._bootVersion) return;
@@ -79,7 +87,7 @@ Page({
   async enterBoard(board,saved = {}) {
     const {category,fine,q,left,right} = selectBoard(this._tree,board,saved);
     this.setData({board,q,searchActive:!!q.trim(),categories:this._tree.categories[board] || [],...this.selectionPatch(category,fine),
-      count:this._tree.counts[category || board] || 0});
+      count:this._tree.counts[category || board] || 0,...this.nextImageView()});
     this.moveScroll('left',left);
     if (this._paging.restore(this.filter(),saved.list)) this.moveScroll('right',right);
     else {
@@ -127,8 +135,13 @@ Page({
     return this.relist(searchActive ? 160 : 0);
   },
   relist(delay = 0) {
+    this.setData(this.nextImageView());
     this.moveScroll('right',0);
     return this._paging.reset(this.filter(),delay);
+  },
+  /** Each replacement rejects old image events, including rows with the same ID and URL. */
+  nextImageView() {
+    return {imageVersion:this.data.imageVersion + 1,failedThumbnails:{},broken:{}};
   },
   onLeftScroll(event) { this._scroll.left = event.detail.scrollTop; },
   onRightScroll(event) { this._scroll.right = event.detail.scrollTop; },
@@ -145,12 +158,16 @@ Page({
     const item = this.data.boards[index];
     this.setData({[`boards[${index}].displayIcon`]:defaultBoardIcon(item.name)});
   },
+  /** A failed thumbnail opens the original once; a failed original leaves the placeholder. */
   onImageError(event) {
-    const {id,src} = event.currentTarget.dataset;
-    // A detached image can finish after refresh. Only suppress the currently projected asset.
-    if (this.data.items.some(item => item.id === id && item.image === src)) {
-      this.setData({broken:{...this.data.broken,[id]:src}});
-    }
+    const {id,src,version} = event.currentTarget.dataset;
+    if (version !== this.data.imageVersion || !src) return;
+    const item = this.data.items.find(item => item.id === id);
+    if (!item) return;
+    const thumbnail = this.data.failedThumbnails[id] !== item.thumbnail ? item.thumbnail : '';
+    const state = thumbnail ? 'failedThumbnails' : 'broken';
+    if (src !== (thumbnail || item.image) || this.data[state][id] === src) return;
+    this.setData({[state]:{...this.data[state],[id]:src}});
   },
   async onRefresh() {
     if (this.data.configPhase === 'loading') return;

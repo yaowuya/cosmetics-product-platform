@@ -137,25 +137,75 @@ test('catalog ignores media errors from a previous published image', async () =>
   });
   await page.onLoad();
   const stale = page.data.cover.image;
+  const staleVersion = page.data.imageVersion;
   media = '2';
   await page.onRefresh();
   page.onCoverError(event({src:stale}));
-  page.onImageError(event({id,src:stale}));
+  page.onImageError(event({id,src:stale,version:staleVersion}));
   assert.equal(page.data.coverFailed,false);
   assert.equal(page.data.broken[id],undefined);
   const current = page.data.cover.image;
   page.onCoverError(event({src:current}));
-  page.onImageError(event({id,src:current}));
+  page.onImageError(event({id,src:current,version:page.data.imageVersion}));
   assert.equal(page.data.coverFailed,true);
   assert.equal(page.data.broken[id],current);
   page.onUnload();
 });
 
+test('catalog falls back once from a thumbnail and ignores old errors for the same product', async () => {
+  const originalPath = '/api/public/media/62';
+  const thumbnailPath = `${originalPath}/thumbnail`;
+  const origin = 'https://published.example.cn';
+  const { page } = harness('catalog', url => {
+    if (url.pathname.endsWith('/catalog')) return directory(url);
+    return { ...response(1,[id,'72']), items:[
+      {id,body:{name:'面霜',cover_asset_url:originalPath,cover_thumbnail_url:thumbnailPath}},
+      {id:'72',body:{name:'面膜',cover_asset_url:'/api/public/media/63'}},
+    ] };
+  });
+  await page.onLoad();
+  assert.equal(page.data.items[0].thumbnail,origin + thumbnailPath);
+  assert.equal(page.data.items[0].image,origin + originalPath);
+  assert.equal(page.data.items[1].thumbnail,'');
+  assert.equal(page.data.items[1].image,`${origin}/api/public/media/63`);
+
+  const firstVersion = page.data.imageVersion;
+  const firstNodeKey = page.data.items[0].imageKey;
+  assert.equal(page.data.items[0].imageVersion,firstVersion);
+  const oldThumbnailError = event({id,src:origin + thumbnailPath,version:firstVersion});
+  await page.onFine(event({id:'3'}));
+  assert.notEqual(page.data.imageVersion,firstVersion);
+  assert.notEqual(page.data.items[0].imageKey,firstNodeKey);
+  assert.equal(page.data.items[0].imageVersion,page.data.imageVersion);
+  page.onImageError(oldThumbnailError);
+  assert.equal(page.data.failedThumbnails[id],undefined);
+
+  const currentVersion = page.data.imageVersion;
+  const thumbnailError = event({id,src:origin + thumbnailPath,version:currentVersion});
+  page.onImageError(thumbnailError);
+  assert.equal(page.data.failedThumbnails[id],origin + thumbnailPath);
+  assert.equal(page.data.broken[id],undefined);
+  page.onImageError(event({id,src:origin + originalPath,version:currentVersion}));
+  assert.equal(page.data.broken[id],origin + originalPath);
+  page.onImageError(thumbnailError);
+  assert.equal(page.data.broken[id],origin + originalPath);
+
+  await page.onRefresh();
+  page.onImageError(thumbnailError);
+  assert.equal(page.data.failedThumbnails[id],undefined);
+  assert.equal(page.data.broken[id],undefined);
+  page.onUnload();
+});
+
 test('product re-reads the current publication and never substitutes the previous detail for 404', async () => {
   let live = true;
-  const { page,calls,actions } = harness('product', () => live ? {id,body:{name:'面霜',formula_no:'A-44'}} : 404);
+  const originalCover = '/api/public/media/62';
+  const { page,calls,actions } = harness('product', () => live ? {id,body:{
+    name:'面霜',formula_no:'A-44',cover_asset_url:originalCover,cover_thumbnail_url:`${originalCover}/thumbnail`,
+  }} : 404);
   await page.onLoad({id});
   assert.equal(page.data.detail.formula,'A-44');
+  assert.equal(page.data.detail.image,`https://published.example.cn${originalCover}`);
   page.onCopyFormula();
   assert.equal(page.data.fallback,'A-44');
   live = false;
@@ -223,6 +273,8 @@ test('home rotates only while idle at the top and drops broken posters without r
   assert.equal(page.data.phase,'ready');
   assert.equal(page.data.posters.length,2);
   const posterEvent = (index, scrollTop) => ({ ...event({src:page.data.posters[index],version:page.data.posterVersion}), detail:{scrollTop} });
+  page.onPosterLoad(posterEvent(0,0));
+  page.onPosterLoad(posterEvent(1,0));
   page.onPosterScroll(posterEvent(0,120));
   t.mock.timers.tick(4001);
   assert.equal(page.data.current,0);
@@ -244,6 +296,38 @@ test('home rotates only while idle at the top and drops broken posters without r
   await page.retry();
   page.onPosterError(stale);
   assert.equal(page.data.posters.length,2);
+  const second = page.data.posters[1];
+  page.onPosterError(posterEvent(0,0));
+  assert.deepEqual(Object.keys(page.data.mountedPosters),[second]);
+  page.onUnload();
+});
+
+test('home prefetches only the next poster and waits for it before rotating', async t => {
+  t.mock.timers.enable({apis:['setTimeout']});
+  const posters = [1,2,3,4].map(number => `/api/public/media/${number}`);
+  const { page } = harness('home', () => ({page:'home',body:{poster_asset_urls:posters}}));
+  await page.onLoad();
+  page.onShow();
+  const [first,second,third,fourth] = page.data.posters;
+  const completed = src => event({src,version:page.data.posterVersion});
+  const mounted = () => Object.keys(page.data.mountedPosters);
+  assert.deepEqual(mounted(),[first]);
+  t.mock.timers.tick(8000);
+  assert.equal(page.data.current,0);
+  page.onPosterLoad(completed(first));
+  assert.deepEqual(mounted(),[first,second]);
+  t.mock.timers.tick(8000);
+  assert.equal(page.data.current,0);
+  page.onPosterLoad(completed(second));
+  assert.deepEqual(mounted(),[first,second]);
+  t.mock.timers.tick(3999);
+  assert.equal(page.data.current,0);
+  t.mock.timers.tick(1);
+  assert.equal(page.data.current,1);
+  assert.deepEqual(mounted(),[first,second,third]);
+  page.selectPoster(event({index:3}));
+  assert.equal(page.data.current,3);
+  assert.deepEqual(mounted(),[first,second,fourth]);
   page.onUnload();
 });
 

@@ -18,6 +18,8 @@ test('local HTTP bridge preserves published responses but excludes admin, non-GE
     calls.push({ url: req.url, headers: req.headers });
     if (req.url.endsWith('/products/42')) {
       res.writeHead(404, { 'Content-Type': 'application/json' }).end('{"code":"not_found"}');
+    } else if (req.url.endsWith('/media/42/thumbnail')) {
+      res.writeHead(200, { 'Content-Type': 'image/webp', 'Cache-Control': 'no-store' }).end('thumbnail');
     } else if (req.url.endsWith('/media/42')) {
       res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'no-store' }).end(Buffer.from([137, 80, 78, 71]));
     } else {
@@ -41,6 +43,10 @@ test('local HTTP bridge preserves published responses but excludes admin, non-GE
   assert.equal(media.headers.get('content-type'), 'image/png');
   assert.equal(media.headers.get('cache-control'), 'no-store');
   assert.deepEqual([...new Uint8Array(await media.arrayBuffer())], [137, 80, 78, 71]);
+  const thumbnail = await fetch(`${bridge}/api/public/media/42/thumbnail`);
+  assert.equal(thumbnail.status, 200);
+  assert.equal(thumbnail.headers.get('content-type'), 'image/webp');
+  assert.equal(await thumbnail.text(), 'thumbnail');
   const missing = await fetch(`${bridge}/api/public/products/42`);
   assert.equal(missing.status, 404);
   assert.deepEqual(await missing.json(), { code: 'not_found' });
@@ -48,5 +54,9 @@ test('local HTTP bridge preserves published responses but excludes admin, non-GE
   assert.equal((await fetch(`${bridge}/api/admin/accounts`)).status, 404);
   assert.equal((await fetch(`${bridge}/api/public/%2e%2e%2fadmin/accounts`)).status, 404);
   assert.equal((await fetch(`${bridge}/api/public/products`, { method: 'POST' })).status, 405);
-  assert.deepEqual(calls.map(({ url }) => url), ['/api/public/products?q=%E7%94%A8', '/api/public/media/42', '/api/public/products/42']);
+  assert.equal((await fetch(`${bridge}/api/public/media/42/thumbnail`, { method: 'POST' })).status, 405);
+  assert.equal((await fetch(`${bridge}/api/public/media/42/detail`)).status, 404);
+  assert.deepEqual(calls.map(({ url }) => url), [
+    '/api/public/products?q=%E7%94%A8', '/api/public/media/42', '/api/public/media/42/thumbnail', '/api/public/products/42',
+  ]);
 });

@@ -7,7 +7,13 @@ const h=await createHarness(stage,dir);
 /** Capture public content by navigating the actual H5 pages; keep only stable, non-secret observations. */
 async function publicSummary(page,origin){
   await page.goto(origin+'/catalog');await page.locator('.board-tabs button').first().waitFor();const names=await page.locator('.board-tabs button').allTextContents();
-  await page.goto(origin+'/');await page.locator('.poster-slide img').first().waitFor();const posters=await page.locator('.poster-slide img').evaluateAll(images=>images.map(i=>i.getAttribute('src')));
+  await page.goto(origin+'/');await page.locator('.poster-slide img').first().waitFor();
+  const slides=page.locator('.poster-slide'), dots=page.locator('.poster-dots button'), posters=[];
+  const count=await slides.count();
+  for(let index=0;index<count;index++){
+    if(count>1)await dots.nth(index).click();
+    posters.push(await slides.nth(index).locator('img').getAttribute('src'));
+  }
   await page.goto(origin+'/cases');await page.locator('.case-featured,.case-results .h5-empty strong').first().waitFor();return {names,posters,firstCase:(await page.locator('.case-featured strong').allTextContents()).join('')};
 }
 async function setup(){

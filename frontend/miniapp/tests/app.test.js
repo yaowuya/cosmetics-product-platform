@@ -20,6 +20,15 @@ test('native tabs ship local PNG icons for both selection states', () => {
   }
 });
 
+test('product details eagerly display the cover and lazily load the original long image', () => {
+  const template = read('pages/product/index.wxml');
+  const cover = template.match(/<image\b[^>]+src="\{\{detail\.image\}\}"[^>]*>/)?.[0] || '';
+  const longImage = template.match(/<image\b[^>]+src="\{\{detail\.long\}\}"[^>]*>/)?.[0] || '';
+  assert.ok(cover);
+  assert.doesNotMatch(cover,/\blazy-load\b/);
+  assert.match(longImage,/\blazy-load="\{\{true\}\}"/);
+});
+
 test('project imports as six native pages with four tab entries, without package dependencies', () => {
   const config = json('project.config.example.json');
   assert.equal(config.appid,'touristappid');
