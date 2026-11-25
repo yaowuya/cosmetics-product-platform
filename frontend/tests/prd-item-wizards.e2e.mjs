@@ -21,6 +21,21 @@ const rowNamed = (page, name) => page.getByRole('row').filter({ has: page.getByT
 const rowAction = (row, name) => button(row, name).or(row.getByRole('link', { name, exact: true }));
 const footerAction = (dialog, action) => button(dialog.locator('footer'), action);
 
+async function fullHeightDrawer(page, dialog, fullWidth = false) {
+  assert.match(await dialog.getAttribute('class') ?? '', /\bitem-wizard-drawer\b/);
+  await page.waitForFunction(expectedFullWidth => {
+    const drawer = document.querySelector('.el-drawer.item-wizard-drawer');
+    if (!drawer) return false;
+    const { top, right, height, width } = drawer.getBoundingClientRect();
+    return Math.abs(top) <= 1 && Math.abs(right - innerWidth) <= 1 && Math.abs(height - innerHeight) <= 1
+      && (!expectedFullWidth || Math.abs(width - innerWidth) <= 1);
+  }, fullWidth);
+  const footer = await dialog.locator('.wizard-footer').boundingBox();
+  const form = await dialog.locator('.wizard-content').boundingBox();
+  assert.ok(footer && form && form.y + form.height <= footer.y + 1);
+  assert.ok(footer.y + footer.height <= page.viewportSize().height + 1);
+}
+
 async function assertStep(dialog, visible, { previous = false, last = false } = {}) {
   await visible.waitFor();
   await footerAction(dialog, '取消').waitFor();
@@ -46,6 +61,7 @@ async function openWizard(page, scenario, action, launch) {
     await dialog.getByText(label, { exact: true }).first().waitFor();
   }
   await assertStep(dialog, field(dialog, scenario.nameField));
+  await fullHeightDrawer(page, dialog);
   assert.equal(await field(dialog, scenario.detailsField).isVisible(), false, '首步只显示基础信息');
   assert.equal(await field(dialog, scenario.imageField).isVisible(), false, '首步不显示图片字段');
   return dialog;
@@ -60,6 +76,10 @@ async function lastStep(dialog, scenario, details) {
   }
   await content.waitFor();
   if (details !== undefined) await content.fill(details);
+  if (details !== undefined && scenario.collection === 'products') {
+    await field(dialog, '核心成分').fill('测试成分');
+    await field(dialog, '产品亮点').fill('测试亮点');
+  }
   if (scenario.detailsStep) await footerAction(dialog, '下一步').click();
   await assertStep(dialog, field(dialog, scenario.imageField), { previous: true, last: true });
   assert.equal(await field(dialog, scenario.nameField).isVisible(), false, '末步不再显示基础信息');
@@ -82,6 +102,21 @@ async function upload(h, dialog, scenario) {
     () => field(dialog, scenario.imageField).setInputFiles(file), 201);
   await dialog.getByRole('img', { name: scenario.imageField, exact: true }).waitFor();
   return (await response.json()).id;
+}
+
+async function assertBlockedSave(dialog, scenario) {
+  await footerAction(dialog, '保存').click();
+  await dialog.getByRole('alert').filter({ hasText: '请补齐必填项后保存草稿' }).waitFor();
+  assert.equal(await field(dialog, scenario.nameField).getAttribute('aria-invalid'), 'true');
+  await field(dialog, scenario.nameField).waitFor();
+}
+
+async function completeProductImages(h, page, dialog) {
+  const firstPlacement = page.locator('.el-cascader-menu').first().locator('label.el-checkbox').first();
+  await h.upload(page, field(dialog, '添加详情竖图'), h.files.long);
+  await dialog.locator('.place-cascader').click();
+  await firstPlacement.click();
+  await dialog.getByRole('heading', { name: '展示位置', exact: true }).click();
 }
 
 // Fault injection is limited to one browser save; all setup, uploads, retries and draft writes are real.
@@ -123,14 +158,37 @@ async function addDraft(h, scenario, name, endpoint) {
   await dialog.waitFor({ state: 'hidden' });
   assert.equal(await rowNamed(page, `${name}-放弃`).count(), 0, '取消不得创建草稿');
 
+  if (scenario.collection === 'products') {
+    await page.route(`${h.base}/api/admin/config/directory`, route => route.fulfill({ status: 503,
+      json: { code: 'temporary_failure', message: '展示位置暂不可用' } }), { times: 1 });
+  }
   dialog = await openWizard(page, scenario, '新增', add);
   assert.equal(await field(dialog, scenario.nameField).inputValue(), '', '重新新增不得带回已放弃内容');
-  await field(dialog, scenario.nameField).fill(name);
-  if (scenario.collection === 'products') await field(dialog, '配方编号').fill(name);
+  if (scenario.collection === 'products') {
+    await field(dialog, '配方编号').fill(name);
+    await field(dialog, '简短功效').fill('测试简短功效');
+    await field(dialog, '是否生产过').selectOption('待确认');
+  }
   else await field(dialog, '品牌名称').fill('向导回归测试品牌');
   const details = '首次填写的测试内容';
   await lastStep(dialog, scenario, details);
+  if (scenario.collection === 'products') {
+    const desktop = page.viewportSize();
+    await page.setViewportSize({ width: 390, height: 420 });
+    await fullHeightDrawer(page, dialog, true);
+    assert.ok(await dialog.locator('.wizard-content').evaluate(el => el.scrollHeight > el.clientHeight));
+    await page.setViewportSize(desktop);
+  }
+  await assertBlockedSave(dialog, scenario);
+  await field(dialog, scenario.nameField).fill(name);
+  await lastStep(dialog, scenario);
   const image = await upload(h, dialog, scenario);
+  if (scenario.collection === 'products') {
+    await dialog.getByRole('alert').filter({ hasText: '展示位置加载失败' }).waitFor();
+    await h.observe(page, 'GET', '/api/admin/config/directory', () => button(dialog, '重试加载展示位置').click(), 200);
+    await dialog.getByRole('img', { name: scenario.imageField, exact: true }).waitFor();
+    await completeProductImages(h, page, dialog);
+  }
   await rejectFirstSave(h, dialog, endpoint);
   await dialog.getByRole('img', { name: scenario.imageField, exact: true }).waitFor();
   await toBasic(dialog, scenario);
@@ -153,6 +211,9 @@ async function editDraft(h, scenario, name, original) {
   const nextName = `${name}-修订`;
   const details = original.draft[scenario.detailsKey];
   const image = original.draft[scenario.imageKey];
+  await field(dialog, scenario.nameField).fill('');
+  await lastStep(dialog, scenario);
+  await assertBlockedSave(dialog, scenario);
   await field(dialog, scenario.nameField).fill(nextName);
   await lastStep(dialog, scenario);
   await dialog.getByRole('img', { name: scenario.imageField, exact: true }).waitFor();
@@ -246,7 +307,8 @@ async function retryReleaseHistory(h, page, row, name, item, receipt, imageName)
       await h.observe(page, 'GET', versionsPath, action, status);
       await dialog.getByRole('alert').filter({ hasText: text }).waitFor();
       assert.equal(await dialog.getByText(name, { exact: true }).count(), 0, '不可退回到未经确认的线上资料');
-      assert.equal(await dialog.getByRole('img').count(), 0);
+      assert.equal(await dialog.getByRole('region', { name: '条目资料' }).locator('img[src]').count(), 0,
+        '版本加载失败时不得显示条目图片');
     } finally {
       await page.unroute(match, routeHandler);
     }
@@ -258,60 +320,66 @@ async function retryReleaseHistory(h, page, row, name, item, receipt, imageName)
   await dialog.waitFor({ state: 'hidden' });
 }
 
-/** A list refresh failure must not let the earlier release check survive an edit. */
-async function releaseCheckAfterEdit(h) {
+async function publishFromList(h, page, row, saved) {
+  const path = `/api/admin/items/${saved.id}`;
+  const writes = [];
+  const observe = request => {
+    const url = new URL(request.url());
+    if (url.origin === h.base && request.method() === 'POST' && [path + '/check', path + '/publish'].includes(url.pathname)) {
+      writes.push(url.pathname);
+    }
+  };
+  const dialog = page.getByRole('dialog', { name: '确认发布', exact: true });
+  page.on('request', observe);
+  try {
+    await button(row, '发布').click();
+    await button(dialog, '取消').click();
+    await dialog.waitFor({ state: 'hidden' });
+    assert.deepEqual(writes, [], '取消发布不能检查或写入');
+
+    await button(row, '发布').click();
+    assert.deepEqual(writes, [], '打开确认框不能发起检查或发布');
+    const response = await h.observe(page, 'POST', path + '/publish', () => button(dialog, '确认发布').click());
+    assert.equal(response.request().postDataJSON().expected_revision, saved.revision);
+    assert.deepEqual(writes, [path + '/publish'], '确认只提交一次发布请求');
+    await dialog.waitFor({ state: 'hidden' });
+    return response.json();
+  } finally {
+    page.off('request', observe);
+  }
+}
+
+/** Publish after editing and verify that history contains the revised saved version. */
+async function releaseAfterEdit(h) {
   const page = h.logins.P ? await h.newPage('P') : h.E;
   const scenario = scenarios[0];
-  const endpoint = '/api/admin/products';
   const directoryReply = await page.request.get(h.base + '/api/admin/config/directory');
   assert.ok(directoryReply.ok());
   const directory = await directoryReply.json();
   const place = h.places?.a ?? directory.live?.nodes?.find(node => node.level === 'category' && node.enabled)?.id;
   assert.ok(place, '隔离环境需要已发布的展示分类');
-  const name = `向导发布检查-${randomUUID().slice(0, 8)}`;
+  const name = `向导发布-${randomUUID().slice(0, 8)}`;
   const original = await h.createProduct(page, { name, code: name, places: [place], detailFiles: [h.files.long, h.files.poster1, h.files.poster2] });
   const [firstDetail, secondDetail, thirdDetail] = original.draft.detail_asset_ids;
   const search = field(page, '搜索产品');
   await search.fill(name);
   await search.press('Enter');
   const row = rowNamed(page, name);
-  const panel = page.locator('section[aria-label="发布检查"]');
-  const checkPath = `/api/admin/items/${original.id}/check`;
-  const check = () => h.observe(page, 'POST', checkPath, () => button(panel, '检查发布').click());
-  await button(row, '发布检查').click();
-  assert.equal((await (await check()).json()).eligible, true);
-  const confirm = button(panel, '确认发布');
-  await confirm.and(panel.locator('button:enabled')).waitFor();
-
   const savedName = `${name}-修订`;
   const dialog = await openWizard(page, scenario, '编辑', () => button(row, '编辑').click());
   await field(dialog, scenario.nameField).fill(savedName);
   await lastStep(dialog, scenario);
   assert.equal(await field(dialog, '添加详情竖图').count(), 0, '三张竖图时不能继续上传');
   await button(dialog, '上移详情竖图 3').click();
-  const listRequests = url => url.origin === h.base && url.pathname === endpoint;
-  const failList = route => route.request().method() === 'GET'
-    ? route.fulfill({ status: 503, json: { code: 'temporary_failure', message: '产品列表暂时无法刷新' } })
-    : route.fallback();
-  await page.route(listRequests, failList);
-  try {
-    const saved = await (await h.observe(page, 'PUT', `/api/admin/items/${original.id}/draft`,
-      () => footerAction(dialog, '保存').click(), 200)).json();
-    assert.notEqual(saved.revision, original.revision);
-    assert.deepEqual(saved.draft.detail_asset_ids, [firstDetail, thirdDetail, secondDetail]);
-    await dialog.waitFor({ state: 'hidden' });
-    await page.getByRole('alert').filter({ hasText: '产品列表暂时无法刷新' }).waitFor();
-    assert.equal(await confirm.isDisabled(), true, '刷新失败也不能继续确认旧修订');
-    const report = await check();
-    assert.equal(report.request().postDataJSON().expected_revision, saved.revision, '再次检查必须使用刚保存的修订');
-    assert.equal((await report.json()).eligible, true);
-  } finally {
-    await page.unroute(listRequests, failList);
-  }
+  const saved = await (await h.observe(page, 'PUT', `/api/admin/items/${original.id}/draft`,
+    () => footerAction(dialog, '保存').click(), 200)).json();
+  assert.notEqual(saved.revision, original.revision);
+  assert.deepEqual(saved.draft.detail_asset_ids, [firstDetail, thirdDetail, secondDetail]);
+  await dialog.waitFor({ state: 'hidden' });
   // Reuse the eligible product so the archived view exercises the real published snapshot, not a mocked list row.
   const itemPath = `/api/admin/items/${original.id}`;
-  const receipt = await (await h.observe(page, 'POST', `${itemPath}/publish`, () => confirm.click())).json();
   const revisedRow = rowNamed(page, savedName);
+  const receipt = await publishFromList(h, page, revisedRow, saved);
   await revisedRow.getByText('已上线', { exact: true }).waitFor();
   await retryReleaseHistory(h, page, revisedRow, savedName, original, receipt, scenario.imageField);
   await h.observe(page, 'POST', `${itemPath}/unlist`, () => button(revisedRow, '下架').click());
@@ -330,7 +398,7 @@ async function releaseCheckAfterEdit(h) {
     listUrl: h.base + '/admin/products', searchValue: savedName,
     image: { name: scenario.imageField, id: original.draft[scenario.imageKey], itemId: original.id, seq: receipt.seq } });
   assert.equal(await state.inputValue(), 'archived', '关闭查看后应保留归档筛选');
-  return '列表刷新失败后重新检查使用刚保存的修订；真实归档后可只读查看最后发布的版本';
+  return '产品取消发布无写入，一次确认直接发布最新保存修订；归档后可查看最后发布版本';
 }
 
 /** Exercise both list wizards against a signed-in editor and the disposable fixture's actual API. */
@@ -369,7 +437,8 @@ export async function runItemWizards(h) {
         const saved = await editDraft(h, scenario, name, item);
         assert.equal(page.url(), listUrl, '编辑成功后应停留在当前列表');
         assert.equal(await search.inputValue(), name, '保存后保留当前列表筛选条件');
-        assert.deepEqual(writes, [['POST', '/api/admin/media'], ['POST', endpoint], ['POST', endpoint],
+        const mediaWrites = Array.from({ length: scenario.collection === 'products' ? 2 : 1 }, () => ['POST', '/api/admin/media']);
+        assert.deepEqual(writes, [...mediaWrites, ['POST', endpoint], ['POST', endpoint],
           ['PUT', `/api/admin/items/${item.id}/draft`]], '取消和步骤切换不写入；只有上传和保存可写入');
         const savedName = saved.draft[scenario.nameKey];
         const beforeView = writes.length;
@@ -387,5 +456,41 @@ export async function runItemWizards(h) {
       }
     });
   }
-  await h.runCase('WIZARD-release-revision', () => releaseCheckAfterEdit(h));
+  await h.runCase('WIZARD-release-revision', () => releaseAfterEdit(h));
+  await h.runCase('WIZARD-case-release', async () => {
+    const page = h.logins.P ? await h.newPage('P') : h.E;
+    const name = `向导案例发布-${randomUUID().slice(0, 8)}`;
+    const saved = await h.createCase(page, { name, brand: '向导测试' });
+    const search = field(page, '搜索案例');
+    await search.fill(name);
+    await search.press('Enter');
+    const row = rowNamed(page, name);
+    await publishFromList(h, page, row, saved);
+    await row.getByText('已上线', { exact: true }).waitFor();
+    return '案例取消发布无写入，一次确认直接上线';
+  });
+  await h.runCase('WIZARD-release-permission', async () => {
+    const page = await h.newPage(h.logins.P ? 'P' : 'E');
+    try {
+      const name = `向导发布权限-${randomUUID().slice(0, 8)}`;
+      const saved = await h.createCase(page, { name, brand: '向导测试' });
+      const publish = `/api/admin/items/${saved.id}/publish`;
+      await page.route(h.base + publish, route => route.fulfill({ status: 502, json: {} }));
+      await page.route(url => url.origin === h.base && url.pathname === '/api/admin/audit',
+        route => route.fulfill({ status: 403, json: { message: '需要发布权限' } }));
+      await page.route(`${h.base}/api/admin/me`, async route => {
+        const response = await route.fetch();
+        await route.fulfill({ response, json: { ...await response.json(), can_publish: false } });
+      });
+      await rowAction(rowNamed(page, name), '发布').click();
+      const dialog = page.getByRole('dialog', { name: '确认发布', exact: true });
+      await h.observe(page, 'POST', publish, () => button(dialog, '确认发布').click(), 502);
+      assert.ok(await button(dialog, '取消').isDisabled());
+      await h.observe(page, 'GET', '/api/admin/audit', () => button(dialog, '核对回执').click(), 403);
+      await dialog.getByText('发布结果待核对，请联系有发布权限的同事。').waitFor();
+      await button(dialog, '取消').click();
+      await dialog.waitFor({ state: 'hidden' });
+      return '发布结果不明时保留核对，失去发布权限后可以关闭弹窗';
+    } finally { await page.context().close(); }
+  });
 }

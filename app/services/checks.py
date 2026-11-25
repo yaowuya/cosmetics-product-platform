@@ -9,16 +9,16 @@ from app.models import Asset, ContentItem
 from app.repositories import releases
 from app.repositories.items import get_item
 from app.schemas.common import Choice
-from app.schemas.content import effective_product_body
+from app.schemas.content import effective_product_body, missing_item_fields
 from app.services.directory import active_directory
 from app.services.items import item_view
 from app.services.media import resolve_asset_file
 
-PRODUCT_REQUIRED = (
-    "name", "short_benefit", "benefit", "ingredients", "highlights", "formula_no", "production_status",
-    "cover_asset_id",
-)
-CASE_REQUIRED = ("brand_name", "product_name", "highlight", "image_asset_id")
+_PUBLICATION_MISSING_REASONS = {
+    "detail_asset_id": "至少要有一张详情长图",
+    "detail_asset_ids": "至少要有一张详情长图",
+    "place_ids": "产品须关联当前有效展示位置",
+}
 
 
 def _image_fields(body: object, path: str = "") -> Iterator[tuple[str, str]]:
@@ -74,30 +74,27 @@ def _config_issues(slot: str | None, body: dict) -> list[dict]:
 
 
 def _case_issues(db: Session, draft: dict) -> list[dict]:
-    issues = _required(draft, CASE_REQUIRED)
     key = draft.get("category_key")
     if key:
         header = releases.live_case_header(db)
         if key not in {row["key"] for row in header.get("filters", [])}:
-            issues.append({"field": "category_key", "reason": "筛选项未发布或已停用"})
-    return issues
+            return [{"field": "category_key", "reason": "筛选项未发布或已停用"}]
+    return []
 
 
 def _body_issues(db: Session, item: ContentItem, draft: dict | None, place_ids: list[str]) -> list[dict]:
     if draft is None:
         return [{"field": "draft", "reason": "没有可发布的草稿"}]
-    if item.kind == "product":
-        issues = _required(draft, PRODUCT_REQUIRED)
-        # A legacy editor may still send the singular field. An explicit gallery owns the answer.
-        gallery_field = "detail_asset_ids" if "detail_asset_ids" in draft else "detail_asset_id"
-        if not draft.get(gallery_field):
-            issues.append({"field": gallery_field, "reason": "至少要有一张详情长图"})
-        if not place_ids or not set(place_ids) <= active_directory(db).keys():
-            issues.append({"field": "place_ids", "reason": "产品须关联当前有效展示位置"})
-        return issues
+    if item.kind not in {"product", "case"}:
+        return _config_issues(item.config_slot, draft)
+    missing = missing_item_fields(item.kind, draft, has_placement=bool(place_ids))
+    issues = [{"field": field, "reason": _PUBLICATION_MISSING_REASONS.get(field, "发布必填项未设置")}
+              for field in missing]
     if item.kind == "case":
-        return _case_issues(db, draft)
-    return _config_issues(item.config_slot, draft)
+        issues.extend(_case_issues(db, draft))
+    elif place_ids and not set(place_ids) <= active_directory(db).keys():
+        issues.append({"field": "place_ids", "reason": _PUBLICATION_MISSING_REASONS["place_ids"]})
+    return issues
 
 
 def _available(asset: Asset | None) -> bool:

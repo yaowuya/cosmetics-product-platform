@@ -15,6 +15,12 @@ def test_no_side_effects(mysql_engine, monkeypatch):
         for name, publish in (("check-publisher", 1), ("check-editor", 0)):
             actors.append(db.execute(text("INSERT INTO account(login,password_hash,can_edit,can_publish,must_change_password) VALUES (:n,:p,1,:v,0)"),
                                      {"n": name, "p": digest, "v": publish}).lastrowid)
+        # Previously saved partial drafts still need actionable publisher checks.
+        for kind in ("product", "case"):
+            item = db.execute(text("INSERT INTO content_item(kind,revision) VALUES (:k,1)"), {"k": kind}).lastrowid
+            db.execute(text("INSERT INTO draft(item_id,body,edited_by) VALUES (:i,JSON_OBJECT(),:a)"),
+                       {"i": item, "a": actors[0]})
+            created.append(item)
     try:
         opts = {"base_url": "https://showcase.test", "client": ("192.0.2.80", 50000)}
         with TestClient(app, **opts) as publisher, TestClient(app, **opts) as editor:
@@ -28,11 +34,7 @@ def test_no_side_effects(mysql_engine, monkeypatch):
                 return {**origin, "X-CSRF-Token": signed.json()["csrf_token"]}
 
             headers, edit_headers = login(publisher, "check-publisher"), login(editor, "check-editor")
-            rows = []
-            for kind in ("products", "cases"):
-                response = publisher.post(f"/api/admin/{kind}", headers=headers, json={"body": {}})
-                assert response.status_code == 201
-                row = response.json(); rows.append(row); created.append(row["id"])
+            rows = [publisher.get(f"/api/admin/items/{ident}").json() for ident in created]
             one, case = rows
             req = {"expected_revision": one["revision"]}
             endpoint = f"/api/admin/items/{one['id']}/check"

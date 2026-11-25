@@ -14,12 +14,14 @@ def test_editor_restore_only(mysql_engine, monkeypatch):
     with mysql_engine.begin() as db:
         actor = db.execute(text("INSERT INTO account(login,password_hash,can_edit,must_change_password) VALUES ('history-acceptance',:p,1,0)"),
                            {"p": hash_password("history-test-password")}).lastrowid
-        item = db.execute(text("INSERT INTO content_item(kind,revision) VALUES ('product',2)")).lastrowid
+        item = db.execute(text("INSERT INTO content_item(kind,revision) VALUES ('product',3)")).lastrowid
         live = None
         for seq, label in ((1, "旧版"), (2, "线上")):
             live = db.execute(text("INSERT INTO `release`(item_id,seq,source_revision,body,actor_id) VALUES (:i,:s,:s,:b,:a)"),
                               {"i": item, "s": seq, "b": json.dumps({"name": label}), "a": actor}).lastrowid
         db.execute(text("UPDATE content_item SET live_id=:v WHERE id=:i"), {"v": live, "i": item})
+        db.execute(text("INSERT INTO draft(item_id,body,edited_by) VALUES (:i,JSON_OBJECT('name','同事稿'),:a)"),
+                   {"i": item, "a": actor})
     try:
         with TestClient(app, base_url="https://showcase.test", client=("192.0.2.110", 50000)) as editor:
             origin = {"Origin": "https://showcase.test"}
@@ -31,8 +33,7 @@ def test_editor_restore_only(mysql_engine, monkeypatch):
             versions = editor.get(route + "/versions")
             assert versions.status_code == 200
             assert [row["seq"] for row in versions.json()["items"]] == [2, 1]
-            current = editor.put(route + "/draft", headers=headers,
-                                 json={"expected_revision": "2", "body": {"name": "同事稿"}}).json()
+            current = editor.get(route).json()
             action = route + "/versions/1/restore"
             assert editor.post(action, headers=headers, json={"expected_revision": "2", "confirm_overwrite": True}).status_code == 409
             assert editor.post(action, headers=headers, json={"expected_revision": current["revision"], "confirm_overwrite": False}).status_code == 409

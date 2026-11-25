@@ -30,10 +30,14 @@ def test_union_per_item(mysql_engine, monkeypatch):
                                 json={"login": "append-editor", "password": "append-test-password"})
             headers = {**origin, "X-CSRF-Token": login.json()["csrf_token"]}
             def draft(name):
-                """Create a genuine editable item and record it for isolated cleanup."""
-                response = editor.post("/api/admin/products", headers=headers, json={"body": {"name": name}, "place_ids": [str(nodes[0])]})
-                assert response.status_code == 201
-                item = response.json(); created.append(item["id"]); return item
+                """Seed a partial legacy draft that the internal position workflow can still edit."""
+                with mysql_engine.begin() as db:
+                    ident = db.execute(text("INSERT INTO content_item(kind,revision) VALUES ('product',1)")).lastrowid
+                    db.execute(text("INSERT INTO draft(item_id,body,edited_by) VALUES (:i,JSON_OBJECT('name',:n),:a)"),
+                               {"i": ident, "n": name, "a": actor})
+                    db.execute(text("INSERT INTO draft_place(item_id,node_id) VALUES (:i,:n)"), {"i": ident, "n": nodes[0]})
+                created.append(ident)
+                return editor.get(f"/api/admin/items/{ident}").json()
             one, two = draft("未发布稿"), draft("现有线上版")
             with mysql_engine.begin() as db:
                 live = db.execute(text("INSERT INTO `release`(item_id,seq,source_revision,body,actor_id) VALUES (:i,1,1,:b,:a)"),

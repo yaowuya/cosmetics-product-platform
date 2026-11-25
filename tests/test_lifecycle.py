@@ -53,7 +53,9 @@ def test_cleanup_guard(mysql_engine, monkeypatch):
             assert result.status_code == 200 and result.json()["archived_at"] and result.json()["has_history"]
             assert editor.get("/api/admin/products").json()["total"] == 0
             assert editor.get("/api/admin/products", params={"state": "archived"}).json()["total"] == 1
-            draft = editor.post("/api/admin/cases", headers=headers, json={"body": {"brand_name": "试填"}}).json()
+            draft = editor.post("/api/admin/cases", headers=headers, json={"body": {
+                "brand_name": "试填", "product_name": "生命周期案例", "highlight": "测试亮点", "image_asset_id": "1",
+            }}).json()
             ids.append(int(draft["id"]))
             assert editor.request("DELETE", f"/api/admin/items/{draft['id']}/draft", headers=headers,
                                   json={"confirmed": True, "expected_revision": draft["revision"]}).status_code == 204

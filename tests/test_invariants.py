@@ -67,21 +67,21 @@ def test_two_connections(mysql_engine, monkeypatch, tmp_path):
                                  json={"items": [{"id": product, **selection}]})
                 assert batch.status_code == 200 and batch.json()["items"] == [checked.json()]
 
-            assert_eligible(created.json()["revision"])
             initial = one.post(path + "/publish", headers=first,
                                json={"request_key": "txn-first", "expected_revision": created.json()["revision"]})
             assert initial.status_code == 200
             first_version = initial.json()
             missing = {k: v for k, v in body.items() if k != "detail_asset_id"} | {"name": "核对新版"}
             partial = editor.put(path + "/draft", headers=edit, json={"expected_revision": first_version["revision"],
-                                 "body": missing, "place_ids": nodes[1:]}).json()
-            assert one.post(path + "/check", headers=first, json={"expected_revision": partial["revision"]}).json()["eligible"] is False
+                                 "body": missing, "place_ids": nodes[1:]})
+            assert partial.status_code == 422
+            assert [issue["field"] for issue in partial.json()["issues"]] == ["detail_asset_id"]
             def public_labels():
                 """Read the same product through two genuinely different public directory positions."""
                 return [visitor.get("/api/public/products", params={"node_id": node}).json()["items"][0]["body"]["name"] for node in nodes[1:]]
             assert public_labels() == ["首次线上", "首次线上"]
             # Optional catalog images still need an actual upload when selected.
-            unregistered = editor.put(path + "/draft", headers=edit, json={"expected_revision": partial["revision"],
+            unregistered = editor.put(path + "/draft", headers=edit, json={"expected_revision": first_version["revision"],
                                    "body": {**missing, "detail_asset_ids": [asset], "thumbnail_asset_id": "9223372036854775807"},
                                    "place_ids": nodes[1:]}).json()
             rejected = one.post(path + "/check", headers=first, json={"expected_revision": unregistered["revision"]}).json()

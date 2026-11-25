@@ -46,9 +46,6 @@ function evidence() {
     finish(summary) { if (failures.length) throw new Error(failures.join('；')); return summary; },
   };
 }
-function missingLong(check) {
-  return check?.eligible === false && check.issues.some(issue => ['detail_asset_id', 'detail_asset_ids'].includes(issue.field));
-}
 const longIds = body => Array.isArray(body?.detail_asset_ids) ? body.detail_asset_ids : [body?.detail_asset_id].filter(Boolean);
 function matchesMedia(url, id) {
   if (!url || !id) return false;
@@ -112,14 +109,10 @@ export async function runProducts(h) {
     firstRelease[key] = await h.publish(P, editor(entries[key].id));
     return firstRelease[key];
   }
-  async function revise(row, { benefit, short, removeLong = false, uploadLong = false }) {
-    const item = await readItem(E, row);
+  async function revise(row, { benefit, short }) {
+    await readItem(E, row);
     if (benefit) await E.getByLabel('功效', { exact: true }).fill(benefit);
     if (short) await E.getByLabel('简短功效', { exact: true }).fill(short);
-    if (removeLong) {
-      for (const _ of longIds(bodyOf(item))) await button(E, '移除详情竖图 1').click();
-    }
-    if (uploadLong) await h.upload(E, E.getByLabel('添加详情竖图', { exact: true }), h.files.long);
     return h.save(E);
   }
   async function adminList(page) {
@@ -252,32 +245,31 @@ export async function runProducts(h) {
     ready('a', 'b'); const e = evidence();
     const row = await create('cross', '双分类精华', [t.a, t.b]);
     const v1 = await publishFirst('cross');
-    const edit = await revise(row, { benefit: tag('精华新版功效'), short: tag('精华新版卡片'), removeLong: true });
-    assert.ok(edit.draft && !longIds(edit.draft).length, '未实际保存缺长图的新稿');
+    const existing = await readItem(E, row);
+    await E.getByLabel('功效', { exact: true }).fill(tag('精华新版功效'));
+    await E.getByLabel('简短功效', { exact: true }).fill(tag('精华新版卡片'));
+    for (const _ of longIds(bodyOf(existing))) await button(E, '移除详情竖图 1').click();
     const since = h.events.length;
-    const check = await h.check(P, editor(row.id));
-    e.expect(missingLong(check) && same(sorted(check.place_ids), sorted([t.a, t.b])), '检查没有同时指出缺长图和两个影响位置');
-    e.expect(await button(P, '确认发布').isDisabled(), '缺图草稿仍可确认发布');
+    await button(E, '保存草稿').click();
+    await E.locator('[data-editor-field="detail_asset_ids"] .field-error').waitFor();
+    e.expect(!writesSince(since, /\/draft$/).length, '缺图时发出了保存请求');
     for (const k of ['a', 'b']) await e.read(`${k} 分类旧版`, () => linkedProduct(k, row, row.draft));
-    e.expect(writesSince(since, /\/publish$/).length === 0, '缺图检查产生了发布请求');
-    const repaired = await revise(row, { uploadLong: true });
+    e.expect(writesSince(since, /\/publish$/).length === 0, '缺图保存产生了发布请求');
+    await h.upload(E, E.getByLabel('添加详情竖图', { exact: true }), h.files.long);
+    const repaired = await h.save(E);
     const v2 = await h.publish(P, editor(row.id));
     e.expect(v2.id === row.id && v2.seq === v1.seq + 1 && v2.release_id !== v1.release_id, '修复后未生成该产品的下一版本');
     for (const k of ['a', 'b']) await e.read(`${k} 分类新版`, () => linkedProduct(k, row, repaired.draft));
-    return e.finish('缺长图时两分类保留旧版；补图确认后从两个分类均打开同一款新版完整图文。');
+    return e.finish('缺长图时保存被拦截，两分类继续显示旧版；补图保存并发布后均显示新版。');
   });
 
   await h.runCase('PRD-04', async () => {
     ready('a'); const e = evidence();
-    const row = await create('incomplete', '缺图新品', [t.a], { omitLong: true });
-    e.expect(missingLong(await h.check(P, editor(row.id))) && await button(P, '确认发布').isDisabled(), '新品缺图未被检查拦下');
-    const stored = await readItem(E, row);
-    e.expect(!!stored.draft && !longIds(stored.draft).length && !stored.live_id && !stored.has_history, '新品草稿或未上架状态不符');
-    for (const q of ['', row.draft.name, row.draft.formula_no]) {
-      await e.read(q ? '新品搜索' : '新品所在分类', async () => assert.ok(!(await catalog('a', q)).some(x => x.id === row.id), '公开结果包含新品'));
-    }
-    await e.read('新品公开详情', () => blockedDetail(row));
-    return e.finish('新品草稿保留，发布检查定位长图；目录、名称与编号搜索、匿名详情均未公开。');
+    const name = tag('缺图新品'), code = `${h.prefix}-PF-incomplete`;
+    assert.equal(await h.createProduct(E, { name, code, places: [t.a], omitLong: true }), null);
+    e.expect((await searchAdmin(E, name)).total === 0, '缺图新品居然生成了草稿');
+    for (const q of [name, code]) await e.read('新品公开搜索', async () => assert.equal((await catalog('a', q)).length, 0));
+    return e.finish('缺图新品保存时提示详情图，管理端和公开端均无此条目。');
   });
 
   await h.runCase('PRD-05', async () => {
@@ -337,15 +329,16 @@ export async function runProducts(h) {
     const saved = await observeJson(E, 'PUT', `${itemApi(row.id)}/draft`, () => button(dialog, '保存').click());
     await dialog.waitFor({ state: 'hidden' });
     await adminList(P); await searchAdmin(P, code);
-    await button(rowFor(P, name), '发布检查').click();
-    const panel = P.locator('section[aria-label="发布检查"]');
+    await button(rowFor(P, name), '发布').click();
+    const panel = P.getByRole('dialog', { name: '确认发布', exact: true });
     const since = h.events.length;
-    const check = await observeJson(P, 'POST', `${itemApi(row.id)}/check`, () => button(panel, '检查发布').click());
-    assert.ok(check.id === row.id && check.eligible && check.revision === saved.revision, '行内检查没有合格的目标修订');
     await e.read('行内确认前的 H5', async () => {
-      const ids = idList(await catalog('c')); assert.ok(!ids.includes(row.id) && !ids.includes(other.id), '仅检查已导致草稿公开');
+      const ids = idList(await catalog('c')); assert.ok(!ids.includes(row.id) && !ids.includes(other.id), '打开确认框已导致草稿公开');
     });
-    const { result: receipt } = await decision(P, true, () => observeJson(P, 'POST', `${itemApi(row.id)}/publish`, () => button(panel, '确认发布').click()));
+    const published = await h.observe(P, 'POST', `${itemApi(row.id)}/publish`, () => button(panel, '确认发布').click());
+    assert.equal(published.request().postDataJSON().expected_revision, saved.revision);
+    const receipt = await published.json();
+    e.expect(!writesSince(since, /\/check$/).length, '单条发布仍发送了独立检查请求');
     firstRelease.alpha = receipt;
     e.expect(receipt.id === row.id && receipt.seq === 1 && same(writesSince(since, /\/publish$/).map(x => x.path), [`${itemApi(row.id)}/publish`]), '单条确认没有只发布目标款');
     await e.read('发布后 H5', () => linkedProduct('c', row, saved.draft));
@@ -359,7 +352,7 @@ export async function runProducts(h) {
   });
 
   await h.runCase('PRD-07-P', async () => {
-    ready('a'); const e = evidence(); const row = entries.incomplete;
+    ready('a'); const e = evidence(); const row = await create('deletable', '待删除新品', [t.a]);
     h.require(row?.id, '没有可删除的未发布草稿');
     const before = await readItem(E, row);
     h.require(before.draft && !before.has_history && !before.live_id, '目标不是从未发布的草稿');
@@ -411,12 +404,12 @@ export async function runProducts(h) {
   await h.runCase('PRD-10', async () => {
     ready('a', 'b', 'c'); const e = evidence();
     const { alpha, beta, cross, steady, hold } = entries;
-    h.require([alpha,beta,cross,steady,hold].every(x => x?.id), '缺少两款有历史的产品、缺项/无草稿/未选对照');
+    h.require([alpha,beta,cross,steady,hold].every(x => x?.id), '缺少两款有历史的产品和未发布对照');
     const initial = byId(await familyList(E));
     h.require([alpha,beta,cross,steady].every(x => initial.get(x.id)?.live_id) && !initial.get(steady.id)?.draft && initial.get(hold.id)?.draft, '混合清单的线上及草稿前置状态不齐');
     await revise(alpha, { benefit: tag('批次甲二版'), short: tag('批次甲新卡片') });
     await revise(beta, { benefit: tag('批次乙二版'), short: tag('批次乙新卡片') });
-    await revise(cross, { benefit: tag('缺项不得上线'), removeLong: longIds(bodyOf(initial.get(cross.id))).length > 0 });
+    if (initial.get(cross.id)?.draft) await h.publish(P, editor(cross.id));
     const eligible = [alpha, beta];
     for (let n = 3; n <= 8; n++) eligible.push(await create(`batch${n}`, `合格第${n}款`, [t.a]));
     const skip = [cross, steady], selected = [...eligible, ...skip], controls = [...skip, hold];
@@ -434,7 +427,7 @@ export async function runProducts(h) {
     // Never submit an unexpected queue, even when the test would otherwise continue.
     assert.ok(same(idList(checks), idList(selected)) && same(idList(checks.filter(x => x.eligible)), idList(eligible)) &&
       checks.every(x => x.revision === before.get(x.id)?.revision), '预检并非本次选择的精确八款合格修订，未提交');
-    e.expect(missingLong(checked.get(cross.id)) && checked.get(steady.id)?.issues.some(x => x.field === 'draft'), '两个跳过原因未与各自产品对应');
+    e.expect(skip.every(x => checked.get(x.id)?.issues.some(issue => issue.field === 'draft')), '跳过原因未与各自产品对应');
     const panel = P.locator('section[aria-label="批量操作"]');
     const confirm = panel.getByRole('button', { name: /^发布这.*款$/ });
     await confirm.waitFor();
@@ -442,7 +435,7 @@ export async function runProducts(h) {
     const lines = await panel.locator('.list-line').allInnerTexts();
     e.expect(selected.every(x => lines.some(s => s.includes(nameOf(x)) && s.includes(bodyOf(x).formula_no))), '逐款检查清单未同时展示产品名和配方编号');
     e.expect(eligible.every(x => lines.some(s => s.includes(nameOf(x)) && s.includes('可发布'))), '可发布结论未逐款可见');
-    e.expect(lines.some(s => s.includes(nameOf(cross)) && /长图|详情竖图|detail_asset_id/.test(s)) && lines.some(s => s.includes(nameOf(steady)) && /草稿/.test(s)), '清单未指明缺长图与无草稿的各自原因');
+    e.expect(skip.every(x => lines.some(s => s.includes(nameOf(x)) && /草稿/.test(s))), '清单未指明两款的无草稿原因');
     await e.read('检查后线上状态', async () => {
       const current = byId(await familyList(E));
       assert.ok([...selected,hold].every(x => same(state(before.get(x.id)), state(current.get(x.id)))), '仅检查便改变了产品状态');
@@ -471,7 +464,6 @@ export async function runProducts(h) {
     const resultLines = await panel.locator('.list-line').allInnerTexts();
     h.write('batch-feedback-observed.json', { checks: lines, results: resultLines, submittedIds: posts });
     e.expect(selected.every(x => resultLines.some(s => s.includes(nameOf(x)) && s.includes(bodyOf(x).formula_no))), '发布后的清单没有保留每款对应的产品名与配方编号');
-    e.expect(resultLines.some(s => s.includes(nameOf(cross)) && /长图|详情竖图|detail_asset_id/.test(s)), '跳过的缺图款在刷新后丢失具体缺项');
     e.expect(eligible.every(x => resultLines.some(s => s.includes(nameOf(x)) && s.includes('已发布') && s.includes(`版本 ${batchReceipts.get(x.id)?.seq}`))), '结果清单未逐款标明成功版本');
     e.expect(skip.every(x => resultLines.some(s => s.includes(nameOf(x)) && /缺|草稿|未发布|跳过/.test(s))), '发布结果清单未保留两款未发条目及原因');
     const after = byId(await familyList(E));
@@ -485,7 +477,7 @@ export async function runProducts(h) {
     for (const x of controls) await e.read(`未发对照 ${nameOf(x)}`, async () => {
       assert.ok(same(state(after.get(x.id)), state(before.get(x.id))) && same(idList(await audit(x.id)), baselines.get(x.id)), '对照产品、草稿或记录改变');
     });
-    await e.read('缺项款仍展示旧版', () => linkedProduct('b', cross, before.get(cross.id).live));
+    await e.read('无草稿款仍展示批量前的版本', () => linkedProduct('b', cross, before.get(cross.id).live));
     await e.read('未勾选草稿仍未上线', () => blockedDetail(hold));
     return e.finish('混合十款预检、零合格禁用、八个单款 POST、回执版本和八条独立发布记录均经核对；另外三款状态保持。');
   });

@@ -5,7 +5,7 @@ from app.core.errors import AppError
 from app.core.ids import invalid, parse_id
 from app.models import Account, ContentItem, Release
 from app.repositories import directory, items
-from app.schemas.content import shape_body
+from app.schemas.content import missing_item_fields, shape_body
 from app.services.auth import ensure_editor
 from app.services.directory import validate_draft_tree
 
@@ -67,12 +67,12 @@ def _require_reserved_nodes(db: Session, node_ids: set[int], field: str) -> None
         raise invalid(field)
 
 
-def _validate_references(db: Session, item: ContentItem, body: dict, place_ids: list[str]) -> set[int]:
+def _validate_references(db: Session, kind: str, config_slot: str | None, body: dict, place_ids: list[str]) -> set[int]:
     # Drafts need reserved identities; publication and batch append separately require an active path.
-    if item.config_slot == "directory":
+    if config_slot == "directory":
         _require_reserved_nodes(db, {int(node["id"]) for node in body.get("nodes", [])}, "nodes")
     places = {parse_id(value, "place_ids") for value in place_ids}
-    if places and item.kind != "product":
+    if places and kind != "product":
         raise invalid("place_ids")
     _require_reserved_nodes(db, places, "place_ids")
     linked = body.get("related_product_id")
@@ -81,36 +81,52 @@ def _validate_references(db: Session, item: ContentItem, body: dict, place_ids: 
     return places
 
 
-def save_draft(db: Session, id: int, expected_revision: str, body: dict, place_ids: list[str], actor: Account) -> dict:
-    """Flush a partial draft in the caller's transaction; a repeated identical save keeps its revision."""
+def _draft_input(db: Session, kind: str, config_slot: str | None, body: dict, place_ids: list[str], *,
+                 require_complete: bool) -> tuple[dict, set[int]]:
+    normalized = normalize_body(kind, config_slot, body)
+    if require_complete:
+        missing = missing_item_fields(kind, normalized, has_placement=bool(place_ids))
+        if missing:
+            raise AppError(422, "invalid_body", "请补齐必填项后保存草稿",
+                           [{"field": field, "reason": "必填项未设置"} for field in missing])
+    return normalized, _validate_references(db, kind, config_slot, normalized, place_ids)
+
+
+def _persist_draft(db: Session, item: ContentItem, normalized: dict, places: set[int], actor_id: int) -> dict:
+    draft = items.get_draft(db, item.id)
+    before = set(items.draft_place_ids(db, item.id))
+    if draft is None or draft.body != normalized or before != places:
+        items.write_draft(db, item, draft, normalized, actor_id, before, places)
+    return item_view(db, item)
+
+
+def save_draft(db: Session, id: int, expected_revision: str, body: dict, place_ids: list[str], actor: Account, *,
+               require_complete: bool = False) -> dict:
+    """Flush in the caller's transaction; internal placement edits may retain incomplete historical bodies."""
     # Match publication's actor-before-item lock order, including when called from another edit.
     ensure_editor(db, actor)
     item = _require_item(items.lock_item(db, id))
     if item.archived_at is not None or item.revision != parse_id(expected_revision, "expected_revision", zero=True):
         raise AppError(409, "draft_conflict", "草稿已变化或条目已归档，请重新核对")
 
-    normalized = normalize_body(item.kind, item.config_slot, body)
-    places = _validate_references(db, item, normalized, place_ids)
-    draft = items.get_draft(db, id)
-    before = set(items.draft_place_ids(db, id))
-    if draft is None or draft.body != normalized or before != places:
-        items.write_draft(db, item, draft, normalized, actor.id, before, places)
-    return item_view(db, item)
+    normalized, places = _draft_input(db, item.kind, item.config_slot, body, place_ids, require_complete=require_complete)
+    return _persist_draft(db, item, normalized, places, actor.id)
 
 
 def new_item(db: Session, kind: str, body: dict, place_ids: list[str], actor: Account) -> dict:
-    """Create the identity and its first draft atomically after rechecking the editor."""
+    """Validate the first draft before allocating its identity, then commit both atomically."""
     ensure_editor(db, actor)
+    normalized, places = _draft_input(db, kind, None, body, place_ids, require_complete=True)
     item = items.create_item(db, kind)
-    view = save_draft(db, item.id, "0", body, place_ids, actor)
+    view = _persist_draft(db, item, normalized, places, actor.id)
     db.commit()
     return view
 
 
 def update_draft(db: Session, item_id: int, expected_revision: str, body: dict, place_ids: list[str],
                  actor: Account) -> dict:
-    """Commit a standalone save; callers with a larger transaction use save_draft instead."""
-    view = save_draft(db, item_id, expected_revision, body, place_ids, actor)
+    """Commit an editor save with required-field checking for products and cases."""
+    view = save_draft(db, item_id, expected_revision, body, place_ids, actor, require_complete=True)
     db.commit()
     return view
 

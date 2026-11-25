@@ -70,7 +70,7 @@ export async function createHarness(stage,directory) {
   h.save=async page=>(await h.observe(page,'PUT',/\/draft$/,()=>button(page,'保存草稿').first().click())).json();
   h.check=async(page,address)=>{await h.open(page,address);const tab=page.locator('nav.seg');await button(tab,'发布检查').click();return (await h.observe(page,'POST',/\/check$/,()=>button(page,'检查发布').click())).json();};
   h.publish=async(page,address)=>{const r=await h.check(page,address);assert.ok(r.eligible,JSON.stringify(r.issues));return (await h.observe(page,'POST',`/api/admin/items/${r.id}/publish`,()=>button(page,'确认发布').click())).json();};
-  h.publishRow=async(page,collection,id)=>{assert.ok(['products','cases'].includes(collection));await h.open(page,`/admin/${collection}`);const row=page.locator('.el-table__row').filter({has:page.locator(`button[data-item-id="${id}"]`)});await button(row,'发布检查').click();const panel=page.locator('section[aria-label="发布检查"]');const report=await(await h.observe(page,'POST',`/api/admin/items/${id}/check`,()=>button(panel,'检查发布').click())).json();assert.equal(report.eligible,true,JSON.stringify(report.issues));return (await h.observe(page,'POST',`/api/admin/items/${id}/publish`,()=>button(panel,'确认发布').click())).json();};
+  h.publishRow=async(page,collection,id)=>{assert.ok(['products','cases'].includes(collection));await h.open(page,`/admin/${collection}`);const row=page.locator('.el-table__row').filter({has:page.locator(`button[data-item-id="${id}"]`)});await button(row,'发布').click();const dialog=page.getByRole('dialog',{name:'确认发布',exact:true});return (await h.observe(page,'POST',`/api/admin/items/${id}/publish`,()=>button(dialog,'确认发布').click())).json();};
   h.createProduct=async(page,o)=>{
     await h.open(page,'/admin/products');
     const dialog=page.getByRole('dialog',{name:'新增产品',exact:true});
@@ -105,6 +105,16 @@ export async function createHarness(stage,directory) {
       await dialog.getByRole('heading',{name:'展示位置',exact:true}).click();
     }
     const save=button(dialog.locator('footer'),'保存');
+    if(o.omitLong){
+      const before=h.events.length;
+      await save.click();
+      await dialog.getByRole('alert').filter({hasText:'请补齐必填项后保存草稿'}).waitFor();
+      await dialog.locator('[data-editor-field="detail_asset_ids"] .field-error').waitFor();
+      assert.equal(h.events.slice(before).some(event=>event.method==='POST'&&event.path==='/api/admin/products'),false);
+      await button(dialog,'取消').click();
+      await dialog.waitFor({state:'hidden'});
+      return null;
+    }
     const response=await h.observe(page,'POST','/api/admin/products',()=>save.click(),201);
     const body=response.request().postDataJSON().body;
     assert.equal(body.thumbnail_asset_id,square.id);

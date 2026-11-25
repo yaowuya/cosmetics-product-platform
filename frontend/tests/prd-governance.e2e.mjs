@@ -96,12 +96,12 @@ export async function runGovernance(h) {
     await dialog.waitFor({ state: 'hidden' });
     assert.equal(saved.draft.highlight, edited);
     const row = await singleRow(P, 'cases', name, name, created.id);
-    await button(row, '发布检查').click();
-    const panel = P.getByRole('region', { name: '发布检查' });
-    const check = await (await h.observe(P, 'POST', `${itemPath(created.id)}/check`, () => button(panel, '检查发布').click())).json();
-    assert.ok(check.eligible && check.id === created.id && check.revision === saved.revision);
-    assert.equal((await publicCases(name)).total, 0, '列表行检查不应发布');
-    const receipt = await (await h.observe(P, 'POST', `${itemPath(created.id)}/publish`, () => button(panel, '确认发布').click())).json();
+    await button(row, '发布').click();
+    const panel = P.getByRole('dialog', { name: '确认发布', exact: true });
+    assert.equal((await publicCases(name)).total, 0, '打开确认框不应发布');
+    const published = await h.observe(P, 'POST', `${itemPath(created.id)}/publish`, () => button(panel, '确认发布').click());
+    assert.equal(published.request().postDataJSON().expected_revision, saved.revision);
+    const receipt = await published.json();
     assert.equal(receipt.id, created.id);
     const visible = await publicCases(name);
     assert.deepEqual(visible.items.map(i => [i.id, i.body.highlight]), [[created.id, edited]]);
@@ -355,7 +355,7 @@ export async function runGovernance(h) {
       }
       const target = await singleRow(page, 'products', name, name, item.id);
       await target.getByRole('checkbox').check();
-      for (const control of [button(page, '批量发布检查'), button(target, '发布检查'), button(target, '归档')]) assert.ok(await control.isDisabled());
+      for (const control of [button(page, '批量发布检查'), button(target, '发布'), button(target, '归档')]) assert.ok(await control.isDisabled());
       assert.equal(await page.getByRole('region', { name: '发布检查' }).count(), 0);
       await h.open(page, path);
       await button(page.getByRole('navigation', { name: '内容编辑视图' }), '发布检查').click();

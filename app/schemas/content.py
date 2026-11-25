@@ -60,6 +60,25 @@ _ITEM_FIELDS = {
     },
 }
 
+_REQUIRED_ITEM_FIELDS = {
+    "product": ("name", "short_benefit", "benefit", "ingredients", "highlights", "formula_no", "production_status",
+                "cover_asset_id"),
+    "case": ("brand_name", "product_name", "highlight", "image_asset_id"),
+}
+
+
+def missing_item_fields(kind: str, body: dict, *, has_placement: bool) -> list[str]:
+    """Report normal product and case omissions in an already normalized body."""
+    missing = [field for field in _REQUIRED_ITEM_FIELDS.get(kind, ()) if field not in body]
+    if kind == "product":
+        # An explicit empty gallery removes the old single image; absence preserves legacy drafts.
+        gallery_field = "detail_asset_ids" if "detail_asset_ids" in body else "detail_asset_id"
+        if not body.get(gallery_field):
+            missing.append(gallery_field)
+        if not has_placement:
+            missing.append("place_ids")
+    return missing
+
 
 def _list_value(value: Any, rule: Any, field: str) -> list:
     if not isinstance(value, list) or (rule == "gallery_ids" and len(value) > 3):

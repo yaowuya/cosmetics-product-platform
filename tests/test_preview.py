@@ -6,7 +6,7 @@ from PIL import Image
 from sqlalchemy import text
 
 
-def test_private_upload_preview(mysql_engine, monkeypatch, tmp_path):
+def test_private_upload_preview(mysql_engine, monkeypatch, tmp_path, product_draft_body):
     """Use real saved revisions to distinguish private references from unknown images."""
     monkeypatch.setenv("DATABASE_URL", mysql_engine.url.render_as_string(hide_password=False))
     monkeypatch.setenv("ASSET_ROOT", str(tmp_path))
@@ -18,6 +18,7 @@ def test_private_upload_preview(mysql_engine, monkeypatch, tmp_path):
         actors = [db.execute(text("INSERT INTO account (login,password_hash,can_edit,can_manage,must_change_password) VALUES (:name,:hash,:edit,:manage,0)"),
                              {"name": name, "hash": password_hash, "edit": edit, "manage": not edit}).lastrowid
                   for name, edit in (("image-uploader", True), ("image-editor", True), ("image-manager", False))]
+        node = db.execute(text("INSERT INTO directory_node () VALUES ()")).lastrowid
     asset = second_asset = item = None
     image = BytesIO()
     Image.new("RGB", (4, 4), "white").save(image, format="PNG")
@@ -57,7 +58,9 @@ def test_private_upload_preview(mysql_engine, monkeypatch, tmp_path):
             assert one.get(location).content == png
             assert two.get(location).status_code == 404
             assert manager.get(location).status_code == 403
-            product = one.post("/api/admin/products", headers=upload, json={"body": {"name": "测试图稿", "detail_asset_id": asset}}).json()
+            body = product_draft_body("测试图稿", asset)
+            positions = [str(node)]
+            product = one.post("/api/admin/products", headers=upload, json={"body": body, "place_ids": positions}).json()
             item = product["id"]
             route = f"/api/admin/items/{item}/preview"
             params = {"revision": product["revision"]}
@@ -71,15 +74,21 @@ def test_private_upload_preview(mysql_engine, monkeypatch, tmp_path):
             assert made.status_code == 201
             second_asset = made.json()["id"]
             gallery = [second_asset, asset]
+            replace_cover = {**body, "cover_asset_id": second_asset}
             updated = one.put(f"/api/admin/items/{item}/draft", headers=upload,
-                              json={"expected_revision": product["revision"], "body": {"detail_asset_ids": gallery}}).json()
+                              json={"expected_revision": product["revision"], "place_ids": positions,
+                                    "body": {**replace_cover, "detail_asset_ids": gallery}}).json()
             gallery_preview = two.get(route, params={"revision": updated["revision"]}).json()
             assert gallery_preview["body"]["detail_asset_ids"] == gallery
             assert one.get(made.json()["url"]).status_code == 404
             for ident in gallery:
                 assert two.get(gallery_preview["media_urls"][ident]).content == png
-            assert one.put(f"/api/admin/items/{item}/draft", headers=upload,
-                           json={"expected_revision": updated["revision"], "body": {"name": "移除图片"}}).status_code == 200
+            removed = one.put(f"/api/admin/items/{item}/draft", headers=upload,
+                              json={"expected_revision": updated["revision"], "place_ids": positions,
+                                    "body": {**replace_cover, "detail_asset_ids": [second_asset]}})
+            assert removed.status_code == 200
+            preview = two.get(route, params={"revision": removed.json()["revision"]}).json()
+            assert asset not in preview["media_urls"]
             assert two.get(route, params=params).status_code == 409
             assert two.get(bound).status_code == 404
             with mysql_engine.begin() as db:
@@ -102,3 +111,4 @@ def test_private_upload_preview(mysql_engine, monkeypatch, tmp_path):
             for actor in actors:
                 db.execute(text("DELETE FROM `session` WHERE account_id=:id"), {"id": actor})
                 db.execute(text("DELETE FROM account WHERE id=:id"), {"id": actor})
+            db.execute(text("DELETE FROM directory_node WHERE id=:n"), {"n": node})

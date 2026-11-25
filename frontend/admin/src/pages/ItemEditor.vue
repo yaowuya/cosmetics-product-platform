@@ -2,31 +2,35 @@
 import { computed, nextTick, onMounted, ref } from 'vue';
 import { ElCascader } from 'element-plus';
 import 'element-plus/es/components/cascader/style/css';
-import { rows, type Body, type CatalogNode, type Item, type Page, text, withQuery } from '../../../shared/contracts.ts';
+import { rows, type Body, type CatalogNode, type Issue, type Item, type Page, text, withQuery } from '../../../shared/contracts.ts';
 import { draftImage, useEditor } from '../editor.ts';
 import { h5Path } from '../visitor.ts';
 import { request } from '../session.ts';
 import { useRoute, useRouter } from 'vue-router';
 import History from '../panels/History.vue';
 import Release from '../panels/Release.vue';
-import { basicFields, caseBasicFields, caseDetails, caseExtraFields, caseMedia, detailFields, productDetailAssets, productDetailPictureLimit, productMedia } from './item-fields.ts';
+import { basicFields, caseBasicFields, caseDetails, caseExtraFields, caseMedia, detailFields, draftIssueLocations,
+  isDraftFieldRequired, productDetailAssets, productDetailPictureLimit, productMedia, requiredDraftIssues } from './item-fields.ts';
 
 const props=defineProps<{id:string;kind?:'product'|'case';history?:boolean;embedded?:boolean}>();
 const emit=defineEmits<{saved:[item:Item];cancel:[]}>();
 const router=useRouter(), route=useRoute();
-const {item,body,places,pending,busy,error,note,conflict,dirty,accept,load,save,choose}=useEditor();
+const {item,body,places,pending,busy,error,note,conflict,dirty,saveIssues,accept,load,save,choose}=useEditor();
 const routeTab=props.history?'history':route.query.tab;
 const tab=ref(props.embedded?'edit':routeTab==='history'||routeTab==='release'?routeTab:'edit');
 const sidebar=ref<'card'|'detail'>('detail'),nodes=ref<CatalogNode[]>([]),related=ref<Item[]>([]),categories=ref<Body[]>([]);
+const directoryLoading=ref(false), directoryFailed=ref(false);
 const kind=computed(()=>item.value?.kind??props.kind??'product');
 const collection=computed(()=>kind.value==='case'?'cases':'products');
 const readonly=computed(()=>Boolean(item.value?.archived_at));
 const yes=computed(()=>kind.value==='product');
+const draftKind=computed(()=>yes.value?'product':'case');
 const newItem=computed(()=>props.id==='new');
 const locked=computed(()=>readonly.value||busy.value);
 
 const steps=computed(()=>yes.value?['基础信息','产品详情','图片与展示位置']:['基础信息','案例内容与图片']);
 const step=ref(0), stepBody=ref<HTMLElement|null>(null);
+const fieldErrors=ref<Record<string,string>>({}), unmappedIssues=ref<Issue[]>([]);
 const lastStep=computed(()=>step.value===steps.value.length-1);
 const ready=computed(()=>newItem.value||Boolean(item.value));
 const showBasic=computed(()=>!props.embedded||step.value===0);
@@ -48,13 +52,23 @@ const activePreview=computed(()=>{
   return item.value?.draft?h5Path(withQuery('/preview',{id:item.value.id,revision:item.value.revision,mode:sidebar.value})):'';
 });
 const itemPath=computed(()=>`/api/admin/items/${props.id}`);
-function assign(key:string,event:Event){body.value[key]=(event.currentTarget as HTMLInputElement|HTMLTextAreaElement).value;}
+const errorId = (key:string) => fieldErrors.value[key] ? `editor-error-${key}` : undefined;
+const required = (key:string) => isDraftFieldRequired(draftKind.value,key) || undefined;
+function clearFieldError(key:string){delete fieldErrors.value[key];}
+function assign(key:string,event:Event){
+  body.value[key]=(event.currentTarget as HTMLInputElement|HTMLTextAreaElement).value;
+  clearFieldError(key);
+}
 function clear(key:string){delete body.value[key];}
+function chooseAsset(event:Event,key:string){
+  return choose(event,id=>{body.value[key]=id;clearFieldError(key);});
+}
 
 /** Preserve a legacy long image until the editor actually changes the gallery. */
 function setDetailImages(images: string[]) {
   delete body.value.detail_asset_id;
   body.value.detail_asset_ids = images;
+  clearFieldError('detail_asset_ids');
 }
 function addDetailImage(event: Event) {
   if (locked.value || detailImages.value.length >= productDetailPictureLimit) return;
@@ -77,12 +91,25 @@ const placeOptions=computed(()=>{
   return build(null);
 });
 
-/** Load fixed choices from current directory, independent of the working copy. */
+/** A failed load of required placement choices can be retried without changing the working copy. */
+async function loadDirectory(){
+  if(directoryLoading.value)return;
+  directoryLoading.value=true;
+  directoryFailed.value=false;
+  try{
+    const directory=await request<Item>('/api/admin/config/directory');
+    nodes.value=rows((directory.live??directory.draft)?.nodes).map(row=>row as unknown as CatalogNode);
+  }catch{directoryFailed.value=true;}
+  finally{directoryLoading.value=false;}
+}
+
+/** Load the available catalog placements or optional case links for this editor. */
 async function options(){
-  try{if(yes.value){const dir=await request<Item>('/api/admin/config/directory');nodes.value=rows((dir.live??dir.draft)?.nodes).map(row=>row as unknown as CatalogNode);}else{
+  if(yes.value)return loadDirectory();
+  try{
     const [products, header]=await Promise.all([request<Page<Item>>('/api/admin/products?page_size=100'),request<Item>('/api/admin/config/case_header')]);
     related.value=products.items;categories.value=rows((header.live??header.draft)?.filters);
-  }}catch{/* Editor remains usable when optional relations are not configured. */}
+  }catch{/* Case relationships are optional. */}
 }
 /** Steps only change the visible part of the working copy; they never save drafts. */
 async function goToStep(index:number){
@@ -91,11 +118,35 @@ async function goToStep(index:number){
   await nextTick();
   if(stepBody.value){stepBody.value.scrollTop=0;stepBody.value.focus();}
 }
+
+/** Display the API or client validation in place, without replacing any of the editor's values. */
+async function showIssues(issues:readonly Issue[]){
+  const {errors,unmapped,first}=draftIssueLocations(draftKind.value,issues);
+  fieldErrors.value=errors;
+  unmappedIssues.value=unmapped;
+  if(!first)return;
+  if(props.embedded)await goToStep(first.step);
+  else await nextTick();
+  const field=stepBody.value?.querySelector<HTMLElement>(`[data-editor-field="${first.field}"]`);
+  field?.scrollIntoView({block:'nearest'});
+  const control=field?.querySelector<HTMLElement>('input:not([disabled]), select:not([disabled]), textarea:not([disabled])')??field;
+  control?.focus({preventScroll:true});
+}
+
+/** Save a complete working copy and keep field feedback for rejected drafts. */
 async function store(){
   // Without a loaded item, useEditor would POST instead of PUT for an edit.
   if(locked.value||!ready.value||(props.embedded&&!lastStep.value))return;
+  const missing=requiredDraftIssues(draftKind.value,body.value,places.value);
+  if(missing.length){
+    error.value='请补齐必填项后保存草稿';
+    await showIssues(missing);
+    return;
+  }
+  fieldErrors.value={};
+  unmappedIssues.value=[];
   const saved=await save(collection.value);
-  if(!saved)return;
+  if(!saved){if(saveIssues.value.length)await showIssues(saveIssues.value);return;}
   if(props.embedded){emit('saved',saved);return;}
   if(newItem.value)await router.replace(`/${collection.value}/${saved.id}`);
 }
@@ -106,6 +157,7 @@ async function refresh(){if(!newItem.value)await load(itemPath.value);}
 async function reset(){
   if(busy.value||(dirty.value&&!globalThis.confirm('确定丢弃工作副本并重新加载？')))return;
   await refresh();
+  if(!error.value){fieldErrors.value={};unmappedIssues.value=[];}
   if(props.embedded&&item.value&&!error.value)await goToStep(0);
 }
 onMounted(async()=>{await refresh();await options();});
@@ -115,11 +167,14 @@ onMounted(async()=>{await refresh();await options();});
   <header v-if="!embedded" class="page-head"><div><RouterLink :to="`/${collection}`" class="muted">← {{ yes?'全部产品':'全部案例' }}</RouterLink><h1>{{ display }}</h1><p class="muted">{{item?.live_id?'已有线上版本':'未上线'}} <template v-if="item">· 修订 {{ item.revision }}</template> <span v-if="dirty" class="pill warn">尚未保存</span></p></div></header>
   <template v-if="!embedded">
     <p v-if="note" role="status" class="notice">{{ note }}</p>
-    <p v-if="error" role="alert" class="inline-error">{{ error }} <button v-if="!newItem" type="button" class="btn link" @click="reset">{{ conflict?'核对最新修订':'重试加载' }}</button></p>
+    <div v-if="error" role="alert" class="inline-error">{{ error }}
+      <ul v-if="unmappedIssues.length"><li v-for="issue in unmappedIssues" :key="`${issue.field}:${issue.reason}`">{{ issue.reason }}</li></ul>
+      <button v-if="!ready||conflict" type="button" class="btn link" @click="reset">{{ conflict?'核对最新修订':'重试加载' }}</button>
+    </div>
     <div class="config-tabs"><nav class="seg" aria-label="内容编辑视图"><button type="button" :aria-pressed="tab==='edit'" @click="tab='edit'">内容编辑</button><button v-if="item" type="button" :aria-pressed="tab==='release'" @click="tab='release'">发布检查</button><button v-if="item" type="button" :aria-pressed="tab==='history'" @click="tab='history'">版本记录</button></nav><button v-if="!readonly" type="button" class="btn primary" :disabled="busy||!ready" @click="store">保存草稿</button></div>
   </template>
   <div v-if="tab==='edit'" :class="embedded?'wizard-editor':'edit-layout'">
-    <component :is="embedded?'form':'section'" :class="embedded?'wizard-form':'panel stack'" @submit.prevent="store">
+    <component :is="embedded?'form':'section'" :class="embedded?'wizard-form':'panel stack'" :novalidate="embedded||undefined" @submit.prevent="store">
       <div v-if="embedded" class="wizard-overview">
         <p v-if="subtitle" class="wizard-subtitle">{{ subtitle }}</p>
         <ol class="wizard-steps" aria-label="编辑步骤">
@@ -133,41 +188,79 @@ onMounted(async()=>{await refresh();await options();});
         <section v-if="yes&&showBasic" class="editor-pane">
           <h2 v-if="!embedded">产品资料</h2>
           <div class="form-grid">
-            <label v-for="f in basicFields" :key="f.key" class="field">{{ f.label }}<input :value="text(body[f.key])" :disabled="locked" @input="assign(f.key,$event)"></label>
-            <label class="field">是否生产过<select aria-label="是否生产过" :value="text(body.production_status)" :disabled="locked" @change="assign('production_status',$event)"><option value="">请选择</option><option>已生产</option><option>未生产</option><option>待确认</option></select></label>
-            <label class="field field-wide">简短功效<input :value="text(body.short_benefit)" :disabled="locked" @input="assign('short_benefit',$event)"></label>
+            <label v-for="f in basicFields" :key="f.key" class="field" :data-editor-field="f.key">{{ f.label }}
+              <input :aria-label="f.label" :aria-required="required(f.key)" :aria-invalid="Boolean(errorId(f.key))||undefined" :aria-describedby="errorId(f.key)"
+                :value="text(body[f.key])" :disabled="locked" @input="assign(f.key,$event)">
+              <small v-if="errorId(f.key)" :id="errorId(f.key)" class="field-error">{{fieldErrors[f.key]}}</small>
+            </label>
+            <label class="field" data-editor-field="production_status">是否生产过
+              <select aria-label="是否生产过" aria-required="true" :aria-invalid="Boolean(errorId('production_status'))||undefined" :aria-describedby="errorId('production_status')"
+                :value="text(body.production_status)" :disabled="locked" @change="assign('production_status',$event)"><option value="">请选择</option><option>已生产</option><option>未生产</option><option>待确认</option></select>
+              <small v-if="errorId('production_status')" :id="errorId('production_status')" class="field-error">{{fieldErrors.production_status}}</small>
+            </label>
+            <label class="field field-wide" data-editor-field="short_benefit">简短功效
+              <input aria-label="简短功效" aria-required="true" :aria-invalid="Boolean(errorId('short_benefit'))||undefined" :aria-describedby="errorId('short_benefit')"
+                :value="text(body.short_benefit)" :disabled="locked" @input="assign('short_benefit',$event)">
+              <small v-if="errorId('short_benefit')" :id="errorId('short_benefit')" class="field-error">{{fieldErrors.short_benefit}}</small>
+            </label>
           </div>
         </section>
         <section v-if="yes&&showDetails" class="editor-pane">
           <p v-if="embedded" class="pane-intro">这些内容会显示在 H5 产品详情页。</p>
-          <label v-for="f in detailFields" :key="f.key" class="field">{{ f.label }}<textarea rows="2" :value="text(body[f.key])" :disabled="locked" @input="assign(f.key,$event)" /></label>
+          <label v-for="f in detailFields" :key="f.key" class="field" :data-editor-field="f.key">{{ f.label }}
+            <textarea rows="2" :aria-label="f.label" aria-required="true" :aria-invalid="Boolean(errorId(f.key))||undefined" :aria-describedby="errorId(f.key)"
+              :value="text(body[f.key])" :disabled="locked" @input="assign(f.key,$event)" />
+            <small v-if="errorId(f.key)" :id="errorId(f.key)" class="field-error">{{fieldErrors[f.key]}}</small>
+          </label>
         </section>
         <section v-if="!yes&&showBasic" class="editor-pane">
           <h2 v-if="!embedded">案例信息</h2>
           <div class="form-grid">
-            <label v-for="f in caseBasicFields" :key="f.key" class="field">{{ f.label }}<input :value="text(body[f.key])" :disabled="locked" @input="assign(f.key,$event)"></label>
-            <label class="field">案例分类<select aria-label="案例分类" :value="text(body.category_key)" :disabled="locked" @change="assign('category_key',$event)"><option value="">不指定</option><option v-for="entry in categories" :key="text(entry.key)" :value="text(entry.key)">{{text(entry.label)}}</option></select></label>
-            <label class="field">内部关联产品<select aria-label="内部关联产品" :value="text(body.related_product_id)" :disabled="locked" @change="assign('related_product_id',$event)"><option value="">不关联</option><option v-for="row in related" :key="row.id" :value="row.id">{{text(row.summary?.name??row.draft?.name??row.live?.name,'未命名产品')}}</option></select></label>
-            <label v-for="f in caseExtraFields" :key="f.key" class="field">{{ f.label }}<input :value="text(body[f.key])" :disabled="locked" @input="assign(f.key,$event)"></label>
+            <label v-for="f in caseBasicFields" :key="f.key" class="field" :data-editor-field="f.key">{{ f.label }}
+              <input :aria-label="f.label" aria-required="true" :aria-invalid="Boolean(errorId(f.key))||undefined" :aria-describedby="errorId(f.key)"
+                :value="text(body[f.key])" :disabled="locked" @input="assign(f.key,$event)">
+              <small v-if="errorId(f.key)" :id="errorId(f.key)" class="field-error">{{fieldErrors[f.key]}}</small>
+            </label>
+            <label class="field" data-editor-field="category_key">案例分类
+              <select aria-label="案例分类" :aria-invalid="Boolean(errorId('category_key'))||undefined" :aria-describedby="errorId('category_key')"
+                :value="text(body.category_key)" :disabled="locked" @change="assign('category_key',$event)"><option value="">不指定</option><option v-for="entry in categories" :key="text(entry.key)" :value="text(entry.key)">{{text(entry.label)}}</option></select>
+              <small v-if="errorId('category_key')" :id="errorId('category_key')" class="field-error">{{fieldErrors.category_key}}</small>
+            </label>
+            <label class="field" data-editor-field="related_product_id">内部关联产品
+              <select aria-label="内部关联产品" :aria-invalid="Boolean(errorId('related_product_id'))||undefined" :aria-describedby="errorId('related_product_id')"
+                :value="text(body.related_product_id)" :disabled="locked" @change="assign('related_product_id',$event)"><option value="">不关联</option><option v-for="row in related" :key="row.id" :value="row.id">{{text(row.summary?.name??row.draft?.name??row.live?.name,'未命名产品')}}</option></select>
+              <small v-if="errorId('related_product_id')" :id="errorId('related_product_id')" class="field-error">{{fieldErrors.related_product_id}}</small>
+            </label>
+            <label v-for="f in caseExtraFields" :key="f.key" class="field" :data-editor-field="f.key">{{ f.label }}
+              <input :aria-label="f.label" :aria-invalid="Boolean(errorId(f.key))||undefined" :aria-describedby="errorId(f.key)"
+                :value="text(body[f.key])" :disabled="locked" @input="assign(f.key,$event)">
+              <small v-if="errorId(f.key)" :id="errorId(f.key)" class="field-error">{{fieldErrors[f.key]}}</small>
+            </label>
           </div>
         </section>
         <section v-if="showFinal" class="editor-pane">
           <div v-if="!yes" class="form-grid">
-            <label v-for="f in caseDetails" :key="f.key" class="field" :class="{'field-wide':!embedded}">{{ f.label }}<textarea rows="3" :value="text(body[f.key])" :disabled="locked" @input="assign(f.key,$event)" /></label>
+            <label v-for="f in caseDetails" :key="f.key" class="field" :class="{'field-wide':!embedded}" :data-editor-field="f.key">{{ f.label }}
+              <textarea rows="3" :aria-label="f.label" :aria-required="required(f.key)" :aria-invalid="Boolean(errorId(f.key))||undefined" :aria-describedby="errorId(f.key)"
+                :value="text(body[f.key])" :disabled="locked" @input="assign(f.key,$event)" />
+              <small v-if="errorId(f.key)" :id="errorId(f.key)" class="field-error">{{fieldErrors[f.key]}}</small>
+            </label>
           </div>
           <h2 v-if="!embedded">图片素材</h2>
           <div class="editor-assets">
-            <div v-for="{key,label:caption,hint} in media" :key="key" class="media-field">
+            <div v-for="{key,label:caption,hint} in media" :key="key" class="media-field" :data-editor-field="key">
               <label class="asset-label" :for="`editor-file-${key}`">{{ caption }}</label>
               <div class="media-row">
                 <img v-if="draftImage(item,body[key],pending)" :class="{'catalog-image-preview':key==='thumbnail_asset_id'}" :src="draftImage(item,body[key],pending)" :alt="caption">
                 <span v-else class="muted">未上传</span>
-                <input :id="`editor-file-${key}`" type="file" accept="image/png,image/jpeg,image/webp" :disabled="locked" @change="choose($event,id=>body[key]=id)">
+                <input :id="`editor-file-${key}`" type="file" accept="image/png,image/jpeg,image/webp" :disabled="locked"
+                  :aria-required="required(key)" :aria-invalid="Boolean(errorId(key))||undefined" :aria-describedby="errorId(key)" @change="chooseAsset($event,key)">
                 <button v-if="body[key]&&!readonly" type="button" class="btn" :disabled="busy" :aria-label="`移除${caption}`" @click="clear(key)">移除</button>
               </div>
               <small v-if="hint">{{ hint }}</small>
+              <small v-if="errorId(key)" :id="errorId(key)" class="field-error">{{fieldErrors[key]}}</small>
             </div>
-            <section v-if="yes" class="detail-assets" aria-labelledby="editor-detail-images">
+            <section v-if="yes" class="detail-assets" data-editor-field="detail_asset_ids" tabindex="-1" aria-labelledby="editor-detail-images" :aria-describedby="errorId('detail_asset_ids')">
               <div>
                 <h3 id="editor-detail-images">详情竖图</h3>
                 <small>最多 {{ productDetailPictureLimit }} 张，按下方顺序展示在详情文字之后。</small>
@@ -182,23 +275,39 @@ onMounted(async()=>{await refresh();await options();});
                 </div>
               </div>
               <label v-if="!readonly&&detailImages.length<productDetailPictureLimit" class="field">添加详情竖图
-                <input type="file" accept="image/png,image/jpeg,image/webp" :disabled="locked" @change="addDetailImage">
+                <input type="file" aria-label="添加详情竖图" accept="image/png,image/jpeg,image/webp" :disabled="locked" aria-required="true"
+                  :aria-invalid="Boolean(errorId('detail_asset_ids'))||undefined" :aria-describedby="errorId('detail_asset_ids')" @change="addDetailImage">
               </label>
+              <small v-if="errorId('detail_asset_ids')" :id="errorId('detail_asset_ids')" class="field-error">{{fieldErrors.detail_asset_ids}}</small>
             </section>
-            <label v-if="!yes" class="field">展示顺序<input type="number" min="0" step="1" :disabled="locked" :value="Number(body.sort_order??0)" @input="body.sort_order=Number(($event.target as HTMLInputElement).value)"></label>
+            <label v-if="!yes" class="field" data-editor-field="sort_order">展示顺序
+              <input type="number" aria-label="展示顺序" :aria-invalid="Boolean(errorId('sort_order'))||undefined" :aria-describedby="errorId('sort_order')"
+                min="0" step="1" :disabled="locked" :value="Number(body.sort_order??0)" @input="body.sort_order=Number(($event.target as HTMLInputElement).value);clearFieldError('sort_order')">
+              <small v-if="errorId('sort_order')" :id="errorId('sort_order')" class="field-error">{{fieldErrors.sort_order}}</small>
+            </label>
           </div>
-          <section v-if="yes" class="editor-place">
+          <section v-if="yes" class="editor-place" data-editor-field="place_ids" tabindex="-1" :aria-describedby="errorId('place_ids')">
             <h2>展示位置</h2>
-            <p v-if="!placeOptions.length" class="muted">目录未配置，先在「板块与分类」建立展示位置。</p>
+            <p v-if="directoryLoading" role="status" class="muted">正在加载展示位置…</p>
+            <p v-else-if="directoryFailed" role="alert" class="inline-error">
+              展示位置加载失败。<button type="button" class="btn link" @click="loadDirectory">重试加载展示位置</button>
+            </p>
+            <p v-else-if="!placeOptions.length" class="muted">目录未配置，先在「板块与分类」建立展示位置。</p>
             <template v-else>
               <p v-if="embedded" class="pane-intro">选择产品出现的板块或分类，可多选。</p>
-              <el-cascader v-model="places" class="place-cascader" aria-label="展示位置" :popper-class="embedded?'product-place-popper':undefined" :options="placeOptions" :props="placeProps" clearable :disabled="locked" placeholder="选择展示位置" />
+              <el-cascader v-model="places" class="place-cascader" aria-label="展示位置" aria-required="true"
+                :aria-invalid="Boolean(errorId('place_ids'))||undefined" :aria-describedby="errorId('place_ids')" :popper-class="embedded?'product-place-popper':undefined"
+                :options="placeOptions" :props="placeProps" clearable :disabled="locked" placeholder="选择展示位置" @change="clearFieldError('place_ids')" />
             </template>
+            <small v-if="errorId('place_ids')" :id="errorId('place_ids')" class="field-error">{{fieldErrors.place_ids}}</small>
           </section>
         </section>
       </div>
       <footer v-if="embedded" class="wizard-footer">
-        <div v-if="error" class="inline-error" role="alert">{{ error }} <button v-if="!ready||conflict" type="button" class="btn link" :disabled="busy" @click="reset">{{ conflict?'核对最新修订':'重试加载' }}</button></div>
+        <div v-if="error" class="inline-error" role="alert">{{ error }}
+          <ul v-if="unmappedIssues.length"><li v-for="issue in unmappedIssues" :key="`${issue.field}:${issue.reason}`">{{ issue.reason }}</li></ul>
+          <button v-if="!ready||conflict" type="button" class="btn link" :disabled="busy" @click="reset">{{ conflict?'核对最新修订':'重试加载' }}</button>
+        </div>
         <div class="wizard-actions">
           <button type="button" class="btn" :disabled="busy" @click="cancel">取消</button>
           <small v-if="ready">{{ lastStep?'保存为草稿，不会直接上线。':'切换步骤不会保存草稿。' }}</small>
@@ -220,6 +329,8 @@ onMounted(async()=>{await refresh();await options();});
 .config-tabs{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .config-tabs .seg{margin-bottom:15px}
 .field-wide{grid-column:1/-1}
+.field-error{color:var(--error);font-weight:400}
+input[aria-invalid=true],select[aria-invalid=true],textarea[aria-invalid=true]{border-color:var(--error)}
 .place-cascader{width:100%}
 .editor-pane,.editor-assets,.editor-place{display:grid;gap:12px;min-width:0}
 .asset-label{display:block;font-weight:600;margin-bottom:4px}
