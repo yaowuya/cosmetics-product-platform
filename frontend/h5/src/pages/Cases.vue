@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
-import { CASE_KEY, inputText, prefs, queryValue, remember } from '../browse.ts';
+import { computed, nextTick, onActivated, onBeforeUnmount, onMounted, ref } from 'vue';
+import { CASE_KEY, inputText, prefs, queryValue, refreshVisibleItems, remember } from '../browse.ts';
 import { publicGet } from '../public-api.ts';
 import { ApiError, message, rows, text, withQuery, type Body, type Page, type PublicItem, type PublicPage } from '../../../shared/contracts.ts';
 import CaseView from '../views/CaseView.vue';
@@ -11,12 +11,42 @@ const detailRoute=location.pathname.replace(/\/$/,'')==='/cases/detail', detail=
 const header=ref<Body>({}), filter=ref(''),q=ref(''),items=ref<PublicItem[]>([]),total=ref(0),page=ref(1),content=ref<HTMLElement|null>(null);
 const choices=computed(()=>rows(header.value.filters)), loading=ref(true),error=ref('');
 const saved=prefs(CASE_KEY,{filter:'',q:'',scroll:0});let generation=0,timer:ReturnType<typeof setTimeout>|undefined;
+let rechecking=false;
+const casePageSize=20;
 function persist(){if(!detailRoute)remember(CASE_KEY,{filter:filter.value,q:q.value,scroll:content.value?.scrollTop??0});}
+function casePage(tag:string,keyword:string,position:number,size=casePageSize){
+  return publicGet<Page<PublicItem>>(withQuery('/api/public/cases',{tag,q:keyword.trim(),page:position,page_size:size}));
+}
 async function list(append=false){clearTimeout(timer);const run=++generation;loading.value=true;error.value=''; const target=append?page.value+1:1;if(!append){items.value=[];page.value=1;total.value=0;}
- try{const response=await publicGet<Page<PublicItem>>(withQuery('/api/public/cases',{tag:filter.value,q:q.value.trim(),page:target,page_size:20}));if(run!==generation||!response)return;items.value=append?[...items.value,...response.items]:response.items;total.value=response.total;page.value=target;}catch(cause){if(run===generation)error.value=message(cause);}finally{if(run===generation)loading.value=false;}}
+ try{const response=await casePage(filter.value,q.value,target);if(run!==generation||!response)return;items.value=append?[...items.value,...response.items]:response.items;total.value=response.total;page.value=target;}catch(cause){if(run===generation)error.value=message(cause);}finally{if(run===generation)loading.value=false;}}
 async function load(){error.value='';loading.value=true;try{if(detailRoute){const id=queryValue('id');if(!/^[1-9]\d*$/.test(id))throw new ApiError(404,'not_found','内容不存在');detail.value=await publicGet<PublicItem>(`/api/public/cases/${id}`)??null;return;}
  header.value=(await publicGet<PublicPage>('/api/public/pages/cases'))?.body??{};filter.value=choices.value.some(row=>row.key===saved.filter)?saved.filter:'';q.value=saved.q;await list();await nextTick();if(content.value)content.value.scrollTop=saved.scroll;
  }catch(cause){error.value=message(cause);}finally{loading.value=false;}}
+
+/** Refresh the visible slice in place, unless the visitor chooses a newer filter or search. */
+async function refresh(){
+  if(detailRoute||loading.value||rechecking)return;
+  if(error.value){await load();return;}
+  rechecking=true;
+  const run=generation;
+  try{
+    const nextHeader=(await publicGet<PublicPage>('/api/public/pages/cases'))?.body??{};
+    if(run!==generation)return;
+    const tag=rows(nextHeader.filters).some(row=>row.key===filter.value)?filter.value:'';
+    const lastPage=tag===filter.value?page.value:1;
+    const keyword=q.value;
+    const result=await refreshVisibleItems(lastPage*casePageSize,
+      (position,size)=>casePage(tag,keyword,position,size),()=>run===generation);
+    if(!result||run!==generation)return;
+    header.value=nextHeader;
+    filter.value=tag;
+    items.value=result.items;
+    total.value=result.total;
+    page.value=Math.max(1,Math.min(lastPage,Math.ceil(result.total/casePageSize)));
+    persist();
+  }catch{/* Keep the current case results available when a background check fails. */}
+  finally{rechecking=false;}
+}
 function search(event: InputEvent | CompositionEvent) {
   // 只用已确认的词查询；部分浏览器在 compositionend 后还会发送同值的 input。
   if ('isComposing' in event && event.isComposing) return;
@@ -27,7 +57,7 @@ function search(event: InputEvent | CompositionEvent) {
 }
 function select(value:string){filter.value=value;persist();void list();}
 function reset(){q.value='';select('');}
-onMounted(load);onBeforeUnmount(()=>{++generation;clearTimeout(timer);persist();});
+onMounted(load);onActivated(refresh);onBeforeUnmount(()=>{++generation;clearTimeout(timer);persist();});
 </script>
 <template>
  <div class="mobile-page"><main ref="content" class="mobile-main cases-page" @scroll="persist">

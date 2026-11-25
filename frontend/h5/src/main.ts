@@ -1,16 +1,28 @@
 import { createSSRApp } from 'vue';
 import App from './App.vue';
 
-/** H5 对外使用稳定的业务地址。复用 uni 已生成的页面描述，不生成第二套页面或路由器。 */
+/** 为 uni 的保活路由登记公开地址，并沿用页面中的无障碍导航。 */
 function registerPublicPaths() {
   type PageRoute = { path: string; alias?: string; meta: Record<string, unknown> };
-  const routes = (window as unknown as { __uniRoutes: PageRoute[] }).__uniRoutes;
+  const { __uniRoutes: routes, __uniConfig: config } = window as unknown as {
+    __uniRoutes: PageRoute[];
+    __uniConfig: { tabBar?: { shown: boolean } };
+  };
+  // Keep the runtime's tab lifecycle without rendering a second bar or reserving its height.
+  if (config.tabBar) config.tabBar.shown = false;
   const paths: Record<string, string[]> = { Catalog: ['/catalog'], Cases: ['/cases', '/cases/detail'],
     Contact: ['/contact'], Product: ['/products'], Preview: ['/preview'] };
   for (const [page, urls] of Object.entries(paths)) {
     const registered = routes.find(route => route.path === `/pages/${page}`);
     if (!registered) continue;
-    for (const path of urls) if (!routes.some(route => route.path === path)) routes.push({ ...registered, path });
+    for (const path of urls) {
+      if (routes.some(route => route.path === path)) continue;
+      // The case detail shares the component but must not enter the tab cache.
+      const meta = path === '/cases/detail'
+        ? { ...registered.meta, isTabBar: false, isQuit: false, tabBarIndex: undefined }
+        : registered.meta;
+      routes.push({ ...registered, path, meta });
+    }
   }
 }
 

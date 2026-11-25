@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, reactive, ref, watch } from 'vue';
 
 const props = defineProps<{ sources: unknown; preview?: boolean }>();
 const rotationDelay = 4000;
@@ -8,6 +8,7 @@ const index = ref(0);
 const held = ref(false);
 const reading = ref(false);
 const hidden = ref(false);
+const activeTab = ref(true);
 const reduced = ref(false);
 const elapsed = ref(false);
 const generation = ref(0);
@@ -25,7 +26,7 @@ const current = computed(() => posters.value[index.value]);
 const nextIndex = computed(() => (index.value + 1) % posters.value.length);
 const following = computed(() => posters.value[nextIndex.value]);
 const canRotate = computed(() => posters.value.length > 1 && (props.preview || loaded.has(current.value?.position))
-  && !held.value && !reading.value && !hidden.value && !reduced.value);
+  && activeTab.value && !held.value && !reading.value && !hidden.value && !reduced.value);
 const nextReady = computed(() => props.preview || loaded.has(following.value?.position));
 
 /** Keep requested images mounted so an automatic or manual return can reuse the decoded original. */
@@ -131,6 +132,14 @@ onMounted(() => {
   window.addEventListener('pointerup', release);
   window.addEventListener('pointercancel', release);
   schedule();
+});
+onActivated(() => {
+  activeTab.value = true;
+  void nextTick(() => scrollSlide(index.value, true));
+});
+onDeactivated(() => {
+  activeTab.value = false;
+  release();
 });
 onBeforeUnmount(() => {
   clearTimeout(timer);

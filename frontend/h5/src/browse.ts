@@ -1,17 +1,38 @@
-import { withQuery, type CatalogNode } from '../../shared/contracts.ts';
+import { withQuery, type CatalogNode, type Page, type PublicItem } from '../../shared/contracts.ts';
 
 /** Use the current node's complete enabled path, not a guessed label or demo hierarchy. */
 export function children(nodes:CatalogNode[],id:string|null) {
   return nodes.filter(node=>(node.parent_id||null)===id&&node.enabled!==false).sort((a,b)=>a.sort_order-b.sort_order);
 }
 
+export const PRODUCT_PAGE_SIZE=20;
+
 /** Keyword search is scoped to the current board, not the previously selected category. */
-export function queryFor(board:string,node:string,keyword:string,page=1) {
-  return withQuery('/api/public/products',{board_id:board,node_id:keyword.trim()?undefined:node,q:keyword.trim(),page,page_size:20});
+export function queryFor(board:string,node:string,keyword:string,page=1,pageSize=PRODUCT_PAGE_SIZE) {
+  return withQuery('/api/public/products',{board_id:board,node_id:keyword.trim()?undefined:node,q:keyword.trim(),page,page_size:pageSize});
 }
 
 /** Allow a late response to update only the request that actually triggered it. */
 export function acceptResponse(previous:number,current:number):boolean {return previous===current;}
+
+/** Refresh only the already loaded rows, fetching sequential batches up to the API's limit. */
+export async function refreshVisibleItems(
+  capacity:number,
+  readPage:(page:number,size:number)=>Promise<Page<PublicItem>|undefined>,
+  isCurrent:()=>boolean,
+) {
+  const size=Math.min(capacity,100);
+  const items=new Map<string,PublicItem>();
+  let total=0;
+  for(let offset=0;offset<capacity&&isCurrent();offset+=size){
+    const response=await readPage(offset/size+1,size);
+    if(!response||!isCurrent())return;
+    for(const item of response.items)items.set(item.id,item);
+    total=response.total;
+    if(response.items.length<size||offset+response.items.length>=total)break;
+  }
+  if(isCurrent())return {items:[...items.values()].slice(0,capacity),total};
+}
 
 /** uni-input emits detail.value rather than a native HTMLInputElement as currentTarget. */
 export function inputText(event: unknown): string {
