@@ -77,6 +77,10 @@ async function lastStep(dialog, scenario, details) {
   await content.waitFor();
   if (details !== undefined) await content.fill(details);
   if (details !== undefined && scenario.collection === 'products') {
+    for (const [label, minimum] of [['功效', 130], ['核心成分', 160], ['产品亮点', 200]]) {
+      const box = await field(dialog, label).boundingBox();
+      assert.ok(box && box.height >= minimum, `「${label}」至少应高 ${minimum}px，实际 ${box?.height ?? '不可见'}`);
+    }
     await field(dialog, '核心成分').fill('测试成分');
     await field(dialog, '产品亮点').fill('测试亮点');
   }
@@ -111,9 +115,30 @@ async function assertBlockedSave(dialog, scenario) {
   await field(dialog, scenario.nameField).waitFor();
 }
 
+/** Open the actual uploaded asset and verify Escape closes only the image dialog. */
+async function assertLargePreview(page, drawer, name) {
+  const image = drawer.getByRole('img', { name, exact: true });
+  await image.waitFor();
+  const box = await image.boundingBox();
+  assert.ok(box && box.height >= 150, `「${name}」的预览至少应高 150px，实际 ${box?.height ?? '不可见'}`);
+  const src = await image.getAttribute('src');
+  assert.ok(src, `「${name}」缺少预览地址`);
+  await button(drawer, `预览${name}`).click();
+  const preview = page.getByRole('dialog', { name: `查看${name}`, exact: true });
+  const fullImage = preview.getByRole('img', { name, exact: true });
+  await fullImage.waitFor();
+  assert.equal(await fullImage.getAttribute('src'), src, `「${name}」应查看已上传的图片`);
+  await fullImage.evaluate(element => element.decode());
+  await page.keyboard.press('Escape');
+  await preview.waitFor({ state: 'hidden' });
+  await footerAction(drawer, '保存').waitFor();
+  await fullHeightDrawer(page, drawer);
+}
+
 async function completeProductImages(h, page, dialog) {
   const firstPlacement = page.locator('.el-cascader-menu').first().locator('label.el-checkbox').first();
   await h.upload(page, field(dialog, '添加详情竖图'), h.files.long);
+  await assertLargePreview(page, dialog, '详情竖图 1');
   await dialog.locator('.place-cascader').click();
   await firstPlacement.click();
   await dialog.getByRole('heading', { name: '展示位置', exact: true }).click();
@@ -184,6 +209,7 @@ async function addDraft(h, scenario, name, endpoint) {
   await lastStep(dialog, scenario);
   const image = await upload(h, dialog, scenario);
   if (scenario.collection === 'products') {
+    await assertLargePreview(page, dialog, scenario.imageField);
     await dialog.getByRole('alert').filter({ hasText: '展示位置加载失败' }).waitFor();
     await h.observe(page, 'GET', '/api/admin/config/directory', () => button(dialog, '重试加载展示位置').click(), 200);
     await dialog.getByRole('img', { name: scenario.imageField, exact: true }).waitFor();

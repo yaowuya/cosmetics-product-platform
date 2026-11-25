@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue';
-import { ElCascader } from 'element-plus';
+import { ElCascader, ElDialog } from 'element-plus';
 import 'element-plus/es/components/cascader/style/css';
+import 'element-plus/es/components/dialog/style/css';
 import { rows, type Body, type CatalogNode, type Issue, type Item, type Page, text, withQuery } from '../../../shared/contracts.ts';
 import { draftImage, useEditor } from '../editor.ts';
 import { h5Path } from '../visitor.ts';
@@ -36,8 +37,12 @@ const ready=computed(()=>newItem.value||Boolean(item.value));
 const showBasic=computed(()=>!props.embedded||step.value===0);
 const showDetails=computed(()=>!props.embedded||step.value===1);
 const showFinal=computed(()=>!props.embedded||lastStep.value);
-const media=computed<{key:string;label:string;hint?:string}[]>(()=>yes.value?productMedia:caseMedia);
 const detailImages = computed(() => productDetailAssets(body.value));
+const productImages = computed(() => productMedia.map(asset => ({...asset, url: draftImage(item.value,body.value[asset.key],pending.value)})));
+const galleryImages = computed(() => detailImages.value.map((id,index) => ({
+  id, label:`详情竖图 ${index+1}`, url:draftImage(item.value,id,pending.value),
+})));
+const imagePreview=ref<{url:string;label:string;portrait:boolean}|null>(null);
 const placeProps={multiple:true,checkStrictly:true,emitPath:false};
 const display=computed(()=>text(body.value.name??body.value.product_name, newItem.value?(yes.value?'新增产品':'新增案例'):'未命名草稿'));
 const subtitle=computed(()=>{
@@ -62,6 +67,11 @@ function assign(key:string,event:Event){
 function clear(key:string){delete body.value[key];}
 function chooseAsset(event:Event,key:string){
   return choose(event,id=>{body.value[key]=id;clearFieldError(key);});
+}
+
+/** Open the existing authorized image URL without changing the draft or leaving the editor. */
+function previewImage(url:string,label:string,portrait=false){
+  imagePreview.value={url,label,portrait};
 }
 
 /** Preserve a legacy long image until the editor actually changes the gallery. */
@@ -208,7 +218,7 @@ onMounted(async()=>{await refresh();await options();});
         <section v-if="yes&&showDetails" class="editor-pane">
           <p v-if="embedded" class="pane-intro">这些内容会显示在 H5 产品详情页。</p>
           <label v-for="f in detailFields" :key="f.key" class="field" :data-editor-field="f.key">{{ f.label }}
-            <textarea rows="2" :aria-label="f.label" aria-required="true" :aria-invalid="Boolean(errorId(f.key))||undefined" :aria-describedby="errorId(f.key)"
+            <textarea :rows="f.rows" :aria-label="f.label" aria-required="true" :aria-invalid="Boolean(errorId(f.key))||undefined" :aria-describedby="errorId(f.key)"
               :value="text(body[f.key])" :disabled="locked" @input="assign(f.key,$event)" />
             <small v-if="errorId(f.key)" :id="errorId(f.key)" class="field-error">{{fieldErrors[f.key]}}</small>
           </label>
@@ -247,40 +257,73 @@ onMounted(async()=>{await refresh();await options();});
             </label>
           </div>
           <h2 v-if="!embedded">图片素材</h2>
-          <div class="editor-assets">
-            <div v-for="{key,label:caption,hint} in media" :key="key" class="media-field" :data-editor-field="key">
+          <div v-if="yes" class="product-assets">
+            <div class="product-cover-grid">
+              <section v-for="{key,label,hint,url} in productImages" :key="key" class="product-asset" :data-editor-field="key" tabindex="-1">
+                <div>
+                  <h3>{{ label }}</h3>
+                  <small :id="`editor-hint-${key}`">{{ hint }}</small>
+                </div>
+                <button v-if="url" type="button" class="photo-stage photo-preview" :aria-label="`预览${label}`" @click="previewImage(url,label)">
+                  <img :src="url" :alt="label">
+                  <span class="photo-open">查看大图</span>
+                </button>
+                <div v-else-if="readonly" class="photo-stage photo-empty muted">未上传</div>
+                <div v-if="!readonly" class="photo-actions">
+                  <label class="photo-file" :class="url?'btn':'photo-stage photo-empty'">
+                    <span v-if="!url" class="photo-plus" aria-hidden="true">+</span>
+                    <span>{{ url?'更换图片':'上传图片' }}</span>
+                    <input type="file" :aria-label="label" accept="image/png,image/jpeg,image/webp" :disabled="locked"
+                      :aria-required="required(key)" :aria-invalid="Boolean(errorId(key))||undefined" :aria-describedby="errorId(key)??`editor-hint-${key}`"
+                      @change="chooseAsset($event,key)">
+                  </label>
+                  <button v-if="body[key]" type="button" class="btn" :disabled="busy" :aria-label="`移除${label}`" @click="clear(key)">移除</button>
+                </div>
+                <small v-if="errorId(key)" :id="errorId(key)" class="field-error">{{fieldErrors[key]}}</small>
+              </section>
+            </div>
+            <section class="product-asset" data-editor-field="detail_asset_ids" tabindex="-1" aria-labelledby="editor-detail-images" :aria-describedby="errorId('detail_asset_ids')">
+              <div>
+                <h3 id="editor-detail-images">详情竖图</h3>
+                <small id="editor-detail-images-hint">已添加 {{ galleryImages.length }} / {{ productDetailPictureLimit }} 张，按下方顺序展示在详情文字之后。</small>
+              </div>
+              <div class="product-gallery-grid">
+                <div v-for="({id,label,url},index) in galleryImages" :key="id" class="product-asset">
+                  <button v-if="url" type="button" class="photo-stage photo-preview portrait-stage" :aria-label="`预览${label}`" @click="previewImage(url,label,true)">
+                    <img :src="url" :alt="label">
+                    <span class="photo-open">查看大图</span>
+                  </button>
+                  <div v-else class="photo-stage photo-empty portrait-stage muted">图片暂不可预览</div>
+                  <small>第 {{ index+1 }} 张</small>
+                  <div v-if="!readonly" class="photo-actions">
+                    <button type="button" class="btn" :disabled="busy||index===0" :aria-label="`上移${label}`" @click="moveDetailImage(index,-1)">上移</button>
+                    <button type="button" class="btn" :disabled="busy||index===galleryImages.length-1" :aria-label="`下移${label}`" @click="moveDetailImage(index,1)">下移</button>
+                    <button type="button" class="btn" :disabled="busy" :aria-label="`移除${label}`" @click="setDetailImages(detailImages.filter((_,i)=>i!==index))">移除</button>
+                  </div>
+                </div>
+                <label v-if="!readonly&&galleryImages.length<productDetailPictureLimit" class="photo-stage photo-empty photo-file portrait-stage">
+                  <span class="photo-plus" aria-hidden="true">+</span>
+                  <span>添加详情竖图</span>
+                  <input type="file" aria-label="添加详情竖图" accept="image/png,image/jpeg,image/webp" :disabled="locked" :aria-required="!galleryImages.length||undefined"
+                    :aria-invalid="Boolean(errorId('detail_asset_ids'))||undefined" :aria-describedby="errorId('detail_asset_ids')??'editor-detail-images-hint'" @change="addDetailImage">
+                </label>
+              </div>
+              <small v-if="errorId('detail_asset_ids')" :id="errorId('detail_asset_ids')" class="field-error">{{fieldErrors.detail_asset_ids}}</small>
+            </section>
+          </div>
+          <div v-else class="editor-assets">
+            <div v-for="{key,label:caption} in caseMedia" :key="key" class="media-field" :data-editor-field="key">
               <label class="asset-label" :for="`editor-file-${key}`">{{ caption }}</label>
               <div class="media-row">
-                <img v-if="draftImage(item,body[key],pending)" :class="{'catalog-image-preview':key==='thumbnail_asset_id'}" :src="draftImage(item,body[key],pending)" :alt="caption">
+                <img v-if="draftImage(item,body[key],pending)" :src="draftImage(item,body[key],pending)" :alt="caption">
                 <span v-else class="muted">未上传</span>
                 <input :id="`editor-file-${key}`" type="file" accept="image/png,image/jpeg,image/webp" :disabled="locked"
                   :aria-required="required(key)" :aria-invalid="Boolean(errorId(key))||undefined" :aria-describedby="errorId(key)" @change="chooseAsset($event,key)">
                 <button v-if="body[key]&&!readonly" type="button" class="btn" :disabled="busy" :aria-label="`移除${caption}`" @click="clear(key)">移除</button>
               </div>
-              <small v-if="hint">{{ hint }}</small>
               <small v-if="errorId(key)" :id="errorId(key)" class="field-error">{{fieldErrors[key]}}</small>
             </div>
-            <section v-if="yes" class="detail-assets" data-editor-field="detail_asset_ids" tabindex="-1" aria-labelledby="editor-detail-images" :aria-describedby="errorId('detail_asset_ids')">
-              <div>
-                <h3 id="editor-detail-images">详情竖图</h3>
-                <small>最多 {{ productDetailPictureLimit }} 张，按下方顺序展示在详情文字之后。</small>
-              </div>
-              <div v-for="(id,index) in detailImages" :key="id" class="media-row detail-asset-row">
-                <img v-if="draftImage(item,id,pending)" :src="draftImage(item,id,pending)" :alt="`详情竖图 ${index+1}`">
-                <span class="detail-asset-number">第 {{ index+1 }} 张</span>
-                <div v-if="!readonly" class="toolbar">
-                  <button type="button" class="btn" :disabled="busy||index===0" :aria-label="`上移详情竖图 ${index+1}`" @click="moveDetailImage(index,-1)">上移</button>
-                  <button type="button" class="btn" :disabled="busy||index===detailImages.length-1" :aria-label="`下移详情竖图 ${index+1}`" @click="moveDetailImage(index,1)">下移</button>
-                  <button type="button" class="btn" :disabled="busy" :aria-label="`移除详情竖图 ${index+1}`" @click="setDetailImages(detailImages.filter((_,i)=>i!==index))">移除</button>
-                </div>
-              </div>
-              <label v-if="!readonly&&detailImages.length<productDetailPictureLimit" class="field">添加详情竖图
-                <input type="file" aria-label="添加详情竖图" accept="image/png,image/jpeg,image/webp" :disabled="locked" aria-required="true"
-                  :aria-invalid="Boolean(errorId('detail_asset_ids'))||undefined" :aria-describedby="errorId('detail_asset_ids')" @change="addDetailImage">
-              </label>
-              <small v-if="errorId('detail_asset_ids')" :id="errorId('detail_asset_ids')" class="field-error">{{fieldErrors.detail_asset_ids}}</small>
-            </section>
-            <label v-if="!yes" class="field" data-editor-field="sort_order">展示顺序
+            <label class="field" data-editor-field="sort_order">展示顺序
               <input type="number" aria-label="展示顺序" :aria-invalid="Boolean(errorId('sort_order'))||undefined" :aria-describedby="errorId('sort_order')"
                 min="0" step="1" :disabled="locked" :value="Number(body.sort_order??0)" @input="body.sort_order=Number(($event.target as HTMLInputElement).value);clearFieldError('sort_order')">
               <small v-if="errorId('sort_order')" :id="errorId('sort_order')" class="field-error">{{fieldErrors.sort_order}}</small>
@@ -321,6 +364,13 @@ onMounted(async()=>{await refresh();await options();});
     </component>
     <aside v-if="!embedded" class="preview-panel stack"><div class="section-head"><h2>H5 预览</h2><span v-if="item?.draft" class="pill">保存修订 {{item.revision}}</span></div><div class="seg" aria-label="预览来源"><button type="button" :aria-pressed="previewSource==='draft'" @click="previewSource='draft'">编辑预览</button><button type="button" :aria-pressed="previewSource==='live'" :disabled="!item?.live_id" @click="previewSource='live'">线上版本</button></div><div v-if="yes && previewSource==='draft'" class="seg"><button type="button" :aria-pressed="sidebar==='card'" @click="sidebar='card'">列表卡片</button><button type="button" :aria-pressed="sidebar==='detail'" @click="sidebar='detail'">详情页</button></div><p v-if="dirty" class="muted">未保存修改不会显示在预览里。</p><iframe v-if="activePreview" :key="activePreview" :src="activePreview" :title="previewSource==='live'?'线上 H5':'当前保存草稿的 H5 私有预览'" referrerpolicy="no-referrer"></iframe><p v-else class="empty">保存草稿后可预览 H5。</p></aside>
   </div>
+  <el-dialog v-if="yes" :model-value="Boolean(imagePreview)" :title="imagePreview?`查看${imagePreview.label}`:'图片预览'"
+    width="min(760px, calc(100% - 24px))" align-center append-to-body destroy-on-close
+    @update:model-value="open=>{if(!open)imagePreview=null}">
+    <div v-if="imagePreview" class="photo-viewer" :class="{'photo-viewer-portrait':imagePreview.portrait}" role="region" aria-label="图片预览" tabindex="0">
+      <img :src="imagePreview.url" :alt="imagePreview.label">
+    </div>
+  </el-dialog>
   <Release v-if="!embedded&&item&&tab==='release'" :item="item" :dirty="dirty" @changed="refresh" />
   <History v-if="!embedded&&item&&tab==='history'" :item="item" @restored="row=>{accept(row);tab='edit';note='历史已恢复为草稿，线上版本未改变。'}" />
 </template>
@@ -361,12 +411,33 @@ input[aria-invalid=true],select[aria-invalid=true],textarea[aria-invalid=true]{b
 .wizard-content .media-row input{font-size:12px;padding:4px;min-height:34px}
 .wizard-content .media-row img{width:46px;height:38px}
 .wizard-content .media-row .btn{padding:4px 6px;min-height:34px}
-.media-row .catalog-image-preview{width:65px;height:65px;object-fit:contain;background:#fff}
-.wizard-content .media-row .catalog-image-preview{width:38px;height:38px}
-.detail-assets{grid-column:1/-1;display:grid;gap:8px;min-width:0}
-.detail-asset-row{flex-wrap:wrap}
-.detail-asset-row img{object-fit:contain}
-.detail-asset-number{font-size:13px;min-width:42px}
+.product-assets{display:grid;gap:20px;min-width:0}
+.product-cover-grid,.product-gallery-grid{display:grid;align-items:start;gap:12px;min-width:0}
+.product-cover-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.product-gallery-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,168px),1fr))}
+.product-asset{display:grid;align-content:start;gap:8px;min-width:0}
+.product-cover-grid .product-asset > :first-child{min-height:56px}
+.photo-stage{position:relative;display:grid;place-items:center;width:100%;height:194px;min-width:0;overflow:hidden;
+  border:1px solid var(--line);border-radius:var(--radius);background:white}
+.photo-preview{display:block;padding:0}
+.photo-preview:hover,.photo-file:hover{border-color:var(--blue)}
+.photo-preview img{width:100%;height:100%;object-fit:contain}
+.portrait-stage{height:220px}
+.portrait-stage img{object-fit:cover;object-position:center top}
+.photo-open{position:absolute;right:8px;bottom:8px;padding:3px 8px;border:1px solid var(--line);border-radius:6px;
+  background:white;color:var(--ink);font-size:12px}
+.photo-empty{place-content:center;gap:5px;border-style:dashed;background:var(--soft);color:var(--blue);font-weight:600}
+.photo-plus{display:grid;place-items:center;width:32px;height:32px;border:1px solid var(--line);border-radius:50%;
+  background:white;font-size:22px;line-height:1}
+.photo-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.photo-file{position:relative;overflow:hidden;cursor:pointer}
+.photo-file input{position:absolute;inset:0;width:100%;height:100%;padding:0;opacity:0;cursor:inherit}
+.photo-file:focus-within,.photo-viewer:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.photo-file:has(input[aria-invalid=true]){border-color:var(--error)}
+.photo-file:has(input:disabled){opacity:.55;cursor:not-allowed}
+.photo-viewer{max-height:70dvh;overflow:auto;overscroll-behavior:contain;background:var(--soft);border-radius:var(--radius)}
+.photo-viewer img{max-width:100%;max-height:70dvh;object-fit:contain;margin-inline:auto}
+.photo-viewer-portrait img{width:100%;max-height:none;height:auto}
 .wizard-content .editor-place{gap:6px}
 .wizard-content .editor-place h2{font-size:15px}
 .wizard-content :deep(.place-cascader .el-input__inner){border:0;background:transparent;padding:0}
@@ -379,6 +450,8 @@ input[aria-invalid=true],select[aria-invalid=true],textarea[aria-invalid=true]{b
 .wizard-nav{margin-left:auto}
 @media(max-width:560px){
   .wizard-content .form-grid,.wizard-content .editor-assets{grid-template-columns:minmax(0,1fr)}
+  .product-cover-grid{grid-template-columns:minmax(0,1fr)}
+  .product-cover-grid .product-asset > :first-child{min-height:0}
   .wizard-content{padding-block:14px}
   .wizard-steps li{padding-inline:6px;gap:4px;font-size:12px}
   .wizard-steps .step-marker{width:18px;height:18px;font-size:11px}
