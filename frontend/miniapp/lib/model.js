@@ -48,8 +48,8 @@ function homeView(body, mediaUrl) {
   return [...new Set(rows(body.poster_asset_urls).map(mediaUrl).filter(Boolean))];
 }
 
-function catalogCover(body, mediaUrl) {
-  const image = mediaUrl(body.cover_asset_url);
+function catalogCover(body, displayImage) {
+  const image = displayImage(body.cover_asset_url, body.cover_thumbnail_url);
   // The page hides duplicate typography while a text-bearing image is available.
   return { image, imageHasText: !!image && body.image_has_text === true,
     top: text(body.slogan_top), bottom: text(body.slogan_bottom) };

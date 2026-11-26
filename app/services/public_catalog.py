@@ -63,6 +63,8 @@ def page_content(db: Session, page: str) -> dict:
         if name is None:
             raise AppError(404, "not_found", "页面不存在")
         body = _slot(db, name) or {}
+        if page == "catalog" and (cover := body.get("cover_asset_url")):
+            body["cover_thumbnail_url"] = f"{cover}/display-thumbnail"
     return {"page": page, "body": body}
 
 
@@ -174,7 +176,10 @@ def list_cases(db: Session, tag: str | None, q: str | None, page: int, page_size
         if keyword and not any(keyword in body.get(key, "").casefold()
                                for key in ("brand_name", "product_name", "highlight", "description")):
             continue
-        rows.append({"id": str(ident), "body": _project(body, CASE_FIELDS)})
+        card = _project(body, CASE_FIELDS)
+        if image := card.get("image_asset_url"):
+            card["image_thumbnail_url"] = f"{image}/display-thumbnail"
+        rows.append({"id": str(ident), "body": card})
     return _page(rows, page, page_size)
 
 

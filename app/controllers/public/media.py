@@ -12,7 +12,7 @@ from app.core.errors import AppError
 from app.schemas.common import ItemId
 from app.services.media import media_not_found, resolve_asset_file
 from app.services.public_media import public_asset
-from app.services.thumbnails import existing_cover_thumbnail
+from app.services.thumbnails import existing_cover_thumbnail, existing_display_thumbnail
 
 router = APIRouter(prefix="/api/public")
 
@@ -32,12 +32,17 @@ def _matches_etag(value: str, etag: str) -> bool:
     return value.strip() == "*" or any(tag.strip().removeprefix("W/") == etag for tag in value.split(","))
 
 
-def _public_image(id: int, request: Request, db: Db, *, thumbnail: Literal["preferred", "required"] | None = None) -> Response:
+def _public_image(id: int, request: Request, db: Db, *,
+                  thumbnail: Literal["preferred", "required", "display"] | None = None) -> Response:
     """Revalidate bytes only after checking the current public reference and selected file."""
     try:
         asset = public_asset(db, id)
         source = resolve_asset_file(asset)
-        variant = existing_cover_thumbnail(source) if thumbnail else None
+        variant = None
+        if thumbnail == "display":
+            variant = existing_display_thumbnail(source)
+        elif thumbnail:
+            variant = existing_cover_thumbnail(source)
         if thumbnail == "required" and variant is None:
             raise media_not_found()
         response = _cacheable_image(variant, "image/webp") if variant else _cacheable_image(source, asset.mime)
@@ -74,3 +79,10 @@ def public_catalog_thumbnail(id: ItemId, request: Request, db: Db) -> Response:
     """Serve a generated card image without putting a full detail cover in the list."""
     only_query(request)
     return _public_image(id, request, db, thumbnail="required")
+
+
+@router.get("/media/{id}/display-thumbnail")
+def public_display_thumbnail(id: ItemId, request: Request, db: Db) -> Response:
+    """Serve a resized image for banners and case cards after checking current visibility."""
+    only_query(request)
+    return _public_image(id, request, db, thumbnail="display")

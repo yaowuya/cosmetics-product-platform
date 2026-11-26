@@ -2,7 +2,7 @@
 const { pageApi } = require('../../lib/public-api');
 const { caseHeader, caseView, inputText } = require('../../lib/model');
 const { createPaging } = require('../../lib/paging');
-const { detailUrl } = require('../../lib/page-feedback');
+const { afterFirstShow, detailUrl } = require('../../lib/page-feedback');
 
 const FALLBACK_HEADER = caseHeader({}, () => '');
 const KEYWORD_LIMIT = 140;
@@ -23,13 +23,43 @@ Page({
       async load(filter, page) {
         const list = await api.cases(filter, page);
         return { ...list, items: list.items.map(item => {
-          const { id, brand, name, image, highlight } = caseView(item, api.mediaUrl);
+          const { id, brand, name, highlight } = caseView(item, api.mediaUrl);
+          const image = api.displayImage(item.body.image_asset_url, item.body.image_thumbnail_url);
           return { id, brand, name, image, highlight };
         }) };
       },
       render: state => this.setData(state),
     });
+    this._refreshOnShow = afterFirstShow(() => this.revalidateCases());
     return this.reload();
+  },
+
+  onShow() { return this._refreshOnShow(); },
+
+  async revalidateCases() {
+    if (this.rechecking || this.data.configPhase === 'loading') return;
+    if (this.data.configPhase === 'error') return this.reload();
+    this.rechecking = true;
+    const run = this.configRun;
+    try {
+      const body = await this.api.page('cases').catch(() => null);
+      if (run !== this.configRun) return;
+      if (body) {
+        const header = caseHeader(body,this.api.mediaUrl);
+        if (JSON.stringify(header) !== JSON.stringify(this.data.header) || this.data.headerImageFailed) {
+          this.setData({header,headerImageFailed:false});
+          if (this.data.tag && !header.tags.some(entry => entry.key === this.data.tag)) {
+            return await this.applyFilter('',this.data.q);
+          }
+        }
+      }
+      if (this.data.phase === 'error') await this.paging.retry();
+      else if (await this.paging.revalidate() && run === this.configRun && Object.keys(this.data.brokenImages).length) {
+        this.setData({brokenImages:{}});
+      }
+    } finally {
+      this.rechecking = false;
+    }
   },
 
   async reload() {

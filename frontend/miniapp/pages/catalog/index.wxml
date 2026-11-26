@@ -1,6 +1,6 @@
 <view class="screen catalog-screen">
   <view wx:if="{{(cover.image && !coverFailed) || cover.top || cover.bottom}}" class="catalog-hero">
-    <image wx:if="{{cover.image && !coverFailed}}" src="{{cover.image}}" mode="aspectFill" data-src="{{cover.image}}" binderror="onCoverError" aria-label="产品目录封面" />
+    <image wx:if="{{cover.image && !coverFailed}}" src="{{cover.image}}" mode="aspectFill" webp="{{true}}" data-src="{{cover.image}}" binderror="onCoverError" aria-label="产品目录封面" />
     <view wx:if="{{(cover.top || cover.bottom) && (!cover.imageHasText || coverFailed)}}" class="catalog-slogan">
       <text>{{cover.top}}</text><text class="slogan-main">{{cover.bottom}}</text>
     </view>

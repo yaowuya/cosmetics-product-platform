@@ -31,7 +31,7 @@
   <view wx:else class="case-results">
     <button wx:if="{{items.length}}" class="case-card case-featured" hover-class="case-card-pressed" data-id="{{items[0].id}}" bindtap="onOpenCase">
       <view class="case-card-media placeholder">
-        <image wx:if="{{items[0].image && brokenImages[items[0].id] !== items[0].image}}" class="case-card-image"
+        <image wx:if="{{items[0].image && brokenImages[items[0].id] !== items[0].image}}" class="case-card-image" webp="{{true}}"
           src="{{items[0].image}}" mode="aspectFit" data-id="{{items[0].id}}" data-src="{{items[0].image}}" binderror="onCardImageError" />
       </view>
       <view class="case-copy">
@@ -46,7 +46,7 @@
         <block wx:for="{{items}}" wx:key="id">
           <button wx:if="{{index > 0}}" class="case-card" hover-class="case-card-pressed" data-id="{{item.id}}" bindtap="onOpenCase">
             <view class="case-card-media placeholder">
-              <image wx:if="{{item.image && brokenImages[item.id] !== item.image}}" class="case-card-image" lazy-load="{{true}}"
+              <image wx:if="{{item.image && brokenImages[item.id] !== item.image}}" class="case-card-image" lazy-load="{{true}}" webp="{{true}}"
                 src="{{item.image}}" mode="aspectFill" data-id="{{item.id}}" data-src="{{item.image}}" binderror="onCardImageError" />
             </view>
             <view class="case-copy">

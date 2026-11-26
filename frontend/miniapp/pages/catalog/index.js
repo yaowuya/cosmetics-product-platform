@@ -2,7 +2,7 @@
 const { pageApi } = require('../../lib/public-api');
 const { projectCatalog, selectBoard, inputText, catalogCover, productCard } = require('../../lib/model');
 const { createPaging } = require('../../lib/paging');
-const { detailUrl } = require('../../lib/page-feedback');
+const { afterFirstShow, detailUrl } = require('../../lib/page-feedback');
 
 // Native image assets mirror the H5 board marks for the five standard names.
 const BOARD_ICON_FILES = new Map([
@@ -41,7 +41,64 @@ Page({
         this.setData({...state,items});
       },
     });
+    this._refreshOnShow = afterFirstShow(() => this.revalidateDirectory());
     return this.loadDirectory();
+  },
+
+  onShow() { return this._refreshOnShow(); },
+
+  /** Keep the tab and existing list mounted while checking the current directory. */
+  async revalidateDirectory() {
+    if (this._checkingDirectory || this.data.configPhase === 'loading') return;
+    if (this.data.configPhase === 'error') return this.loadDirectory();
+    this._checkingDirectory = true;
+    const version = this.data.imageVersion;
+    try {
+      const [body, tree] = await Promise.all([
+        this._api.page('catalog').catch(() => null), this._api.catalog(),
+      ]);
+      if (!this._paging || version !== this.data.imageVersion) return;
+      const previous = this._tree;
+      this._tree = projectCatalog(tree,this._api.mediaUrl);
+      if (body) {
+        const cover = catalogCover(body,this._api.displayImage);
+        if (JSON.stringify(cover) !== JSON.stringify(this.data.cover) || this.data.coverFailed) {
+          this.setData({cover,coverFailed:false});
+        }
+      }
+      const {board, category, fine} = this.data;
+      const selected = this._tree.boards.find(item => item.id === board) || this._tree.boards[0];
+      if (JSON.stringify(this._tree) !== JSON.stringify(previous)) {
+        this._views.clear();
+        const boards = this._tree.boards.map(item => {
+          const prior = this.data.boards.find(row => row.id === item.id && row.icon === item.icon && row.name === item.name);
+          return {...item,displayIcon:prior?.displayIcon || item.icon || defaultBoardIcon(item.name)};
+        });
+        this.setData({boards});
+      }
+      if (!selected) {
+        if (!board) return;
+        this._paging.invalidate();
+        this.setData({board:'',category:'',fine:'',categories:[],fineChoices:[],items:[],total:0,count:0,page:0,phase:'idle',hasMore:false});
+        return;
+      }
+      const saved = selected.id === board ? this.currentView() : {};
+      const selection = selectBoard(this._tree,selected.id,saved);
+      if (selected.id !== board || selection.category !== category || selection.fine !== fine) {
+        return await this.enterBoard(selected.id,{...saved,right:0});
+      }
+      const {count, fineChoices} = this.selectionPatch(category,fine);
+      const categories = this._tree.categories[board] || [];
+      if (count !== this.data.count || JSON.stringify([categories,fineChoices]) !== JSON.stringify([this.data.categories,this.data.fineChoices])) {
+        this.setData({count,categories,fineChoices});
+      }
+      if (this.data.phase === 'error') await this._paging.retry();
+      else if (await this._paging.revalidate() && this._paging && version === this.data.imageVersion) this.retryHiddenImages();
+    } catch (_) {
+      // A background check should not clear an already rendered directory.
+    } finally {
+      this._checkingDirectory = false;
+    }
   },
 
   async loadDirectory() {
@@ -58,7 +115,7 @@ Page({
       this._tree = projectCatalog(tree,this._api.mediaUrl);
       const boards = this._tree.boards.map(item => ({...item,displayIcon:item.icon || defaultBoardIcon(item.name)}));
       const selected = boards.find(item => item.id === board) || boards[0];
-      this.setData({boards,cover:catalogCover(body,this._api.mediaUrl),configPhase:'ready'});
+      this.setData({boards,cover:catalogCover(body,this._api.displayImage),configPhase:'ready'});
       if (selected) await this.enterBoard(selected.id,selected.id === board ? {...activeView,right:0} : {});
       else this.setData({board:'',categories:[],fineChoices:[],items:[],total:0,hasMore:false});
     } catch (error) {
@@ -166,6 +223,20 @@ Page({
     const state = thumbnail ? 'failedThumbnails' : 'broken';
     if (src !== (thumbnail || item.image) || this.data[state][id] === src) return;
     this.setData({[state]:{...this.data[state],[id]:src}});
+  },
+  /** Retry placeholders after a fresh list. Keep a successfully displayed fallback mounted. */
+  retryHiddenImages() {
+    const {items,failedThumbnails,broken} = this.data;
+    if (!Object.keys(failedThumbnails).length && !Object.keys(broken).length) return;
+    const keepFallbacks = {};
+    for (const item of items) {
+      if (item.thumbnail && failedThumbnails[item.id] === item.thumbnail && item.image && broken[item.id] !== item.image) {
+        keepFallbacks[item.id] = item.thumbnail;
+      }
+    }
+    if (Object.keys(broken).length || Object.keys(keepFallbacks).length !== Object.keys(failedThumbnails).length) {
+      this.setData({failedThumbnails:keepFallbacks,broken:{}});
+    }
   },
   async onRefresh() {
     if (this.data.configPhase === 'loading') return;

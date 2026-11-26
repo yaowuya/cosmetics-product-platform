@@ -114,7 +114,13 @@ function createPublicApi({ request, origin }) {
     return validId(id) ? origin + path : '';
   }
 
-  return { page, catalog, products, cases, product: id => detail('products', id), case: id => detail('cases', id), mediaUrl,
+  function displayImage(originalPath, variantPath) {
+    const original = mediaUrl(originalPath);
+    const variant = variantUrl(variantPath, '/display-thumbnail');
+    return original && variant === `${original}/display-thumbnail` ? variant : original;
+  }
+
+  return { page, catalog, products, cases, product: id => detail('products', id), case: id => detail('cases', id), mediaUrl, displayImage,
     thumbnailUrl: value => variantUrl(value, '/thumbnail'),
     catalogThumbnailUrl: value => variantUrl(value, '/catalog-thumbnail') };
 }

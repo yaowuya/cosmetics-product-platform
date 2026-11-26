@@ -1,7 +1,7 @@
 /** 联系页沿用 H5 的静态服务示例；所有联系动作仅使用当前公开投影。 */
 const { pageApi } = require('../../lib/public-api');
 const { contactView } = require('../../lib/model');
-const { createResource, copyValue } = require('../../lib/page-feedback');
+const { createResource, afterFirstShow, copyValue } = require('../../lib/page-feedback');
 
 const SERVICES = [
   {
@@ -48,11 +48,26 @@ Page({
         const contact = contactView(await api.page('contact'), api.mediaUrl);
         return contact.qr || hasTextContact(contact) ? contact : null;
       },
-      onReady: contact => this.setData({ contact, qrFailed: false, canContact: true, dialNumber: dialNumber(contact.phone) }),
+      onReady: contact => {
+        const previous = this.data.contact;
+        if (!this.data.qrFailed && Object.keys(contact).every(key => contact[key] === previous[key])) return;
+        this.setData({ contact, qrFailed: false, canContact: true,
+          dialNumber: dialNumber(contact.phone), fallback: '' });
+        this._copyAttempt += 1;
+      },
+      onEmpty: () => {
+        if (this.data.dialog === 'contact') this.closeDialog();
+        if (this.data.canContact || this.data.contact.qr) this.setData({
+          contact: { qr: '', wechat: '', phone: '', email: '' }, qrFailed: false, canContact: false, dialNumber: '',
+        });
+      },
       render: patch => this.setData(patch),
     });
+    this._refreshOnShow = afterFirstShow(() => this._resource.refresh({quiet:true}));
     return this._resource.refresh();
   },
+
+  onShow() { return this._refreshOnShow(); },
 
   /** 忽略离开页面后可能到达的请求和复制回调。 */
   onUnload() {

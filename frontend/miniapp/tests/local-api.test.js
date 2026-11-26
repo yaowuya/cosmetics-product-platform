@@ -22,6 +22,8 @@ test('local HTTP bridge preserves published responses but excludes admin, non-GE
       res.writeHead(200, { 'Content-Type': 'image/webp', 'Cache-Control': 'no-store' }).end('thumbnail');
     } else if (req.url.endsWith('/media/42/catalog-thumbnail')) {
       res.writeHead(200, { 'Content-Type': 'image/webp', 'Cache-Control': 'no-store' }).end('catalog thumbnail');
+    } else if (req.url.endsWith('/media/42/display-thumbnail')) {
+      res.writeHead(200, { 'Content-Type': 'image/webp', 'Cache-Control': 'no-store' }).end('display thumbnail');
     } else if (req.url.endsWith('/media/42')) {
       res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'no-store' }).end(Buffer.from([137, 80, 78, 71]));
     } else {
@@ -53,6 +55,10 @@ test('local HTTP bridge preserves published responses but excludes admin, non-GE
   assert.equal(generated.status, 200);
   assert.equal(generated.headers.get('content-type'), 'image/webp');
   assert.equal(await generated.text(), 'catalog thumbnail');
+  const displayThumbnail = await fetch(`${bridge}/api/public/media/42/display-thumbnail`);
+  assert.equal(displayThumbnail.status, 200);
+  assert.equal(displayThumbnail.headers.get('content-type'), 'image/webp');
+  assert.equal(await displayThumbnail.text(), 'display thumbnail');
   const missing = await fetch(`${bridge}/api/public/products/42`);
   assert.equal(missing.status, 404);
   assert.deepEqual(await missing.json(), { code: 'not_found' });
@@ -65,6 +71,6 @@ test('local HTTP bridge preserves published responses but excludes admin, non-GE
   assert.equal((await fetch(`${bridge}/api/public/media/42/detail`)).status, 404);
   assert.deepEqual(calls.map(({ url }) => url), [
     '/api/public/products?q=%E7%94%A8', '/api/public/media/42', '/api/public/media/42/thumbnail',
-    '/api/public/media/42/catalog-thumbnail', '/api/public/products/42',
+    '/api/public/media/42/catalog-thumbnail', '/api/public/media/42/display-thumbnail', '/api/public/products/42',
   ]);
 });

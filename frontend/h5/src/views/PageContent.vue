@@ -6,6 +6,11 @@ import HomePosters from './HomePosters.vue';
 
 const props=defineProps<{section:'home'|'catalog'|'cases'|'contact'|'directory'; body:Body; preview?:boolean}>();
 const contact=computed(()=>object(props.body.business_contact));
+const catalogCover=computed(()=>{
+  const original=text(props.body.cover_asset_url);
+  const thumbnail=text(props.body.cover_thumbnail_url);
+  return !props.preview && original && thumbnail===`${original}/display-thumbnail` ? thumbnail : original;
+});
 const cards=[
   {title:'配方研发与打样', eyebrow:'研发与共创', headline:'让产品想法\n成为可用样品', points:'配方定制 · 样品开发\n应用测试 · 方案优化', tone:'blue'},
   {title:'OEM / ODM 生产合作', eyebrow:'生产与交付', headline:'从样品确认\n到成品交付', points:'包材协同 · 生产灌装\n成品交付 · 项目跟进', tone:'silver'},
@@ -24,7 +29,7 @@ onBeforeUnmount(()=>window.removeEventListener('keydown',keys));
 </script>
 <template>
  <HomePosters v-if="section==='home'" :sources="body.poster_asset_urls" :preview="preview"/>
- <div v-else-if="section==='catalog' && (body.cover_asset_url||body.slogan_top||body.slogan_bottom)" class="catalog-cover"><img v-if="body.cover_asset_url" :src="text(body.cover_asset_url)" alt="产品目录封面"><div v-if="!body.image_has_text" class="catalog-cover-copy"><p>{{text(body.slogan_top)}}</p><strong>{{text(body.slogan_bottom)}}</strong></div></div>
+ <div v-else-if="section==='catalog' && (catalogCover||body.slogan_top||body.slogan_bottom)" class="catalog-cover"><img v-if="catalogCover" :src="catalogCover" alt="产品目录封面"><div v-if="!body.image_has_text" class="catalog-cover-copy"><p>{{text(body.slogan_top)}}</p><strong>{{text(body.slogan_bottom)}}</strong></div></div>
  <header v-else-if="section==='cases'" class="cases-hero"><img v-if="body.background_asset_url" :src="text(body.background_asset_url)" alt=""><div><h1>{{text(body.title,'品牌案例')}}</h1><p v-if="body.intro">{{text(body.intro)}}</p></div></header>
  <section v-else-if="section==='directory'" class="directory-preview"><h2>产品目录</h2><p v-if="!rows(body.nodes).length" class="h5-empty">暂无目录</p><div v-for="node in rows(body.nodes)" :key="text(node.id)" :style="{paddingLeft:node.level==='board'?'0':node.level==='category'?'16px':'32px'}"><strong>{{text(node.name,'未命名')}}</strong><small v-if="node.enabled===false"> · 已停用</small></div></section>
    <section v-else-if="section==='contact'" class="contact-page"><header class="contact-header"><div class="contact-header-copy"><h1>服务与合作</h1><p>从产品想法，到成品落地</p></div><component :is="'button'" class="contact-consult" type="button" @click="open('contact')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-8 8H7l-4 3V12a8 8 0 1 1 18 0z"/></svg><span>合作咨询</span></component></header>

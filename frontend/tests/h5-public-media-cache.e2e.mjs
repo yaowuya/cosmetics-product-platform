@@ -28,6 +28,7 @@ from app.application import create_app
 from app.core.db import session
 from app.local import local_site
 from app.models import Account, Asset, Base, ContentItem, DirectoryNode, Release, ReleaseAsset, ReleasePlace
+from app.services.thumbnails import ensure_display_thumbnail
 
 
 def initialize(database, media):
@@ -74,6 +75,8 @@ with TemporaryDirectory(prefix='showcase-media-cache-') as temp, socket.socket()
     os.environ.pop('DATABASE_URL', None)
     database = create_engine(URL.create('sqlite', database=str(path / 'fixture.sqlite')))
     initialize(database, media)
+    with Session(database) as db:
+        ensure_display_thumbnail(db.get(Asset, 2))
 
     def fixture_session():
         with Session(database) as db:
@@ -143,7 +146,7 @@ async function mediaNetwork(context, page) {
   const completed = [];
   client.on('Network.requestWillBeSent', event => {
     const path = new URL(event.request.url).pathname;
-    if (!/^\/api\/public\/media\/\d+(?:\/thumbnail)?$/.test(path)) return;
+    if (!/^\/api\/public\/media\/\d+(?:\/(?:thumbnail|display-thumbnail))?$/.test(path)) return;
     started.push(path);
     tracked.set(event.requestId, { path, bodyBytes: 0 });
   });
@@ -209,7 +212,7 @@ try {
     if (request.resourceType() === 'document') documentRequests.push(new URL(request.url()).pathname);
   });
   const home = '/api/public/media/1';
-  const catalog = '/api/public/media/2';
+  const catalog = '/api/public/media/2/display-thumbnail';
   const thumbnail = '/api/public/media/4/thumbnail';
   const newHome = '/api/public/media/3';
   const homeSelector = '.poster-slide img';
@@ -254,6 +257,7 @@ try {
 
   await visit('联系我们', '/contact');
   assert.equal((await fetch(`${origin}/api/__fixture__/update-public-images`, { method: 'POST' })).status, 204);
+  assert.equal((await fetch(`${origin}/api/public/media/2`)).status, 404, 'The withdrawn catalog original also becomes unavailable');
   for (const { path, etag } of [firstHome, firstCatalog, firstThumbnail]) {
     const direct = await fetch(`${origin}${path}`, { headers: { 'If-None-Match': etag } });
     assert.equal(direct.status, 404, `Visibility must be checked before a conditional response for ${path}`);

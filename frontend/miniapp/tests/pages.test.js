@@ -88,6 +88,46 @@ test('catalog keeps appended rows and scroll on tab-detail return and board roun
   page.onUnload();
 });
 
+test('catalog keeps mounted cards on tab return and removes unpublished results after revalidating', async () => {
+  let published = true;
+  const { page } = harness('catalog', url => {
+    if (url.pathname.endsWith('/pages/catalog')) return {page:'catalog',body:{
+      cover_asset_url:'/api/public/media/61', cover_thumbnail_url:'/api/public/media/61/display-thumbnail',
+    }};
+    if (!url.pathname.endsWith('/products')) return directory(url);
+    return { ...response(1,published ? [id] : []), items: published ? [{ id, body: {
+      name: '产品', catalog_thumbnail_url: '/api/public/media/62/catalog-thumbnail',
+    } }] : [] };
+  });
+  await page.onLoad();
+  await page.onShow?.();
+  const cover = page.data.cover;
+  assert.equal(cover.image,'https://published.example.cn/api/public/media/61/display-thumbnail');
+  page.onRightScroll({detail:{scrollTop:470}});
+  const cards = page.data.items;
+  await page.onShow?.();
+  assert.equal(page.data.items,cards);
+  assert.equal(page.data.cover,cover);
+  assert.equal(page.currentView().right,470);
+
+  page.onCoverError(event({src:cover.image}));
+  page.onImageError(event({id,src:cards[0].thumbnail,version:cards[0].imageVersion}));
+  assert.equal(page.data.failedThumbnails[id],cards[0].thumbnail);
+  await page.onShow();
+  assert.equal(page.data.items,cards);
+  assert.equal(page.data.coverFailed,false);
+  assert.equal(page.data.failedThumbnails[id],undefined);
+
+  published = false;
+  const refreshing = page.onShow?.();
+  assert.equal(page.data.items,cards);
+  assert.equal(page.data.configPhase,'ready');
+  await refreshing;
+  assert.deepEqual(page.data.items,[]);
+  assert.equal(page.data.phase,'empty');
+  page.onUnload();
+});
+
 test('catalog treats whitespace as category browsing while retaining the text being typed', async () => {
   const { page,calls } = harness('catalog',directory);
   await page.onLoad();
@@ -284,6 +324,37 @@ test('cases request current tags, append in order, and retain tab state when ope
   page.onUnload();
 });
 
+test('case cards use their own thumbnails, stay mounted on tab return, and drop withdrawn cases', async () => {
+  let published = true;
+  const original = '/api/public/media/62';
+  const thumbnail = `${original}/display-thumbnail`;
+  const { page } = harness('cases', url => {
+    if (url.pathname.endsWith('/pages/cases')) return {page:'cases',body:{}};
+    const body = {brand_name:'品牌',image_asset_url:original};
+    const items = [{id,body:{...body,image_thumbnail_url:thumbnail}},
+      {id:'72',body:{...body,image_thumbnail_url:'/api/public/media/63/display-thumbnail'}}];
+    const visible = published ? items : items.slice(1);
+    return {...response(1,visible.map(item => item.id)),items:visible};
+  });
+  await page.onLoad();
+  await page.onShow();
+  const cards = page.data.items;
+  assert.deepEqual(cards.map(item => item.image),[thumbnail,original].map(path => `https://published.example.cn${path}`));
+  await page.onShow();
+  assert.equal(page.data.items,cards);
+  page.onCardImageError(event({id,src:cards[0].image}));
+  assert.equal(page.data.brokenImages[id],cards[0].image);
+  await page.onShow();
+  assert.equal(page.data.items,cards);
+  assert.equal(page.data.brokenImages[id],undefined);
+  published = false;
+  const refreshing = page.onShow();
+  assert.equal(page.data.items,cards);
+  await refreshing;
+  assert.deepEqual(page.data.items.map(item => item.id),['72']);
+  page.onUnload();
+});
+
 test('case distinguishes retryable connection errors from withdrawn detail', async () => {
   let outcome = new Error('offline');
   const { page,calls,actions } = harness('case', () => outcome);
@@ -364,6 +435,45 @@ test('home prefetches only the next poster and waits for it before rotating', as
   page.selectPoster(event({index:3}));
   assert.equal(page.data.current,3);
   assert.deepEqual(mounted(),[first,second,fourth]);
+  page.onUnload();
+});
+
+test('home reuses mounted posters on tab return and removes withdrawn ones after a fresh response', async () => {
+  let posters = ['/api/public/media/1','/api/public/media/2'];
+  let offline = false;
+  const { page } = harness('home', () => offline ? new Error('offline') : {page:'home',body:{poster_asset_urls:posters}});
+  await page.onLoad();
+  await page.onShow();
+  const first = page.data.posters[0];
+  const second = page.data.posters[1];
+  page.onPosterLoad(event({src:first,version:page.data.posterVersion}));
+  page.selectPoster(event({index:1}));
+  const mounted = page.data.mountedPosters;
+
+  page.onHide();
+  await page.onShow();
+  assert.equal(page.data.mountedPosters,mounted);
+  assert.equal(page.data.current,1);
+  offline = true;
+  page.onHide();
+  await page.onShow();
+  assert.equal(page.data.mountedPosters,mounted);
+  assert.equal(page.data.phase,'ready');
+
+  offline = false;
+  posters = [posters[1]];
+  page.onHide();
+  const refreshing = page.onShow();
+  assert.equal(page.data.mountedPosters,mounted);
+  await refreshing;
+  assert.deepEqual(page.data.posters,[second]);
+  assert.deepEqual(Object.keys(page.data.mountedPosters),[second]);
+
+  posters = [];
+  page.onHide();
+  await page.onShow();
+  assert.equal(page.data.phase,'empty');
+  assert.deepEqual(page.data.posters,[]);
   page.onUnload();
 });
 

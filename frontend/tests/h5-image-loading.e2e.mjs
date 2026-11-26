@@ -16,6 +16,10 @@ const longPaths = [media(9), media(10), media(11)];
 const square = media(12);
 const thumbnail = `${square}/thumbnail`;
 const generatedCatalog = `${cover}/catalog-thumbnail`;
+const caseImage = media(13);
+const caseThumbnail = `${caseImage}/display-thumbnail`;
+const catalogBanner = media(14);
+const bannerThumbnail = `${catalogBanner}/display-thumbnail`;
 const privateMedia = id => `/api/admin/media/${id}?item_id=1&revision=2`;
 const product = { id: '1', body: {
   name: '验证用产品', benefit: '用于留出真实滚动的图文详情。'.repeat(240),
@@ -47,6 +51,11 @@ const api = {
   '/api/public/catalog': { nodes: [{ id: '1', parent_id: null, level: 'board', name: '护肤' }], counts: { 1: 1 } },
   '/api/public/products': { items: [listing], total: 1, page: 1, page_size: 20 },
   '/api/public/products/1': product,
+  '/api/public/pages/cases': { page: 'cases', body: {} },
+  '/api/public/cases': { items: [{ id: '1', body: {
+    brand_name: '验证用案例', image_asset_url: caseImage, image_thumbnail_url: caseThumbnail,
+  } }], total: 1, page: 1, page_size: 20 },
+  '/api/public/cases/1': { id: '1', body: { brand_name: '验证用案例', image_asset_url: caseImage } },
   '/api/admin/items/1/preview': { id: '1', revision: '2', kind: 'product', config_slot: null, place_ids: [], body: {
     name: '验证用预览', thumbnail_asset_id: '12', cover_asset_id: '8', detail_asset_ids: ['9', '10', '11'],
   }, media_urls: Object.fromEntries([8, 9, 10, 11, 12].map(id => [id, privateMedia(id)])) },
@@ -202,6 +211,21 @@ try {
   await page.locator('.detail-long').evaluate(node => node.decode());
   assert.deepEqual(imageRequests, [cover, longPaths[0]], '旧单图详情仍加载原图');
 
+  imageRequests.length = 0;
+  api['/api/public/pages/catalog'].body = { cover_asset_url: catalogBanner, cover_thumbnail_url: bannerThumbnail };
+  await page.goto(`${site}/catalog`, { waitUntil: 'domcontentloaded' });
+  await page.locator('.catalog-cover img').evaluate(node => node.decode());
+  assert.deepEqual(imageRequests, [bannerThumbnail], '目录顶部请求等比缩小的展示图');
+
+  imageRequests.length = 0;
+  await page.goto(`${site}/cases`, { waitUntil: 'domcontentloaded' });
+  await page.locator('.case-featured img').evaluate(node => node.decode());
+  assert.deepEqual(imageRequests, [caseThumbnail], '案例列表只请求展示缩略图');
+  imageRequests.length = 0;
+  await page.goto(`${site}/cases/detail?id=1`, { waitUntil: 'domcontentloaded' });
+  await page.locator('.detail-photo').evaluate(node => node.decode());
+  assert.deepEqual(imageRequests, [caseImage], '案例详情继续请求原图');
+
   await page.goto(`${site}/preview?id=1&revision=2&mode=card`, { waitUntil: 'domcontentloaded' });
   await card.evaluate(node => node.decode());
   assert.equal(await card.getAttribute('src'), privateMedia(12), '草稿卡片展示授权的独立方图');
@@ -210,7 +234,7 @@ try {
   assert.equal(await page.locator('.detail-photo').getAttribute('src'), privateMedia(8));
   assert.deepEqual(await page.locator('.detail-long').evaluateAll(nodes => nodes.map(node => node.getAttribute('src'))),
     [9, 10, 11].map(privateMedia), '草稿详情保留授权原图、顺序和立即挂载');
-  console.log('H5 homepage, independent catalog images, ordered lazy detail, and private previews passed.');
+  console.log('H5 homepage, catalog and case variants, original detail images, and private previews passed.');
 } finally {
   posterOne.release();
   posterTwo.release();

@@ -1,7 +1,7 @@
 /** 首页只展示公开海报；切换 Tab 时保留阅读位置，不保留轮播倒计时。 */
 const { pageApi } = require('../../lib/public-api');
 const { homeView } = require('../../lib/model');
-const { createResource } = require('../../lib/page-feedback');
+const { createResource, afterFirstShow } = require('../../lib/page-feedback');
 
 const IDLE_MS = 4000;
 
@@ -20,12 +20,14 @@ Page({
         const posters = homeView(await api.page('home'), api.mediaUrl);
         return posters.length ? posters : null;
       },
-      onReady: posters => this.setData(this._posterPatch(posters,0)),
+      onReady: posters => this._applyPosters(posters),
+      onEmpty: () => this._applyPosters([]),
       render: patch => {
         this.setData(patch);
         this._schedule();
       },
     });
+    this._refreshOnShow = afterFirstShow(() => this._resource.refresh({quiet:true}));
     return this._resource.refresh();
   },
 
@@ -33,6 +35,7 @@ Page({
   onShow() {
     this._visible = true;
     this._schedule();
+    return this._refreshOnShow();
   },
 
   /** 不依赖隐藏时尚未分发的 touchend 事件。 */
@@ -117,6 +120,15 @@ Page({
       ? patch
       : { ...patch, phase: 'error', message: '图片加载失败，请检查连接后重试。' });
     this._schedule();
+  },
+
+  _applyPosters(posters) {
+    const {posters: previous, current} = this.data;
+    if (posters.length === previous.length && posters.every((src,index) => src === previous[index])) return;
+    const available = new Set(posters);
+    for (const src of this._loadedPosters) if (!available.has(src)) this._loadedPosters.delete(src);
+    for (const src of this._reading) if (!available.has(src)) this._reading.delete(src);
+    this.setData(this._posterPatch(posters,Math.max(0,posters.indexOf(previous[current]))));
   },
 
   /** Keep decoded posters and mount at most the current request and its next slide. */

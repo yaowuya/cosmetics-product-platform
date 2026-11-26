@@ -8,6 +8,7 @@ from alembic.script import ScriptDirectory
 PUBLIC = {
     'pages/{page}': 'GET', 'catalog': 'GET', 'products': 'GET', 'products/{id}': 'GET',
     'cases': 'GET', 'cases/{id}': 'GET', 'media/{id}': 'GET', 'media/{id}/thumbnail': 'GET',
+    'media/{id}/catalog-thumbnail': 'GET', 'media/{id}/display-thumbnail': 'GET',
 }
 ADMIN = {
     'login': 'GET POST', 'logout': 'POST', 'me': 'GET', 'change-password': 'POST',

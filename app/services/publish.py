@@ -1,5 +1,6 @@
 """Install an immutable release and its original-key receipt in one transaction."""
 import logging
+from collections.abc import Callable
 from typing import cast
 
 from PIL import Image
@@ -16,10 +17,12 @@ from app.schemas.releases import PublishDraft
 from app.services.auth import publisher_now
 from app.services.checks import review_snapshot
 from app.services.media import asset_ids
-from app.services.thumbnails import ensure_cover_thumbnail
+from app.services.thumbnails import ensure_cover_thumbnail, ensure_display_thumbnail
 
 
 _logger = logging.getLogger(__name__)
+_ThumbnailGenerator = Callable[[Asset], bool]
+_ThumbnailJob = tuple[str, _ThumbnailGenerator]
 
 
 def _read_receipt(db: Session, actor_id: int, item_id: int, data: PublishDraft) -> dict | None:
@@ -32,7 +35,7 @@ def _read_receipt(db: Session, actor_id: int, item_id: int, data: PublishDraft) 
     return event.details["receipt"]
 
 
-def _commit_one(db: Session, actor_id: int, item_id: int, data: PublishDraft) -> tuple[dict, str | None]:
+def _commit_one(db: Session, actor_id: int, item_id: int, data: PublishDraft) -> tuple[dict, _ThumbnailJob | None]:
     # Lock the actor, shared directory/header, target, then request key. Even a replay
     # must still have publishing rights, but must not require the now-consumed draft.
     publisher_now(db, actor_id)
@@ -57,17 +60,23 @@ def _commit_one(db: Session, actor_id: int, item_id: int, data: PublishDraft) ->
     receipt = {"id": str(item_id), "revision": str(item.revision), "release_id": str(release.id),
                "seq": release.seq, "request_key": data.request_key}
     releases.add_publish_audit(db, actor_id, item, data.expected_revision, receipt)
-    return receipt, catalog_thumbnail_source(snapshot) if item.kind == "product" else None
+    if item.kind == "product" and (image := catalog_thumbnail_source(snapshot)):
+        return receipt, (image, ensure_cover_thumbnail)
+    if item.kind == "case" and (image := snapshot.get("image_asset_id")):
+        return receipt, (image, ensure_display_thumbnail)
+    if item.config_slot == "catalog_cover" and (image := snapshot.get("cover_asset_id")):
+        return receipt, (image, ensure_display_thumbnail)
+    return receipt, None
 
 
-def _prepare_catalog_image(db: Session, image_id: str) -> None:
+def _prepare_thumbnail(db: Session, image_id: str, ensure: _ThumbnailGenerator) -> None:
     # Run after commit so optional image conversion never holds publication locks or invalidates a receipt.
     try:
         asset = db.get(Asset, int(image_id))
         if asset is not None:
-            ensure_cover_thumbnail(asset)
+            ensure(asset)
     except (AppError, OSError, ValueError, Image.DecompressionBombError, SQLAlchemyError):
-        _logger.warning("Could not prepare catalog thumbnail for asset %s", image_id)
+        _logger.warning("Could not prepare thumbnail for asset %s", image_id)
 
 
 def publish_one(db: Session, actor_id: int, item_id: int, data: PublishDraft) -> dict:
@@ -75,7 +84,7 @@ def publish_one(db: Session, actor_id: int, item_id: int, data: PublishDraft) ->
     with releases.read_committed_session(db) as write:
         try:
             with write.begin():
-                receipt, image_id = _commit_one(write, actor_id, item_id, data)
+                receipt, thumbnail = _commit_one(write, actor_id, item_id, data)
         except IntegrityError as exc:
             if exc.orig.args[0] != 1062:  # Only MySQL duplicate keys can represent another winner.
                 raise
@@ -86,6 +95,6 @@ def publish_one(db: Session, actor_id: int, item_id: int, data: PublishDraft) ->
                 if replay is not None:
                     return replay
             raise AppError(409, "draft_conflict", "此修订已被另一发布处理") from None
-        if image_id is not None:
-            _prepare_catalog_image(write, image_id)
+        if thumbnail is not None:
+            _prepare_thumbnail(write, *thumbnail)
         return receipt

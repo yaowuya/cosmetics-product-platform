@@ -98,6 +98,66 @@ def test_public_cover_thumbnail_serves_original_when_missing_and_checks_access(m
         assert withdrawn.status_code == 404 and withdrawn.headers["cache-control"] == "no-store"
 
 
+def test_public_display_images_use_an_aspect_preserving_thumbnail(monkeypatch, tmp_path):
+    from app.controllers.public import media as public_media
+    from app.core.db import session
+    from app.models import Asset
+    from app.services import public_catalog
+    from app.services.media import media_not_found
+    from main import app
+
+    monkeypatch.setenv("ASSET_ROOT", str(tmp_path))
+    source = tmp_path / "case.png"
+    Image.new("RGB", (1280, 640), "green").save(source)
+    asset = Asset(id=42, storage_key=source.name, mime="image/png")
+    body = {"brand_name": "独立案例", "image_asset_id": "42"}
+    visible = True
+
+    def check_access(_db, ident):
+        assert ident == asset.id
+        if not visible:
+            raise media_not_found()
+        return asset
+
+    monkeypatch.setitem(app.dependency_overrides, session, lambda: None)
+    monkeypatch.setattr(public_media, "public_asset", check_access)
+    monkeypatch.setattr(public_catalog.releases, "case_snapshots", lambda _db, _id=None: [(1, body)] if visible else [])
+    monkeypatch.setattr(public_catalog.releases, "slot_body", lambda _db, slot: {"cover_asset_id": "42"}
+                        if slot == "catalog_cover" else {"poster_asset_ids": ["42"]})
+
+    original = "/api/public/media/42"
+    variant = f"{original}/display-thumbnail"
+    listing = public_catalog.list_cases(None, None, None, 1, 20)["items"][0]["body"]
+    assert listing["image_asset_url"] == original and listing["image_thumbnail_url"] == variant
+    detail = public_catalog.case_detail(None, 1)["body"]
+    assert detail["image_asset_url"] == original and "image_thumbnail_url" not in detail
+    catalog = public_catalog.page_content(None, "catalog")["body"]
+    assert catalog["cover_asset_url"] == original and catalog["cover_thumbnail_url"] == variant
+    assert public_catalog.page_content(None, "home")["body"] == {"poster_asset_urls": [original]}
+
+    with TestClient(app) as visitor:
+        assert visitor.get(variant).content == source.read_bytes()
+
+        from app.services.thumbnails import ensure_cover_thumbnail, ensure_display_thumbnail
+
+        assert ensure_cover_thumbnail(asset)
+        assert ensure_display_thumbnail(asset)
+        assert not ensure_display_thumbnail(asset)
+        thumbnail = visitor.get(variant)
+        assert thumbnail.headers["content-type"] == "image/webp"
+        with Image.open(BytesIO(thumbnail.content)) as image:
+            assert image.size == (960, 480)
+        with Image.open(BytesIO(visitor.get(f"{original}/thumbnail").content)) as image:
+            assert image.size == (320, 320)
+        assert visitor.get(original).content == source.read_bytes()
+
+        validator = {"If-None-Match": thumbnail.headers["etag"]}
+        assert visitor.get(variant, headers=validator).status_code == 304
+        visible = False
+        withdrawn = visitor.get(variant, headers=validator)
+        assert withdrawn.status_code == 404 and withdrawn.headers["cache-control"] == "no-store"
+
+
 def test_last_reference(mysql_engine, monkeypatch, tmp_path):
     """Shared exposure survives one withdrawal; historical references never keep it public."""
     monkeypatch.setenv("DATABASE_URL", mysql_engine.url.render_as_string(hide_password=False))
