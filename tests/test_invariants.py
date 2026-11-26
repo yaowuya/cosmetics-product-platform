@@ -21,7 +21,7 @@ def test_two_connections(mysql_engine, monkeypatch, tmp_path):
         for name, publish in (("txn-publisher-one", 1), ("txn-publisher-two", 1), ("txn-editor", 0)):
             actors.append(db.execute(text("INSERT INTO account(login,password_hash,can_edit,can_publish,must_change_password) VALUES (:n,:p,1,:v,0)"),
                                      {"n": name, "p": hash_password("transaction-test-password"), "v": publish}).lastrowid)
-    nodes, product, asset = [], None, None
+    nodes, product, asset, catalog_image = [], None, None, None
     try:
         options = {"base_url": "https://showcase.test", "client": ("192.0.2.140", 50000)}
         with TestClient(app, **options) as one, TestClient(app, **options) as two, TestClient(app, **options) as editor, TestClient(app, **options) as visitor:
@@ -52,23 +52,48 @@ def test_two_connections(mysql_engine, monkeypatch, tmp_path):
             asset = image.json()["id"]
             body = {"name": "首次线上", "short_benefit": "护肤", "benefit": "保湿", "ingredients": "配方资料",
                     "highlights": "轻盈", "formula_no": "TXN-10", "production_status": "待确认",
-                    "thumbnail_asset_id": asset, "cover_asset_id": asset, "detail_asset_id": asset}
+                    "cover_asset_id": asset, "detail_asset_id": asset}
             created = editor.post("/api/admin/products", headers=edit, json={"body": body, "place_ids": nodes[1:]})
             assert created.status_code == 201
             product = created.json()["id"]
             path = f"/api/admin/items/{product}"
-            first_version = one.post(path + "/publish", headers=first,
-                                     json={"request_key": "txn-first", "expected_revision": created.json()["revision"]}).json()
+
+            def assert_eligible(revision):
+                """Single and batch checks accept the same cover-only publication data."""
+                selection = {"expected_revision": revision}
+                checked = one.post(path + "/check", headers=first, json=selection)
+                assert checked.status_code == 200 and checked.json()["issues"] == []
+                batch = one.post("/api/admin/products/batch-check", headers=first,
+                                 json={"items": [{"id": product, **selection}]})
+                assert batch.status_code == 200 and batch.json()["items"] == [checked.json()]
+
+            initial = one.post(path + "/publish", headers=first,
+                               json={"request_key": "txn-first", "expected_revision": created.json()["revision"]})
+            assert initial.status_code == 200
+            first_version = initial.json()
             missing = {k: v for k, v in body.items() if k != "detail_asset_id"} | {"name": "核对新版"}
             partial = editor.put(path + "/draft", headers=edit, json={"expected_revision": first_version["revision"],
-                                 "body": missing, "place_ids": nodes[1:]}).json()
-            assert one.post(path + "/check", headers=first, json={"expected_revision": partial["revision"]}).json()["eligible"] is False
+                                 "body": missing, "place_ids": nodes[1:]})
+            assert partial.status_code == 422
+            assert [issue["field"] for issue in partial.json()["issues"]] == ["detail_asset_id"]
             def public_labels():
                 """Read the same product through two genuinely different public directory positions."""
                 return [visitor.get("/api/public/products", params={"node_id": node}).json()["items"][0]["body"]["name"] for node in nodes[1:]]
             assert public_labels() == ["首次线上", "首次线上"]
-            ready = editor.put(path + "/draft", headers=edit, json={"expected_revision": partial["revision"],
-                               "body": {**missing, "detail_asset_id": asset}, "place_ids": nodes[1:]}).json()
+            # Optional catalog images still need an actual upload when selected.
+            unregistered = editor.put(path + "/draft", headers=edit, json={"expected_revision": first_version["revision"],
+                                   "body": {**missing, "detail_asset_ids": [asset], "thumbnail_asset_id": "9223372036854775807"},
+                                   "place_ids": nodes[1:]}).json()
+            rejected = one.post(path + "/check", headers=first, json={"expected_revision": unregistered["revision"]}).json()
+            assert [issue["field"] for issue in rejected["issues"]] == ["thumbnail_asset_id"]
+            image = editor.post("/api/admin/media", headers=edit, files={"file": ("square.png", data.getvalue(), "image/png")})
+            assert image.status_code == 201
+            catalog_image = image.json()["id"]
+            ready = editor.put(path + "/draft", headers=edit, json={"expected_revision": unregistered["revision"],
+                               "body": {**missing, "detail_asset_ids": [asset], "thumbnail_asset_id": catalog_image},
+                               "place_ids": nodes[1:]}).json()
+            assert_eligible(ready["revision"])
+            assert editor.get(path).json()["draft"]["thumbnail_asset_id"] == catalog_image
             barrier = Barrier(2)
             def concurrent(args):
                 """Start two HTTP confirmations together using two independently authenticated connections."""
@@ -86,6 +111,13 @@ def test_two_connections(mysql_engine, monkeypatch, tmp_path):
                                              json={"request_key": choices[winner][2], "expected_revision": ready["revision"]})
             assert retry.json() == delivered
             assert public_labels() == ["核对新版", "核对新版"]
+            live_body = editor.get(path).json()["live"]
+            assert live_body["thumbnail_asset_id"] == catalog_image and live_body["cover_asset_id"] == asset
+            assert live_body["detail_asset_ids"] == [asset] and "detail_asset_id" not in live_body
+            assert visitor.get(f"/api/public/media/{catalog_image}/thumbnail").headers["content-type"] == "image/webp"
+            # The earlier cover-only release prepared its own square derivative.
+            assert visitor.get(f"/api/public/media/{asset}/catalog-thumbnail").headers["content-type"] == "image/webp"
+            assert visitor.get(f"/api/public/media/{asset}").headers["content-type"] == "image/png"
             restored = editor.post(path + "/versions/1/restore", headers=edit,
                                    json={"expected_revision": delivered["revision"], "confirm_overwrite": False})
             assert restored.status_code == 200 and restored.json()["draft"]["name"] == "首次线上"
@@ -129,8 +161,9 @@ def test_two_connections(mysql_engine, monkeypatch, tmp_path):
             db.execute(text("UPDATE content_item SET revision=:rev WHERE id=:i"), {"rev": directory.revision, "i": directory.id})
             if product is not None:
                 db.execute(text("DELETE FROM content_item WHERE id=:i"), {"i": product})
-            if asset is not None:
-                db.execute(text("DELETE FROM asset WHERE id=:i"), {"i": asset})
+            for image_id in (asset, catalog_image):
+                if image_id is not None:
+                    db.execute(text("DELETE FROM asset WHERE id=:i"), {"i": image_id})
             for node in nodes:
                 db.execute(text("DELETE FROM directory_node WHERE id=:i"), {"i": node})
             for actor in actors:

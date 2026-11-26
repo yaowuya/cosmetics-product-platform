@@ -5,6 +5,7 @@ from app.core.errors import AppError
 from app.core.ids import parse_id
 from app.repositories.items import get_item
 from app.repositories.media import registered_ids
+from app.schemas.content import effective_product_body
 from app.services.items import item_view
 from app.services.media import asset_ids
 
@@ -21,6 +22,8 @@ def saved_preview(db: Session, item_id: int, revision: str) -> dict:
     body = view["draft"]
     if body is None:
         raise AppError(404, "draft_not_found", "草稿不存在")
+    if item.kind == "product":
+        body = effective_product_body(body)
     ids = {int(ident) for ident in asset_ids(body)}
     return {"id": str(item_id), "kind": item.kind, "config_slot": item.config_slot,
             "revision": revision, "body": body, "place_ids": view["place_ids"],

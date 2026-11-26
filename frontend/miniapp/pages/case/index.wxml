@@ -1,0 +1,39 @@
+<view class="screen case-detail">
+  <block wx:if="{{phase === 'ready'}}">
+    <view class="case-detail-cover placeholder">
+      <image wx:if="{{detail.image && !imageFailed}}" class="case-detail-image" src="{{detail.image}}"
+        mode="aspectFit" data-src="{{detail.image}}" binderror="onImageError" />
+      <view wx:else class="case-detail-no-image">暂无可用配图</view>
+    </view>
+    <view class="case-detail-info">
+      <view class="case-detail-brand">{{detail.brand}}</view>
+      <view class="case-detail-title">{{detail.name || detail.brand}}</view>
+      <view class="case-detail-fields">
+        <view class="case-detail-field">
+          <view class="case-detail-label">案例亮点</view>
+          <text class="case-detail-value" user-select="{{true}}">{{detail.highlight || '—'}}</text>
+        </view>
+        <view wx:if="{{detail.description}}" class="case-detail-field">
+          <view class="case-detail-label">案例说明</view>
+          <text class="case-detail-value" user-select="{{true}}">{{detail.description}}</text>
+        </view>
+        <view wx:if="{{detail.series}}" class="case-detail-field">
+          <view class="case-detail-label">所属系列</view>
+          <text class="case-detail-value" user-select="{{true}}">{{detail.series}}</text>
+        </view>
+        <view wx:if="{{detail.number}}" class="case-detail-field">
+          <view class="case-detail-label">案例编号</view>
+          <text class="case-detail-value" user-select="{{true}}">{{detail.number}}</text>
+        </view>
+      </view>
+    </view>
+  </block>
+  <view wx:elif="{{phase === 'loading'}}" class="notice">正在加载案例…</view>
+  <view wx:else class="notice">
+    <view class="notice-title">{{message || '内容不存在或暂未公开。'}}</view>
+    <button wx:if="{{phase === 'error'}}" class="soft-button" bindtap="onRetry">重试</button>
+  </view>
+  <view class="case-detail-return">
+    <button class="soft-button" bindtap="onBack">返回品牌案例</button>
+  </view>
+</view>

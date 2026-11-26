@@ -1,0 +1,10 @@
+page { background:#fff; color:#000; font-family:-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif; font-size:28rpx; }
+view,scroll-view,swiper,swiper-item,image,input,button { box-sizing:border-box; }
+button { margin:0; padding:0; font:inherit; color:inherit; background:transparent; line-height:1.45; border-radius:0; }
+button::after { border:0; }
+.screen { min-width:0; }
+.notice { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20rpx; padding:48rpx 24rpx; color:#58636e; text-align:center; }
+.notice-title { font-weight:650; color:#25323c; }
+.soft-button { min-height:68rpx; display:inline-flex; align-items:center; justify-content:center; padding:8rpx 24rpx; border-radius:34rpx; color:#29668f; background:#edf6fc; font-size:26rpx; font-weight:600; }
+.placeholder { display:block; background:#edf2f6; }
+.selectable-note { color:#58636e; word-break:break-all; }

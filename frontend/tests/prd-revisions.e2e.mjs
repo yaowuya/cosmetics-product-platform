@@ -1,6 +1,15 @@
 import assert from 'node:assert/strict';
 import {button,field} from './prd-harness.mjs';
 
+/** Scope row actions to the fixture item rather than relying on its default page. */
+async function findCaseRow(h,page,item){
+  await h.open(page,'/admin/cases');
+  const search=field(page,'搜索案例');
+  await search.fill(item.draft.product_name);
+  await search.press('Enter');
+  return page.getByRole('row').filter({has:page.locator(`button[data-item-id="${item.id}"]`)});
+}
+
 /** Exercise two ordinary edit sessions on the same draft; the visitor never sees unconfirmed changes. */
 export async function runRevisions(h){
   let item,updated,other;
@@ -23,8 +32,13 @@ export async function runRevisions(h){
     h.require(item&&updated,'缺少同条目两个已保存修订');const addr=`/api/admin/items/${item.id}/preview`;const page=other??h.E;
     let start=h.events.length;await h.observe(page,'GET',addr,()=>h.open(page,`/preview?id=${item.id}&revision=${item.revision}`),409);await page.getByRole('alert').waitFor();assert.equal(await page.locator('.detail-view,.preview-stamp').count(),0);assert.ok(!h.events.slice(start).some(e=>e.path.startsWith('/api/public/')));
     start=h.events.length;await h.open(page,'/preview?id=invalid&revision=invalid');await page.getByRole('alert').waitFor();assert.ok(!h.events.slice(start).some(e=>e.path.endsWith('/preview')));
-    await h.observe(page,'GET',addr,()=>h.open(page,`/preview?id=${item.id}&revision=${updated.revision}`));await page.getByText('仅草稿的新文字',{exact:true}).waitFor();
-    return `过期修订 ${item.revision} 返回 409 且不渲染，非法目标无预览请求，当前修订 ${updated.revision} 可读`;
+    // A bookmarked preview is not enough: the editor must reach the current revision from the list.
+    const row=await findCaseRow(h,page,updated);
+    const preview=row.getByRole('link',{name:'H5 预览',exact:true});
+    const response=await h.observe(page,'GET',addr,()=>preview.click());
+    assert.equal(new URL(response.url()).searchParams.get('revision'),updated.revision);
+    await page.frameLocator('iframe[title="当前保存草稿的 H5 私有预览"]').getByText('仅草稿的新文字',{exact:true}).waitFor();
+    return `过期修订 ${item.revision} 返回 409 且不渲染，非法目标无预览请求，从列表可预览当前修订 ${updated.revision}`;
   });
-  if(item){await h.open(h.E,'/admin/cases');const row=h.E.getByRole('row').filter({has:h.E.locator(`a[href="/admin/cases/${item.id}"]`)});await h.observe(h.E,'DELETE',`/api/admin/items/${item.id}/draft`,()=>button(row,'删除草稿').click(),204);}
+  if(item){const row=await findCaseRow(h,h.E,item);await h.observe(h.E,'DELETE',`/api/admin/items/${item.id}/draft`,()=>button(row,'删除草稿').click(),204);}
 }

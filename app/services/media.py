@@ -14,6 +14,7 @@ from app.models import Account, Asset
 from app.repositories import media
 from app.repositories.history import get_version
 from app.repositories.items import get_draft, get_item
+from app.schemas.content import effective_product_body
 from app.services.auth import ensure_editor
 
 _MIME = {"PNG": "image/png", "JPEG": "image/jpeg", "WEBP": "image/webp"}
@@ -120,11 +121,11 @@ def _reference_body(db: Session, item_id: str, revision: str | None, seq: int | 
         return None
     if seq is not None:
         version = get_version(db, item.id, seq)
-        return version.body if version is not None else None
-    draft = get_draft(db, item.id)
-    if draft is not None and item.revision == parse_id(revision, "revision", zero=True):
-        return draft.body
-    return None
+        body = version.body if version is not None else None
+    else:
+        draft = get_draft(db, item.id)
+        body = draft.body if draft is not None and item.revision == parse_id(revision, "revision", zero=True) else None
+    return effective_product_body(body) if body is not None and item.kind == "product" else body
 
 
 def private_asset(db: Session, ident: int, actor: Account, item_id: str | None,

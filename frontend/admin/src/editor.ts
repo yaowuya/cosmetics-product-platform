@@ -1,10 +1,10 @@
 import { onBeforeRouteLeave } from 'vue-router';
 import { computed, ref } from 'vue';
-import { ApiError, message, object, type Body, type Item } from '../../shared/contracts.ts';
+import { ApiError, message, object, type Body, type Issue, type Item } from '../../shared/contracts.ts';
 import { request } from './session.ts';
 
 export const slots = [
-  ['home_posters','首页海报'],['catalog_cover','目录封面'],['case_header','案例页头'],['services','服务说明'],['business_contact','商务联系'],
+  ['home_posters','首页海报'],['catalog_cover','目录封面'],['case_header','案例页头'],['business_contact','联系方式'],
 ] as const;
 
 /** Daily-list cleanup follows publication history, not just the current live pointer. */
@@ -72,16 +72,22 @@ export async function upload(file:File):Promise<{id:string;url:string}> {
 export function useEditor() {
   const item=ref<Item|null>(null), body=ref<Body>({}), places=ref<string[]>([]), pending=ref<Record<string,string>>({});
   const busy=ref(false), error=ref(''), note=ref(''), conflict=ref(false);
+  const saveIssues=ref<Issue[]>([]);
   const dirty=computed(()=>JSON.stringify(body.value)!==JSON.stringify(editableBody(item.value??{draft:null,live:null}))||JSON.stringify(places.value)!==JSON.stringify(item.value?.place_ids??[]));
   onBeforeRouteLeave(()=>!dirty.value||globalThis.confirm('还有未保存的修改。确定离开吗？'));
-  function accept(next:Item){item.value=next;body.value=editableBody(next);places.value=[...next.place_ids];pending.value={};conflict.value=false;}
+  function accept(next:Item){item.value=next;body.value=editableBody(next);places.value=[...next.place_ids];pending.value={};conflict.value=false;saveIssues.value=[];}
   async function load(path:string){busy.value=true;error.value='';try{accept(await request<Item>(path));}catch(cause){error.value=message(cause);}finally{busy.value=false;}}
   async function save(collection?:'products'|'cases'){
-    busy.value=true;error.value='';note.value='';conflict.value=false;
+    busy.value=true;error.value='';note.value='';conflict.value=false;saveIssues.value=[];
     try{
       const next=item.value?await request<Item>(`/api/admin/items/${item.value.id}/draft`,'PUT',{expected_revision:item.value.revision,body:body.value,place_ids:places.value}):await request<Item>(`/api/admin/${collection}`,'POST',{body:body.value,place_ids:places.value});
       accept(next);note.value='草稿已保存，线上版本未改变。';return next;
-    }catch(cause){error.value=message(cause);conflict.value=cause instanceof ApiError&&cause.status===409;return null;}
+    }catch(cause){
+      error.value=message(cause);
+      conflict.value=cause instanceof ApiError&&cause.status===409;
+      if(cause instanceof ApiError&&cause.status===422)saveIssues.value=cause.issues;
+      return null;
+    }
     finally{busy.value=false;}
   }
   async function choose(event:Event, apply:(id:string)=>void){
@@ -90,7 +96,7 @@ export function useEditor() {
     try{const next=await upload(file);pending.value={...pending.value,[next.id]:next.url};apply(next.id);}
     catch(cause){error.value=message(cause);}finally{busy.value=false;input.value='';}
   }
-  return {item,body,places,pending,busy,error,note,conflict,dirty,accept,load,save,choose};
+  return {item,body,places,pending,busy,error,note,conflict,dirty,saveIssues,accept,load,save,choose};
 }
 
 /** Read a typed field used by a shared form input. */

@@ -6,12 +6,12 @@ from sqlalchemy.orm import Session
 from app.core.errors import AppError
 from app.core.ids import parse_id
 from app.repositories import public_catalog as releases
-from app.schemas.content import CONFIG_FIELDS
+from app.schemas.content import CONFIG_FIELDS, catalog_image_id, catalog_thumbnail_source, effective_product_body
 from app.services.directory import active_directory
 
 PRODUCT_CARD = ("name", "short_benefit", "thumbnail_asset_id")
 PRODUCT_DETAIL = ("name", "benefit", "ingredients", "highlights", "formula_no", "production_status",
-                  "cover_asset_id", "detail_asset_id")
+                  "cover_asset_id", "detail_asset_id", "detail_asset_ids")
 CASE_FIELDS = ("brand_name", "product_name", "highlight", "series", "description", "case_no",
                "category_key", "image_asset_id")
 
@@ -35,6 +35,20 @@ def _project(body: dict, fields: tuple[str, ...] | dict) -> dict:
     return result
 
 
+def _product_card(body: dict) -> dict:
+    """Use the independent square when set, or expose a generated-only card thumbnail."""
+    result = _project(body, PRODUCT_CARD)
+    if catalog_image_id(body) is None:
+        result.pop("thumbnail_asset_url", None)
+        if (source := catalog_thumbnail_source(body)) is not None:
+            result["catalog_thumbnail_url"] = f"/api/public/media/{source}/catalog-thumbnail"
+        return result
+    square_url = result["thumbnail_asset_url"]
+    result.update(catalog_image_url=square_url, cover_asset_url=square_url,
+                  cover_thumbnail_url=f"{square_url}/thumbnail")
+    return result
+
+
 def _slot(db: Session, name: str) -> dict | None:
     body = releases.slot_body(db, name)
     return _project(body, CONFIG_FIELDS[name]) if body is not None else None
@@ -43,7 +57,7 @@ def _slot(db: Session, name: str) -> dict | None:
 def page_content(db: Session, page: str) -> dict:
     """Read fixed page slots independently; the two contact sections may be unpublished."""
     if page == "contact":
-        body = {name: _slot(db, name) for name in ("services", "business_contact")}
+        body = {"business_contact": _slot(db, "business_contact")}
     else:
         name = {"home": "home_posters", "catalog": "catalog_cover", "cases": "case_header"}.get(page)
         if name is None:
@@ -131,18 +145,23 @@ def list_products(db: Session, board_id: str | None, node_id: str | None, q: str
     nodes = active_directory(db)
     scope = _board(nodes, board_id) & _descendants(nodes, node_id)
     keyword = (q or "").strip().casefold()
-    rows = [{"id": str(ident), "body": _project(body, PRODUCT_CARD)}
+    rows = [{"id": str(ident), "body": _product_card(body)}
             for ident, (body, positions) in releases.products_in_nodes(db, scope).items()
             if _product_matches(keyword, body, positions, nodes)]
     return _page(rows, page, page_size)
 
 
 def product_detail(db: Session, item_id: int) -> dict:
-    """Return public detail only if the live product has at least one active placement."""
+    """Expose the wide cover and ordered long images for a product with an active placement."""
     entry = releases.products_in_nodes(db, set(active_directory(db)), item_id).get(item_id)
     if entry is None:
         raise AppError(404, "not_found", "内容不存在")
-    return {"id": str(item_id), "body": _project(entry[0], PRODUCT_DETAIL)}
+    result = _project(effective_product_body(entry[0]), PRODUCT_DETAIL)
+    legacy = result.get("detail_asset_url")
+    gallery = result.setdefault("detail_asset_urls", [legacy] if legacy else [])
+    if gallery:
+        result["detail_asset_url"] = gallery[0]
+    return {"id": str(item_id), "body": result}
 
 
 def list_cases(db: Session, tag: str | None, q: str | None, page: int, page_size: int) -> dict:

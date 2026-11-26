@@ -49,10 +49,10 @@ def check_assets(db: Session, ids: set[int]) -> dict[str, Asset]:
 
 
 def install_snapshot(db: Session, item: ContentItem, draft: Draft, actor_id: int, source: int,
-                     place_ids: list[str], asset_ids: set[str]) -> Release:
-    """Stage one version, its bindings and the pointer swap, consuming the locked item's draft."""
+                     place_ids: list[str], asset_ids: set[str], *, body: dict) -> Release:
+    """Stage the reviewed body, its bindings and the live swap, consuming the locked item's draft."""
     seq = (db.scalar(select(func.max(Release.seq)).where(Release.item_id == item.id)) or 0) + 1
-    release = Release(item_id=item.id, seq=seq, source_revision=source, body=draft.body, actor_id=actor_id)
+    release = Release(item_id=item.id, seq=seq, source_revision=source, body=body, actor_id=actor_id)
     db.add(release)
     # Both sets of bindings and the composite live FK need the generated release ID.
     db.flush()

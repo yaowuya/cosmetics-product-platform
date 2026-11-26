@@ -7,6 +7,17 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.engine import make_url
 
 
+@pytest.fixture
+def product_draft_body():
+    """Construct the minimum complete editor payload for an existing cover and long image."""
+    def build(name: str, image_id: str, **fields: object) -> dict:
+        return {"name": name, "short_benefit": "保湿", "benefit": "补水", "ingredients": "配方资料",
+                "highlights": "轻盈", "formula_no": "TEST-42", "production_status": "待确认",
+                "cover_asset_id": image_id, "detail_asset_id": image_id, **fields}
+
+    return build
+
+
 @pytest.fixture(scope="session")
 def mysql_engine():
     """Reject shared, remote or non-MySQL databases before any schema writes."""

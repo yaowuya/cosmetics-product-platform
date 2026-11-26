@@ -7,7 +7,7 @@ from app.models import Asset, Draft, ReleaseAsset
 # A draft has no reverse index. Search only the declared image fields: a matching
 # number in a title, a node ID or another text field is not an asset reference.
 _ASSET_PATHS = (
-    "$.thumbnail_asset_id", "$.cover_asset_id", "$.detail_asset_id", "$.image_asset_id",
+    "$.thumbnail_asset_id", "$.cover_asset_id", "$.detail_asset_id", "$.detail_asset_ids[*]", "$.image_asset_id",
     "$.poster_asset_ids[*]", "$.nodes[*].icon_asset_id", "$.background_asset_id",
     "$.cards[*].image_asset_id", "$.qr_asset_id",
 )

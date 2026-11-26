@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { acceptResponse, children, queryFor, selectBoard, inputText } from '../h5/src/browse.ts';
+import { acceptResponse, children, queryFor, refreshVisibleItems, selectBoard, inputText } from '../h5/src/browse.ts';
 
 test('H5 搜索兼容 uni-input 与原生 DOM 事件，并保留手动删空',()=>{
   assert.equal(inputText({detail:{value:'CL-001'},currentTarget:{}}),'CL-001');
@@ -26,4 +26,22 @@ test('有关键词时查整个板块，无关键词才用细筛节点；过期�
   assert.equal(url.searchParams.get('board_id'),'1');assert.equal(url.searchParams.get('node_id'),null);
   assert.equal(new URL(queryFor('1','3',''),url).searchParams.get('node_id'),'3');
   assert.equal(acceptResponse(1,2),false);
+});
+
+test('切回列表时按 API 上限刷新已展示的内容，过期后停止请求',async()=>{
+  const items=Array.from({length:150},(_,index)=>({id:String(index+1),body:{}}));
+  const calls=[];
+  const readPage=async(page,size)=>{
+    calls.push([page,size]);
+    return {items:items.slice((page-1)*size,page*size),total:items.length,page,page_size:size};
+  };
+
+  const current=await refreshVisibleItems(120,readPage,()=>true);
+  assert.deepEqual(calls,[[1,100],[2,100]]);
+  assert.deepEqual(current,{items:items.slice(0,120),total:150});
+
+  calls.length=0;
+  const expired=await refreshVisibleItems(120,readPage,()=>calls.length===0);
+  assert.equal(expired,undefined);
+  assert.deepEqual(calls,[[1,100]]);
 });

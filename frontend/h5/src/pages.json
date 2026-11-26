@@ -1,5 +1,13 @@
 {
   "globalStyle": { "navigationStyle": "custom", "backgroundColor": "#ffffff" },
+  "tabBar": {
+    "list": [
+      { "pagePath": "pages/Home", "text": "首页" },
+      { "pagePath": "pages/Catalog", "text": "产品目录" },
+      { "pagePath": "pages/Cases", "text": "品牌案例" },
+      { "pagePath": "pages/Contact", "text": "联系我们" }
+    ]
+  },
   "pages": [
     { "path": "pages/Home", "style": { "navigationStyle": "custom" } },
     { "path": "pages/Catalog", "style": { "navigationStyle": "custom" } },

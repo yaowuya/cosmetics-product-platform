@@ -1,18 +1,25 @@
 """Install an immutable release and its original-key receipt in one transaction."""
+import logging
 from typing import cast
 
-from sqlalchemy.exc import IntegrityError
+from PIL import Image
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
 from app.core.ids import parse_id
-from app.models import Draft
+from app.models import Asset, Draft
 from app.repositories import releases
 from app.repositories.items import get_draft
+from app.schemas.content import catalog_thumbnail_source
 from app.schemas.releases import PublishDraft
 from app.services.auth import publisher_now
-from app.services.checks import inspect
+from app.services.checks import review_snapshot
 from app.services.media import asset_ids
+from app.services.thumbnails import ensure_cover_thumbnail
+
+
+_logger = logging.getLogger(__name__)
 
 
 def _read_receipt(db: Session, actor_id: int, item_id: int, data: PublishDraft) -> dict | None:
@@ -25,30 +32,42 @@ def _read_receipt(db: Session, actor_id: int, item_id: int, data: PublishDraft) 
     return event.details["receipt"]
 
 
-def _commit_one(db: Session, actor_id: int, item_id: int, data: PublishDraft) -> dict:
+def _commit_one(db: Session, actor_id: int, item_id: int, data: PublishDraft) -> tuple[dict, str | None]:
     # Lock the actor, shared directory/header, target, then request key. Even a replay
     # must still have publishing rights, but must not require the now-consumed draft.
     publisher_now(db, actor_id)
     item = releases.lock_publish_target(db, item_id)
     existing = _read_receipt(db, actor_id, item_id, data)
     if existing is not None:
-        return existing
+        return existing, None
     if item is None:
         raise AppError(404, "item_not_found", "内容不存在")
     source = parse_id(data.expected_revision, "expected_revision", zero=True)
     if item.revision != source or item.archived_at is not None:
         raise AppError(409, "draft_conflict", "草稿已变化或条目已归档，请重新核对")
-    check = inspect(db, item)
+    snapshot, check = review_snapshot(db, item)
     if not check["eligible"]:
         raise AppError(422, "cannot_publish", "草稿不满足发布条件", check["issues"])
 
     # Eligibility required a draft, and every draft writer takes the same target lock.
+    assert snapshot is not None
     draft = cast(Draft, get_draft(db, item_id))
-    release = releases.install_snapshot(db, item, draft, actor_id, source, check["place_ids"], asset_ids(draft.body))
+    release = releases.install_snapshot(db, item, draft, actor_id, source, check["place_ids"],
+                                        asset_ids(snapshot), body=snapshot)
     receipt = {"id": str(item_id), "revision": str(item.revision), "release_id": str(release.id),
                "seq": release.seq, "request_key": data.request_key}
     releases.add_publish_audit(db, actor_id, item, data.expected_revision, receipt)
-    return receipt
+    return receipt, catalog_thumbnail_source(snapshot) if item.kind == "product" else None
+
+
+def _prepare_catalog_image(db: Session, image_id: str) -> None:
+    # Run after commit so optional image conversion never holds publication locks or invalidates a receipt.
+    try:
+        asset = db.get(Asset, int(image_id))
+        if asset is not None:
+            ensure_cover_thumbnail(asset)
+    except (AppError, OSError, ValueError, Image.DecompressionBombError, SQLAlchemyError):
+        _logger.warning("Could not prepare catalog thumbnail for asset %s", image_id)
 
 
 def publish_one(db: Session, actor_id: int, item_id: int, data: PublishDraft) -> dict:
@@ -56,7 +75,7 @@ def publish_one(db: Session, actor_id: int, item_id: int, data: PublishDraft) ->
     with releases.read_committed_session(db) as write:
         try:
             with write.begin():
-                return _commit_one(write, actor_id, item_id, data)
+                receipt, image_id = _commit_one(write, actor_id, item_id, data)
         except IntegrityError as exc:
             if exc.orig.args[0] != 1062:  # Only MySQL duplicate keys can represent another winner.
                 raise
@@ -67,3 +86,6 @@ def publish_one(db: Session, actor_id: int, item_id: int, data: PublishDraft) ->
                 if replay is not None:
                     return replay
             raise AppError(409, "draft_conflict", "此修订已被另一发布处理") from None
+        if image_id is not None:
+            _prepare_catalog_image(write, image_id)
+        return receipt

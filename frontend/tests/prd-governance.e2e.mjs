@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 
 const button = (root, name) => root.getByRole('button', { name, exact: true });
 const link = (root, name) => root.getByRole('link', { name, exact: true });
-const itemRow = (page, name) => page.locator('tr.el-table__row').filter({ has: link(page, name) });
+const itemRow = (page, name) => page.locator('tr.el-table__row').filter({ has: button(page, name) });
 const versionRow = (page, seq) => page.locator('.list-line').filter({ has: button(page, `查看版本 ${seq}`) });
 const privateFrame = 'iframe[title*="草稿"]';
 
@@ -83,30 +83,25 @@ export async function runGovernance(h) {
     const name = t('06C案例'), brand = t('06C品牌'), edited = t('06C已存亮点');
     const other = await h.createCase(E, { name: t('06C保留稿'), brand: t('06C其他品牌'), highlight: t('保留亮点') });
     assert.equal((await h.check(P, editor('cases', other.id))).eligible, true, '对照条目应是合格但未发布的草稿');
-    await h.open(E, '/admin/cases');
-    await link(E, '新增案例').click();
-    await E.getByLabel('品牌名称', { exact: true }).fill(brand);
-    await E.getByLabel('案例产品名称', { exact: true }).fill(name);
-    await E.getByLabel('案例亮点', { exact: true }).fill(t('06C初稿亮点'));
-    await h.upload(E, 0, h.files.square);
-    const created = await (await h.observe(E, 'POST', '/api/admin/cases', () => button(E, '保存草稿').click(), 201)).json();
-    await E.waitForURL(new URL(editor('cases', created.id), h.base).href);
+    const created = await h.createCase(E, { name, brand, highlight: t('06C初稿亮点') });
     assert.ok(created.draft && !created.live_id);
     assert.equal((await publicCases(name)).total, 0);
     await singleRow(E, 'cases', brand, name, created.id);
     const found = await singleRow(E, 'cases', name, name, created.id);
-    await link(found, '编辑').click();
-    await button(E, '版本记录').waitFor(); // The saved item, not the empty editor shell, has loaded.
-    await E.getByLabel('案例亮点', { exact: true }).fill(edited);
-    const saved = await h.save(E);
+    await button(found, '编辑').click();
+    const dialog = E.getByRole('dialog', { name: '编辑案例', exact: true });
+    await button(dialog, '下一步').click();
+    await dialog.getByLabel('案例亮点', { exact: true }).fill(edited);
+    const saved = await (await h.observe(E, 'PUT', `${itemPath(created.id)}/draft`, () => button(dialog, '保存').click())).json();
+    await dialog.waitFor({ state: 'hidden' });
     assert.equal(saved.draft.highlight, edited);
     const row = await singleRow(P, 'cases', name, name, created.id);
-    await button(row, '发布检查').click();
-    const panel = P.getByRole('region', { name: '发布检查' });
-    const check = await (await h.observe(P, 'POST', `${itemPath(created.id)}/check`, () => button(panel, '检查发布').click())).json();
-    assert.ok(check.eligible && check.id === created.id && check.revision === saved.revision);
-    assert.equal((await publicCases(name)).total, 0, '列表行检查不应发布');
-    const receipt = await (await h.observe(P, 'POST', `${itemPath(created.id)}/publish`, () => button(panel, '确认发布').click())).json();
+    await button(row, '发布').click();
+    const panel = P.getByRole('dialog', { name: '确认发布', exact: true });
+    assert.equal((await publicCases(name)).total, 0, '打开确认框不应发布');
+    const published = await h.observe(P, 'POST', `${itemPath(created.id)}/publish`, () => button(panel, '确认发布').click());
+    assert.equal(published.request().postDataJSON().expected_revision, saved.revision);
+    const receipt = await published.json();
     assert.equal(receipt.id, created.id);
     const visible = await publicCases(name);
     assert.deepEqual(visible.items.map(i => [i.id, i.body.highlight]), [[created.id, edited]]);
@@ -217,7 +212,7 @@ export async function runGovernance(h) {
     const path = '/admin/pages/business_contact';
     const readContact = async () => (await (await h.observe(V, 'GET', '/api/public/pages/contact', () => h.open(V, '/contact'))).json()).body;
     const baseline = await readContact();
-    h.require(baseline.services?.cards?.length && baseline.business_contact?.email && !baseline.business_contact.qr_asset_url, '需要本轮已发布服务卡和仅有测试邮箱、尚无二维码的联系位置');
+    h.require(baseline.business_contact?.email && !baseline.business_contact.qr_asset_url, '需要本轮仅有测试邮箱、尚无二维码的联系位置');
     async function uploadQr(file) {
       await h.open(E, path);
       await E.getByRole('heading', { name: '位置资料' }).waitFor();
@@ -227,7 +222,6 @@ export async function runGovernance(h) {
     }
     async function verifyContact(media, expectedBytes) {
       const body = await readContact();
-      assert.deepEqual(body.services, baseline.services, '联系版本操作不应改动服务卡');
       const { qr_asset_url: src, ...fields } = body.business_contact;
       assert.deepEqual(fields, baseline.business_contact);
       const u = new URL(src, h.base);
@@ -235,9 +229,9 @@ export async function runGovernance(h) {
       const card = V.getByAltText('商务联系二维码', { exact: true });
       await card.waitFor(); await card.evaluate(img => img.decode());
       assert.equal(new URL(await card.getAttribute('src'), h.base).href, u.href);
-      assert.equal(await V.locator('.service-list article').count(), baseline.services.cards.length);
+      assert.equal(await V.locator('.contact-service').count(), 3);
       await button(V, '合作咨询').click();
-      const modal = V.getByRole('dialog', { name: '商务联系' });
+      const modal = V.getByRole('dialog', { name: '联系商务合作' });
       const qr = modal.getByAltText('长按保存商务二维码');
       await qr.waitFor(); await qr.evaluate(img => img.decode());
       assert.equal(new URL(await qr.getAttribute('src'), h.base).href, u.href);
@@ -361,10 +355,9 @@ export async function runGovernance(h) {
       }
       const target = await singleRow(page, 'products', name, name, item.id);
       await target.getByRole('checkbox').check();
-      for (const control of [button(page, '批量发布检查'), button(target, '发布检查'), button(target, '归档')]) assert.ok(await control.isDisabled());
+      for (const control of [button(page, '批量发布检查'), button(target, '发布'), button(target, '归档')]) assert.ok(await control.isDisabled());
       assert.equal(await page.getByRole('region', { name: '发布检查' }).count(), 0);
-      await link(target, '编辑').click();
-      await page.waitForURL(new URL(path, h.base).href);
+      await h.open(page, path);
       await button(page.getByRole('navigation', { name: '内容编辑视图' }), '发布检查').click();
       assert.ok(await button(page, '检查发布').isDisabled() && await button(page, '确认发布').isDisabled());
     }

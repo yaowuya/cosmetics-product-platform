@@ -1,0 +1,32 @@
+<view class="screen product-detail">
+  <view wx:if="{{phase === 'loading'}}" class="notice">正在加载产品…</view>
+  <view wx:elif="{{phase !== 'ready'}}" class="notice">
+    <text class="notice-title">{{message || '暂无展示产品'}}</text>
+    <button wx:if="{{phase === 'error'}}" class="soft-button" bindtap="onRetry">重试</button>
+    <button class="soft-button" bindtap="onBack">返回产品目录</button>
+  </view>
+  <block wx:elif="{{detail}}">
+    <view wx:if="{{detail.image}}" class="product-cover">
+      <image wx:if="{{!coverFailed}}" src="{{detail.image}}" mode="aspectFill" binderror="onCoverError" aria-label="{{detail.name}}" />
+      <view wx:else class="product-cover-fallback">产品图片暂不可用</view>
+    </view>
+    <view class="detail-content">
+      <text class="field-label">产品名称</text>
+      <view class="detail-name">{{detail.name}}</view>
+      <view class="fields">
+        <view class="field"><text class="field-label">功效</text><text class="field-value">{{detail.benefit}}</text></view>
+        <view class="field"><text class="field-label">核心成分</text><text class="field-value">{{detail.ingredients}}</text></view>
+        <view class="field"><text class="field-label">产品亮点</text><text class="field-value">{{detail.highlights}}</text></view>
+        <view class="field"><text class="field-label">配方编号</text><view class="formula-value"><text>{{detail.formula || '—'}}</text><button wx:if="{{detail.formula}}" class="soft-button" bindtap="onCopyFormula">复制</button></view></view>
+        <view wx:if="{{fallback}}" class="selectable-note fallback-note">未能自动复制，长按选择：<text user-select="{{true}}">{{fallback}}</text></view>
+        <view class="field"><text class="field-label">是否生产过</text><text class="detail-pill">{{detail.production}}</text></view>
+      </view>
+    </view>
+    <block wx:for="{{detail.gallery}}" wx:key="*this">
+      <image wx:if="{{!failedGallery[item]}}" class="detail-long" src="{{item}}" mode="widthFix" lazy-load="{{true}}" webp="{{true}}"
+        data-src="{{item}}" data-version="{{galleryVersion}}" binderror="onLongError" aria-label="{{detail.name}}的第 {{index + 1}} 张详情长图" />
+      <view wx:else class="notice">第 {{index + 1}} 张详情长图暂不可用</view>
+    </block>
+    <button class="soft-button detail-back" bindtap="onBack">返回产品目录</button>
+  </block>
+</view>

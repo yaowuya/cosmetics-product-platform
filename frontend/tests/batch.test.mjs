@@ -110,7 +110,7 @@ test('混合十款按检查快照展示；列表刷新后仍可识别八款成�
     for (const [i, body] of bodies.entries()) {
       const line = lines.find(s => s.includes(body.name));
       assert.ok(line?.includes(body.formula_no), `${title}缺少 ${body.name} 的配方编号`);
-      if (i === 8) { assert.match(line, /长图/); assert.match(line, /发布必填项未设置/); }
+      if (i === 8) { assert.match(line, /详情竖图/); assert.match(line, /发布必填项未设置/); }
       else if (i === 9) assert.match(line, /没有可发布的草稿/);
       else assert.ok(title === '检查' ? line.includes('可发布') : line.includes('已发布') && line.includes(`版本 ${i + 1}`));
     }

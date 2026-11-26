@@ -1,62 +1,464 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
-import { message, rows, type Body, type CatalogNode, type Item, type Page, text, withQuery } from '../../../shared/contracts.ts';
+import { computed, nextTick, onMounted, ref } from 'vue';
+import { ElCascader, ElDialog } from 'element-plus';
+import 'element-plus/es/components/cascader/style/css';
+import 'element-plus/es/components/dialog/style/css';
+import { rows, type Body, type CatalogNode, type Issue, type Item, type Page, text, withQuery } from '../../../shared/contracts.ts';
 import { draftImage, useEditor } from '../editor.ts';
+import { h5Path } from '../visitor.ts';
 import { request } from '../session.ts';
 import { useRoute, useRouter } from 'vue-router';
 import History from '../panels/History.vue';
 import Release from '../panels/Release.vue';
+import { basicFields, caseBasicFields, caseDetails, caseExtraFields, caseMedia, detailFields, draftIssueLocations,
+  isDraftFieldRequired, productDetailAssets, productDetailPictureLimit, productMedia, requiredDraftIssues } from './item-fields.ts';
 
-const props=defineProps<{id:string;kind?:'product'|'case';history?:boolean}>();
+const props=defineProps<{id:string;kind?:'product'|'case';history?:boolean;embedded?:boolean}>();
+const emit=defineEmits<{saved:[item:Item];cancel:[]}>();
 const router=useRouter(), route=useRoute();
-const {item,body,places,pending,busy,error,note,conflict,dirty,accept,load,save,choose}=useEditor();
-const tab=ref(props.history||route.query.tab==='history'?'history':route.query.tab==='release'?'release':'edit'), sidebar=ref<'card'|'detail'>('detail'),nodes=ref<CatalogNode[]>([]),related=ref<Item[]>([]),categories=ref<Body[]>([]);
+const {item,body,places,pending,busy,error,note,conflict,dirty,saveIssues,accept,load,save,choose}=useEditor();
+const routeTab=props.history?'history':route.query.tab;
+const tab=ref(props.embedded?'edit':routeTab==='history'||routeTab==='release'?routeTab:'edit');
+const sidebar=ref<'card'|'detail'>('detail'),nodes=ref<CatalogNode[]>([]),related=ref<Item[]>([]),categories=ref<Body[]>([]);
+const directoryLoading=ref(false), directoryFailed=ref(false);
 const kind=computed(()=>item.value?.kind??props.kind??'product');
 const collection=computed(()=>kind.value==='case'?'cases':'products');
 const readonly=computed(()=>Boolean(item.value?.archived_at));
 const yes=computed(()=>kind.value==='product');
+const draftKind=computed(()=>yes.value?'product':'case');
 const newItem=computed(()=>props.id==='new');
-const productFields=[{key:'name',label:'产品名称'},{key:'english_name',label:'英文名称（选填）'},{key:'formula_no',label:'配方编号'},{key:'short_benefit',label:'简短功效'},{key:'benefit',label:'功效',large:true},{key:'ingredients',label:'核心成分',large:true},{key:'highlights',label:'产品亮点',large:true}];
-const caseFields=[{key:'brand_name',label:'品牌名称'},{key:'product_name',label:'案例产品名称'},{key:'case_no',label:'案例编号（选填）'},{key:'series',label:'系列（选填）'},{key:'highlight',label:'案例亮点',large:true},{key:'description',label:'案例说明（选填）',large:true}];
-const media=computed(()=>yes.value?[['thumbnail_asset_id','产品方图'],['cover_asset_id','产品封面图'],['detail_asset_id','产品详情长图']]:[['image_asset_id','案例图片']]);
+const locked=computed(()=>readonly.value||busy.value);
+
+const steps=computed(()=>yes.value?['基础信息','产品详情','图片与展示位置']:['基础信息','案例内容与图片']);
+const step=ref(0), stepBody=ref<HTMLElement|null>(null);
+const fieldErrors=ref<Record<string,string>>({}), unmappedIssues=ref<Issue[]>([]);
+const lastStep=computed(()=>step.value===steps.value.length-1);
+const ready=computed(()=>newItem.value||Boolean(item.value));
+const showBasic=computed(()=>!props.embedded||step.value===0);
+const showDetails=computed(()=>!props.embedded||step.value===1);
+const showFinal=computed(()=>!props.embedded||lastStep.value);
+const detailImages = computed(() => productDetailAssets(body.value));
+const productImages = computed(() => productMedia.map(asset => ({...asset, url: draftImage(item.value,body.value[asset.key],pending.value)})));
+const galleryImages = computed(() => detailImages.value.map((id,index) => ({
+  id, label:`详情竖图 ${index+1}`, url:draftImage(item.value,id,pending.value),
+})));
+const imagePreview=ref<{url:string;label:string;portrait:boolean}|null>(null);
+const placeProps={multiple:true,checkStrictly:true,emitPath:false};
 const display=computed(()=>text(body.value.name??body.value.product_name, newItem.value?(yes.value?'新增产品':'新增案例'):'未命名草稿'));
+const subtitle=computed(()=>{
+  if(newItem.value)return yes.value?'先填写产品名称、配方编号和生产状态。':'先填写品牌、案例产品和分类。';
+  const saved=item.value?.draft??item.value?.live;
+  if(!saved)return '';
+  return (yes.value?[saved.name,saved.formula_no]:[saved.brand_name,saved.product_name]).map(value=>text(value)).filter(Boolean).join(' · ');
+});
 const previewSource=ref<'draft'|'live'>('draft');
 const activePreview=computed(()=>{
-  if(previewSource.value==='live') return item.value?.live_id?withQuery(yes.value?'/products':'/cases/detail',{id:item.value.id}):'';
-  return item.value?.draft?withQuery('/preview',{id:item.value.id,revision:item.value.revision,mode:sidebar.value}):'';
+  if(previewSource.value==='live') return item.value?.live_id?h5Path(withQuery(yes.value?'/products':'/cases/detail',{id:item.value.id})):'';
+  return item.value?.draft?h5Path(withQuery('/preview',{id:item.value.id,revision:item.value.revision,mode:sidebar.value})):'';
 });
 const itemPath=computed(()=>`/api/admin/items/${props.id}`);
-function assign(key:string,event:Event){body.value[key]=(event.currentTarget as HTMLInputElement|HTMLTextAreaElement).value;}
+const errorId = (key:string) => fieldErrors.value[key] ? `editor-error-${key}` : undefined;
+const required = (key:string) => isDraftFieldRequired(draftKind.value,key) || undefined;
+function clearFieldError(key:string){delete fieldErrors.value[key];}
+function assign(key:string,event:Event){
+  body.value[key]=(event.currentTarget as HTMLInputElement|HTMLTextAreaElement).value;
+  clearFieldError(key);
+}
 function clear(key:string){delete body.value[key];}
-function path(node:CatalogNode):string{const parent=nodes.value.find(row=>row.id===node.parent_id);return parent?`${path(parent)} / ${node.name}`:node.name;}
+function chooseAsset(event:Event,key:string){
+  return choose(event,id=>{body.value[key]=id;clearFieldError(key);});
+}
 
-/** Load fixed choices from current directory, independent of the working copy. */
+/** Open the existing authorized image URL without changing the draft or leaving the editor. */
+function previewImage(url:string,label:string,portrait=false){
+  imagePreview.value={url,label,portrait};
+}
+
+/** Preserve a legacy long image until the editor actually changes the gallery. */
+function setDetailImages(images: string[]) {
+  delete body.value.detail_asset_id;
+  body.value.detail_asset_ids = images;
+  clearFieldError('detail_asset_ids');
+}
+function addDetailImage(event: Event) {
+  if (locked.value || detailImages.value.length >= productDetailPictureLimit) return;
+  void choose(event, id => setDetailImages([...detailImages.value, id]));
+}
+function moveDetailImage(index: number, step: -1 | 1) {
+  const next = [...detailImages.value];
+  const destination = index + step;
+  if (!next[destination]) return;
+  [next[index], next[destination]] = [next[destination], next[index]];
+  setDetailImages(next);
+}
+const placeOptions=computed(()=>{
+  function build(parent:string|null):{value:string;label:string;children?:{value:string;label:string}[]}[]{
+    return nodes.value.filter(node=>(node.parent_id||null)===parent&&node.enabled!==false).sort((a,b)=>a.sort_order-b.sort_order).map(node=>{
+      const children=build(node.id);
+      return children.length?{value:node.id,label:node.name,children}:{value:node.id,label:node.name};
+    });
+  }
+  return build(null);
+});
+
+/** A failed load of required placement choices can be retried without changing the working copy. */
+async function loadDirectory(){
+  if(directoryLoading.value)return;
+  directoryLoading.value=true;
+  directoryFailed.value=false;
+  try{
+    const directory=await request<Item>('/api/admin/config/directory');
+    nodes.value=rows((directory.live??directory.draft)?.nodes).map(row=>row as unknown as CatalogNode);
+  }catch{directoryFailed.value=true;}
+  finally{directoryLoading.value=false;}
+}
+
+/** Load the available catalog placements or optional case links for this editor. */
 async function options(){
-  try{if(yes.value){const dir=await request<Item>('/api/admin/config/directory');nodes.value=rows((dir.live??dir.draft)?.nodes).map(row=>row as unknown as CatalogNode);}else{
+  if(yes.value)return loadDirectory();
+  try{
     const [products, header]=await Promise.all([request<Page<Item>>('/api/admin/products?page_size=100'),request<Item>('/api/admin/config/case_header')]);
     related.value=products.items;categories.value=rows((header.live??header.draft)?.filters);
-  }}catch{/* Editor remains usable when optional relations are not configured. */}
+  }catch{/* Case relationships are optional. */}
 }
-async function store(){const saved=await save(collection.value);if(saved&&newItem.value)await router.replace(`/${collection.value}/${saved.id}`);}
+/** Steps only change the visible part of the working copy; they never save drafts. */
+async function goToStep(index:number){
+  if(busy.value||index<0||index>=steps.value.length)return;
+  step.value=index;
+  await nextTick();
+  if(stepBody.value){stepBody.value.scrollTop=0;stepBody.value.focus();}
+}
+
+/** Display the API or client validation in place, without replacing any of the editor's values. */
+async function showIssues(issues:readonly Issue[]){
+  const {errors,unmapped,first}=draftIssueLocations(draftKind.value,issues);
+  fieldErrors.value=errors;
+  unmappedIssues.value=unmapped;
+  if(!first)return;
+  if(props.embedded)await goToStep(first.step);
+  else await nextTick();
+  const field=stepBody.value?.querySelector<HTMLElement>(`[data-editor-field="${first.field}"]`);
+  field?.scrollIntoView({block:'nearest'});
+  const control=field?.querySelector<HTMLElement>('input:not([disabled]), select:not([disabled]), textarea:not([disabled])')??field;
+  control?.focus({preventScroll:true});
+}
+
+/** Save a complete working copy and keep field feedback for rejected drafts. */
+async function store(){
+  // Without a loaded item, useEditor would POST instead of PUT for an edit.
+  if(locked.value||!ready.value||(props.embedded&&!lastStep.value))return;
+  const missing=requiredDraftIssues(draftKind.value,body.value,places.value);
+  if(missing.length){
+    error.value='请补齐必填项后保存草稿';
+    await showIssues(missing);
+    return;
+  }
+  fieldErrors.value={};
+  unmappedIssues.value=[];
+  const saved=await save(collection.value);
+  if(!saved){if(saveIssues.value.length)await showIssues(saveIssues.value);return;}
+  if(props.embedded){emit('saved',saved);return;}
+  if(newItem.value)await router.replace(`/${collection.value}/${saved.id}`);
+}
+function canDismiss(){return !busy.value&&(!dirty.value||globalThis.confirm('还有未保存的修改。确定放弃吗？'));}
+function cancel(){if(canDismiss())emit('cancel');}
+defineExpose({canDismiss});
 async function refresh(){if(!newItem.value)await load(itemPath.value);}
-async function reset(){if(!dirty.value||globalThis.confirm('确定丢弃工作副本并重新加载？'))await refresh();}
+async function reset(){
+  if(busy.value||(dirty.value&&!globalThis.confirm('确定丢弃工作副本并重新加载？')))return;
+  await refresh();
+  if(!error.value){fieldErrors.value={};unmappedIssues.value=[];}
+  if(props.embedded&&item.value&&!error.value)await goToStep(0);
+}
 onMounted(async()=>{await refresh();await options();});
 </script>
 
 <template>
- <header class="page-head"><div><RouterLink :to="`/${collection}`" class="muted">← {{ yes?'全部产品':'全部案例' }}</RouterLink><h1>{{ display }}</h1><p class="muted">{{item?.live_id?'已有线上版本':'未上线'}} <template v-if="item">· 修订 {{ item.revision }}</template> <span v-if="dirty" class="pill warn">尚未保存</span></p></div><button v-if="!readonly" type="button" class="btn primary" :disabled="busy" @click="store">保存草稿</button></header>
- <p v-if="note" role="status" class="notice">{{ note }}</p><p v-if="error" role="alert" class="inline-error">{{error}} <button v-if="!newItem" type="button" class="btn link" @click="reset">{{conflict?'核对最新修订':'重试加载'}}</button></p>
- <nav class="seg" aria-label="内容编辑视图"><button type="button" :aria-pressed="tab==='edit'" @click="tab='edit'">内容编辑</button><button v-if="item" type="button" :aria-pressed="tab==='release'" @click="tab='release'">发布检查</button><button v-if="item" type="button" :aria-pressed="tab==='history'" @click="tab='history'">版本记录</button></nav>
- <div v-if="tab==='edit'" class="edit-layout">
-  <section class="panel stack"><h2>{{ yes?'产品资料':'案例信息' }}</h2>
-   <div class="form-grid"><label v-for="f in yes?productFields:caseFields" :key="f.key" class="field" :style="f.large?{gridColumn:'1 / -1'}:{}">{{f.label}}<textarea v-if="f.large" :value="text(body[f.key])" :disabled="readonly" @input="assign(f.key,$event)"/><input v-else :value="text(body[f.key])" :disabled="readonly" @input="assign(f.key,$event)"></label></div>
-   <label v-if="yes" class="field">是否生产过<select :value="text(body.production_status)" :disabled="readonly" @change="assign('production_status',$event)"><option value="">请选择</option><option>已生产</option><option>未生产</option><option>待确认</option></select></label>
-   <div v-else class="form-grid"><label class="field">案例分类<select :value="text(body.category_key)" :disabled="readonly" @change="assign('category_key',$event)"><option value="">不指定</option><option v-for="entry in categories" :key="text(entry.key)" :value="text(entry.key)">{{text(entry.label)}}</option></select></label><label class="field">内部关联产品<select :value="text(body.related_product_id)" :disabled="readonly" @change="assign('related_product_id',$event)"><option value="">不关联</option><option v-for="row in related" :key="row.id" :value="row.id">{{text(row.summary?.name??row.draft?.name??row.live?.name,'未命名产品')}}</option></select></label><label class="field">展示顺序<input type="number" min="0" step="1" :disabled="readonly" :value="Number(body.sort_order??0)" @input="body.sort_order=Number(($event.target as HTMLInputElement).value)"></label></div>
-   <h2>图片素材</h2><label v-for="[key,title] in media" :key="key" class="field"><span>{{title}}</span><div class="media-row"><img v-if="draftImage(item,body[key],pending)" :src="draftImage(item,body[key],pending)" :alt="title"><span v-else class="muted">未上传</span><input type="file" accept="image/png,image/jpeg,image/webp" :disabled="readonly||busy" @change="choose($event,id=>body[key]=id)"><button v-if="body[key]&&!readonly" type="button" class="btn" @click.prevent="clear(key)">移除</button></div></label>
-   <template v-if="yes"><h2>展示位置</h2><p v-if="!nodes.length" class="muted">目录未配置，先在「板块与分类」建立展示位置。</p><label v-for="node in nodes.filter(node=>node.enabled!==false)" :key="node.id" class="place-choice"><input v-model="places" type="checkbox" :value="node.id" :disabled="readonly"> {{path(node)}}</label></template>
-  </section>
-  <aside class="preview-panel stack"><div class="section-head"><h2>H5 预览</h2><span v-if="item?.draft" class="pill">保存修订 {{item.revision}}</span></div><div class="seg" aria-label="预览来源"><button type="button" :aria-pressed="previewSource==='draft'" @click="previewSource='draft'">编辑预览</button><button type="button" :aria-pressed="previewSource==='live'" :disabled="!item?.live_id" @click="previewSource='live'">线上版本</button></div><div v-if="yes && previewSource==='draft'" class="seg"><button type="button" :aria-pressed="sidebar==='card'" @click="sidebar='card'">列表卡片</button><button type="button" :aria-pressed="sidebar==='detail'" @click="sidebar='detail'">详情页</button></div><p v-if="dirty" class="muted">未保存修改不会显示在预览里。</p><iframe v-if="activePreview" :key="activePreview" :src="activePreview" :title="previewSource==='live'?'线上 H5':'当前保存草稿的 H5 私有预览'" referrerpolicy="no-referrer"></iframe><p v-else class="empty">保存草稿后可预览 H5。</p></aside>
- </div>
- <Release v-if="item&&tab==='release'" :item="item" :dirty="dirty" @changed="refresh" />
- <History v-if="item&&tab==='history'" :item="item" @restored="row=>{accept(row);tab='edit';note='历史已恢复为草稿，线上版本未改变。'}" />
+  <header v-if="!embedded" class="page-head"><div><RouterLink :to="`/${collection}`" class="muted">← {{ yes?'全部产品':'全部案例' }}</RouterLink><h1>{{ display }}</h1><p class="muted">{{item?.live_id?'已有线上版本':'未上线'}} <template v-if="item">· 修订 {{ item.revision }}</template> <span v-if="dirty" class="pill warn">尚未保存</span></p></div></header>
+  <template v-if="!embedded">
+    <p v-if="note" role="status" class="notice">{{ note }}</p>
+    <div v-if="error" role="alert" class="inline-error">{{ error }}
+      <ul v-if="unmappedIssues.length"><li v-for="issue in unmappedIssues" :key="`${issue.field}:${issue.reason}`">{{ issue.reason }}</li></ul>
+      <button v-if="!ready||conflict" type="button" class="btn link" @click="reset">{{ conflict?'核对最新修订':'重试加载' }}</button>
+    </div>
+    <div class="config-tabs"><nav class="seg" aria-label="内容编辑视图"><button type="button" :aria-pressed="tab==='edit'" @click="tab='edit'">内容编辑</button><button v-if="item" type="button" :aria-pressed="tab==='release'" @click="tab='release'">发布检查</button><button v-if="item" type="button" :aria-pressed="tab==='history'" @click="tab='history'">版本记录</button></nav><button v-if="!readonly" type="button" class="btn primary" :disabled="busy||!ready" @click="store">保存草稿</button></div>
+  </template>
+  <div v-if="tab==='edit'" :class="embedded?'wizard-editor':'edit-layout'">
+    <component :is="embedded?'form':'section'" :class="embedded?'wizard-form':'panel stack'" :novalidate="embedded||undefined" @submit.prevent="store">
+      <div v-if="embedded" class="wizard-overview">
+        <p v-if="subtitle" class="wizard-subtitle">{{ subtitle }}</p>
+        <ol class="wizard-steps" aria-label="编辑步骤">
+          <li v-for="(label,index) in steps" :key="label" :aria-current="step===index?'step':undefined" :class="{'step-done':index<step}">
+            <span class="step-marker" aria-hidden="true">{{ index<step?'✓':index+1 }}</span><span>{{ label }}</span>
+          </li>
+        </ol>
+      </div>
+      <p v-if="embedded&&!ready" class="wizard-loading" role="status">{{ busy?'正在载入资料…':'未能载入编辑资料。' }}</p>
+      <div v-else ref="stepBody" :class="embedded?'wizard-content':'stack'" :tabindex="embedded?-1:undefined" :aria-label="embedded?steps[step]:undefined" :role="embedded?'region':undefined">
+        <section v-if="yes&&showBasic" class="editor-pane">
+          <h2 v-if="!embedded">产品资料</h2>
+          <div class="form-grid">
+            <label v-for="f in basicFields" :key="f.key" class="field" :data-editor-field="f.key">{{ f.label }}
+              <input :aria-label="f.label" :aria-required="required(f.key)" :aria-invalid="Boolean(errorId(f.key))||undefined" :aria-describedby="errorId(f.key)"
+                :value="text(body[f.key])" :disabled="locked" @input="assign(f.key,$event)">
+              <small v-if="errorId(f.key)" :id="errorId(f.key)" class="field-error">{{fieldErrors[f.key]}}</small>
+            </label>
+            <label class="field" data-editor-field="production_status">是否生产过
+              <select aria-label="是否生产过" aria-required="true" :aria-invalid="Boolean(errorId('production_status'))||undefined" :aria-describedby="errorId('production_status')"
+                :value="text(body.production_status)" :disabled="locked" @change="assign('production_status',$event)"><option value="">请选择</option><option>已生产</option><option>未生产</option><option>待确认</option></select>
+              <small v-if="errorId('production_status')" :id="errorId('production_status')" class="field-error">{{fieldErrors.production_status}}</small>
+            </label>
+            <label class="field field-wide" data-editor-field="short_benefit">简短功效
+              <input aria-label="简短功效" aria-required="true" :aria-invalid="Boolean(errorId('short_benefit'))||undefined" :aria-describedby="errorId('short_benefit')"
+                :value="text(body.short_benefit)" :disabled="locked" @input="assign('short_benefit',$event)">
+              <small v-if="errorId('short_benefit')" :id="errorId('short_benefit')" class="field-error">{{fieldErrors.short_benefit}}</small>
+            </label>
+          </div>
+        </section>
+        <section v-if="yes&&showDetails" class="editor-pane">
+          <p v-if="embedded" class="pane-intro">这些内容会显示在 H5 产品详情页。</p>
+          <label v-for="f in detailFields" :key="f.key" class="field" :data-editor-field="f.key">{{ f.label }}
+            <textarea :rows="f.rows" :aria-label="f.label" aria-required="true" :aria-invalid="Boolean(errorId(f.key))||undefined" :aria-describedby="errorId(f.key)"
+              :value="text(body[f.key])" :disabled="locked" @input="assign(f.key,$event)" />
+            <small v-if="errorId(f.key)" :id="errorId(f.key)" class="field-error">{{fieldErrors[f.key]}}</small>
+          </label>
+        </section>
+        <section v-if="!yes&&showBasic" class="editor-pane">
+          <h2 v-if="!embedded">案例信息</h2>
+          <div class="form-grid">
+            <label v-for="f in caseBasicFields" :key="f.key" class="field" :data-editor-field="f.key">{{ f.label }}
+              <input :aria-label="f.label" aria-required="true" :aria-invalid="Boolean(errorId(f.key))||undefined" :aria-describedby="errorId(f.key)"
+                :value="text(body[f.key])" :disabled="locked" @input="assign(f.key,$event)">
+              <small v-if="errorId(f.key)" :id="errorId(f.key)" class="field-error">{{fieldErrors[f.key]}}</small>
+            </label>
+            <label class="field" data-editor-field="category_key">案例分类
+              <select aria-label="案例分类" :aria-invalid="Boolean(errorId('category_key'))||undefined" :aria-describedby="errorId('category_key')"
+                :value="text(body.category_key)" :disabled="locked" @change="assign('category_key',$event)"><option value="">不指定</option><option v-for="entry in categories" :key="text(entry.key)" :value="text(entry.key)">{{text(entry.label)}}</option></select>
+              <small v-if="errorId('category_key')" :id="errorId('category_key')" class="field-error">{{fieldErrors.category_key}}</small>
+            </label>
+            <label class="field" data-editor-field="related_product_id">内部关联产品
+              <select aria-label="内部关联产品" :aria-invalid="Boolean(errorId('related_product_id'))||undefined" :aria-describedby="errorId('related_product_id')"
+                :value="text(body.related_product_id)" :disabled="locked" @change="assign('related_product_id',$event)"><option value="">不关联</option><option v-for="row in related" :key="row.id" :value="row.id">{{text(row.summary?.name??row.draft?.name??row.live?.name,'未命名产品')}}</option></select>
+              <small v-if="errorId('related_product_id')" :id="errorId('related_product_id')" class="field-error">{{fieldErrors.related_product_id}}</small>
+            </label>
+            <label v-for="f in caseExtraFields" :key="f.key" class="field" :data-editor-field="f.key">{{ f.label }}
+              <input :aria-label="f.label" :aria-invalid="Boolean(errorId(f.key))||undefined" :aria-describedby="errorId(f.key)"
+                :value="text(body[f.key])" :disabled="locked" @input="assign(f.key,$event)">
+              <small v-if="errorId(f.key)" :id="errorId(f.key)" class="field-error">{{fieldErrors[f.key]}}</small>
+            </label>
+          </div>
+        </section>
+        <section v-if="showFinal" class="editor-pane">
+          <div v-if="!yes" class="form-grid">
+            <label v-for="f in caseDetails" :key="f.key" class="field" :class="{'field-wide':!embedded}" :data-editor-field="f.key">{{ f.label }}
+              <textarea rows="3" :aria-label="f.label" :aria-required="required(f.key)" :aria-invalid="Boolean(errorId(f.key))||undefined" :aria-describedby="errorId(f.key)"
+                :value="text(body[f.key])" :disabled="locked" @input="assign(f.key,$event)" />
+              <small v-if="errorId(f.key)" :id="errorId(f.key)" class="field-error">{{fieldErrors[f.key]}}</small>
+            </label>
+          </div>
+          <h2 v-if="!embedded">图片素材</h2>
+          <div v-if="yes" class="product-assets">
+            <div class="product-cover-grid">
+              <section v-for="{key,label,hint,url} in productImages" :key="key" class="product-asset" :data-editor-field="key" tabindex="-1">
+                <div>
+                  <h3>{{ label }}</h3>
+                  <small :id="`editor-hint-${key}`">{{ hint }}</small>
+                </div>
+                <button v-if="url" type="button" class="photo-stage photo-preview" :aria-label="`预览${label}`" @click="previewImage(url,label)">
+                  <img :src="url" :alt="label">
+                  <span class="photo-open">查看大图</span>
+                </button>
+                <div v-else-if="readonly" class="photo-stage photo-empty muted">未上传</div>
+                <div v-if="!readonly" class="photo-actions">
+                  <label class="photo-file" :class="url?'btn':'photo-stage photo-empty'">
+                    <span v-if="!url" class="photo-plus" aria-hidden="true">+</span>
+                    <span>{{ url?'更换图片':'上传图片' }}</span>
+                    <input type="file" :aria-label="label" accept="image/png,image/jpeg,image/webp" :disabled="locked"
+                      :aria-required="required(key)" :aria-invalid="Boolean(errorId(key))||undefined" :aria-describedby="errorId(key)??`editor-hint-${key}`"
+                      @change="chooseAsset($event,key)">
+                  </label>
+                  <button v-if="body[key]" type="button" class="btn" :disabled="busy" :aria-label="`移除${label}`" @click="clear(key)">移除</button>
+                </div>
+                <small v-if="errorId(key)" :id="errorId(key)" class="field-error">{{fieldErrors[key]}}</small>
+              </section>
+            </div>
+            <section class="product-asset" data-editor-field="detail_asset_ids" tabindex="-1" aria-labelledby="editor-detail-images" :aria-describedby="errorId('detail_asset_ids')">
+              <div>
+                <h3 id="editor-detail-images">详情竖图</h3>
+                <small id="editor-detail-images-hint">已添加 {{ galleryImages.length }} / {{ productDetailPictureLimit }} 张，按下方顺序展示在详情文字之后。</small>
+              </div>
+              <div class="product-gallery-grid">
+                <div v-for="({id,label,url},index) in galleryImages" :key="id" class="product-asset">
+                  <button v-if="url" type="button" class="photo-stage photo-preview portrait-stage" :aria-label="`预览${label}`" @click="previewImage(url,label,true)">
+                    <img :src="url" :alt="label">
+                    <span class="photo-open">查看大图</span>
+                  </button>
+                  <div v-else class="photo-stage photo-empty portrait-stage muted">图片暂不可预览</div>
+                  <small>第 {{ index+1 }} 张</small>
+                  <div v-if="!readonly" class="photo-actions">
+                    <button type="button" class="btn" :disabled="busy||index===0" :aria-label="`上移${label}`" @click="moveDetailImage(index,-1)">上移</button>
+                    <button type="button" class="btn" :disabled="busy||index===galleryImages.length-1" :aria-label="`下移${label}`" @click="moveDetailImage(index,1)">下移</button>
+                    <button type="button" class="btn" :disabled="busy" :aria-label="`移除${label}`" @click="setDetailImages(detailImages.filter((_,i)=>i!==index))">移除</button>
+                  </div>
+                </div>
+                <label v-if="!readonly&&galleryImages.length<productDetailPictureLimit" class="photo-stage photo-empty photo-file portrait-stage">
+                  <span class="photo-plus" aria-hidden="true">+</span>
+                  <span>添加详情竖图</span>
+                  <input type="file" aria-label="添加详情竖图" accept="image/png,image/jpeg,image/webp" :disabled="locked" :aria-required="!galleryImages.length||undefined"
+                    :aria-invalid="Boolean(errorId('detail_asset_ids'))||undefined" :aria-describedby="errorId('detail_asset_ids')??'editor-detail-images-hint'" @change="addDetailImage">
+                </label>
+              </div>
+              <small v-if="errorId('detail_asset_ids')" :id="errorId('detail_asset_ids')" class="field-error">{{fieldErrors.detail_asset_ids}}</small>
+            </section>
+          </div>
+          <div v-else class="editor-assets">
+            <div v-for="{key,label:caption} in caseMedia" :key="key" class="media-field" :data-editor-field="key">
+              <label class="asset-label" :for="`editor-file-${key}`">{{ caption }}</label>
+              <div class="media-row">
+                <img v-if="draftImage(item,body[key],pending)" :src="draftImage(item,body[key],pending)" :alt="caption">
+                <span v-else class="muted">未上传</span>
+                <input :id="`editor-file-${key}`" type="file" accept="image/png,image/jpeg,image/webp" :disabled="locked"
+                  :aria-required="required(key)" :aria-invalid="Boolean(errorId(key))||undefined" :aria-describedby="errorId(key)" @change="chooseAsset($event,key)">
+                <button v-if="body[key]&&!readonly" type="button" class="btn" :disabled="busy" :aria-label="`移除${caption}`" @click="clear(key)">移除</button>
+              </div>
+              <small v-if="errorId(key)" :id="errorId(key)" class="field-error">{{fieldErrors[key]}}</small>
+            </div>
+            <label class="field" data-editor-field="sort_order">展示顺序
+              <input type="number" aria-label="展示顺序" :aria-invalid="Boolean(errorId('sort_order'))||undefined" :aria-describedby="errorId('sort_order')"
+                min="0" step="1" :disabled="locked" :value="Number(body.sort_order??0)" @input="body.sort_order=Number(($event.target as HTMLInputElement).value);clearFieldError('sort_order')">
+              <small v-if="errorId('sort_order')" :id="errorId('sort_order')" class="field-error">{{fieldErrors.sort_order}}</small>
+            </label>
+          </div>
+          <section v-if="yes" class="editor-place" data-editor-field="place_ids" tabindex="-1" :aria-describedby="errorId('place_ids')">
+            <h2>展示位置</h2>
+            <p v-if="directoryLoading" role="status" class="muted">正在加载展示位置…</p>
+            <p v-else-if="directoryFailed" role="alert" class="inline-error">
+              展示位置加载失败。<button type="button" class="btn link" @click="loadDirectory">重试加载展示位置</button>
+            </p>
+            <p v-else-if="!placeOptions.length" class="muted">目录未配置，先在「板块与分类」建立展示位置。</p>
+            <template v-else>
+              <p v-if="embedded" class="pane-intro">选择产品出现的板块或分类，可多选。</p>
+              <el-cascader v-model="places" class="place-cascader" aria-label="展示位置" aria-required="true"
+                :aria-invalid="Boolean(errorId('place_ids'))||undefined" :aria-describedby="errorId('place_ids')" :popper-class="embedded?'product-place-popper':undefined"
+                :options="placeOptions" :props="placeProps" clearable :disabled="locked" placeholder="选择展示位置" @change="clearFieldError('place_ids')" />
+            </template>
+            <small v-if="errorId('place_ids')" :id="errorId('place_ids')" class="field-error">{{fieldErrors.place_ids}}</small>
+          </section>
+        </section>
+      </div>
+      <footer v-if="embedded" class="wizard-footer">
+        <div v-if="error" class="inline-error" role="alert">{{ error }}
+          <ul v-if="unmappedIssues.length"><li v-for="issue in unmappedIssues" :key="`${issue.field}:${issue.reason}`">{{ issue.reason }}</li></ul>
+          <button v-if="!ready||conflict" type="button" class="btn link" :disabled="busy" @click="reset">{{ conflict?'核对最新修订':'重试加载' }}</button>
+        </div>
+        <div class="wizard-actions">
+          <button type="button" class="btn" :disabled="busy" @click="cancel">取消</button>
+          <small v-if="ready">{{ lastStep?'保存为草稿，不会直接上线。':'切换步骤不会保存草稿。' }}</small>
+          <div v-if="ready" class="wizard-nav">
+            <button v-if="step>0" type="button" class="btn" :disabled="busy" @click="goToStep(step-1)">上一步</button>
+            <button v-if="!lastStep" type="button" class="btn primary" :disabled="busy" @click="goToStep(step+1)">下一步</button>
+            <button v-else-if="!readonly" type="submit" class="btn primary" :disabled="busy">保存</button>
+          </div>
+        </div>
+      </footer>
+    </component>
+    <aside v-if="!embedded" class="preview-panel stack"><div class="section-head"><h2>H5 预览</h2><span v-if="item?.draft" class="pill">保存修订 {{item.revision}}</span></div><div class="seg" aria-label="预览来源"><button type="button" :aria-pressed="previewSource==='draft'" @click="previewSource='draft'">编辑预览</button><button type="button" :aria-pressed="previewSource==='live'" :disabled="!item?.live_id" @click="previewSource='live'">线上版本</button></div><div v-if="yes && previewSource==='draft'" class="seg"><button type="button" :aria-pressed="sidebar==='card'" @click="sidebar='card'">列表卡片</button><button type="button" :aria-pressed="sidebar==='detail'" @click="sidebar='detail'">详情页</button></div><p v-if="dirty" class="muted">未保存修改不会显示在预览里。</p><iframe v-if="activePreview" :key="activePreview" :src="activePreview" :title="previewSource==='live'?'线上 H5':'当前保存草稿的 H5 私有预览'" referrerpolicy="no-referrer"></iframe><p v-else class="empty">保存草稿后可预览 H5。</p></aside>
+  </div>
+  <el-dialog v-if="yes" :model-value="Boolean(imagePreview)" :title="imagePreview?`查看${imagePreview.label}`:'图片预览'"
+    width="min(760px, calc(100% - 24px))" align-center append-to-body destroy-on-close
+    @update:model-value="open=>{if(!open)imagePreview=null}">
+    <div v-if="imagePreview" class="photo-viewer" :class="{'photo-viewer-portrait':imagePreview.portrait}" role="region" aria-label="图片预览" tabindex="0">
+      <img :src="imagePreview.url" :alt="imagePreview.label">
+    </div>
+  </el-dialog>
+  <Release v-if="!embedded&&item&&tab==='release'" :item="item" :dirty="dirty" @changed="refresh" />
+  <History v-if="!embedded&&item&&tab==='history'" :item="item" @restored="row=>{accept(row);tab='edit';note='历史已恢复为草稿，线上版本未改变。'}" />
 </template>
+
+<style scoped>
+.config-tabs{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.config-tabs .seg{margin-bottom:15px}
+.field-wide{grid-column:1/-1}
+.field-error{color:var(--error);font-weight:400}
+input[aria-invalid=true],select[aria-invalid=true],textarea[aria-invalid=true]{border-color:var(--error)}
+.place-cascader{width:100%}
+.editor-pane,.editor-assets,.editor-place{display:grid;gap:12px;min-width:0}
+.asset-label{display:block;font-weight:600;margin-bottom:4px}
+.media-row input{min-width:0;flex:1}
+.media-row img{flex:none}
+.wizard-editor,.wizard-form{display:flex;flex:1;flex-direction:column;min-height:0;min-width:0}
+.wizard-overview{flex:none;padding:0 var(--form-inset)}
+.wizard-subtitle{margin:5px 0 0;font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wizard-steps{display:flex;align-items:stretch;list-style:none;margin:14px 0 0;padding:8px 0;border-radius:8px;background:var(--soft);font-size:13px;color:var(--muted)}
+.wizard-steps li{display:flex;flex:1;align-items:center;gap:7px;min-width:0;padding:2px 10px;line-height:1.35}
+.wizard-steps li+li{border-left:1px solid var(--line)}
+.wizard-steps li[aria-current]{color:var(--ink);font-weight:650}
+.step-marker{display:grid;place-items:center;flex:none;width:22px;height:22px;border:1px solid var(--line);border-radius:50%;background:white;font-size:12px;font-weight:650}
+.wizard-steps li[aria-current] .step-marker{background:var(--blue);border-color:var(--blue);color:white}
+.step-done .step-marker{background:#e2eef1;color:var(--blue)}
+.wizard-content,.wizard-loading{flex:1;min-height:0;padding:18px var(--form-inset) 20px}
+.wizard-content{overflow:auto;overscroll-behavior:contain}
+.wizard-loading{color:var(--muted)}
+.wizard-content .form-grid,.wizard-content .editor-assets{grid-template-columns:repeat(2,minmax(0,1fr))}
+.wizard-content .editor-assets{align-items:start}
+.wizard-content .pane-intro{font-size:13px;line-height:1.5;color:var(--muted)}
+.wizard-content .field,.wizard-content .asset-label{font-size:13px}
+.wizard-content .field input,.wizard-content .field select,.wizard-content .field textarea{font-size:14px;line-height:1.5}
+.wizard-content .field textarea{min-height:62px}
+.wizard-content .media-field small{display:block;margin-top:5px}
+.wizard-content .media-row{min-height:49px;padding:6px;gap:6px;border:1px solid var(--line);border-radius:8px;background:var(--soft)}
+.wizard-content .media-row .muted{font-size:12px}
+.wizard-content .media-row input{font-size:12px;padding:4px;min-height:34px}
+.wizard-content .media-row img{width:46px;height:38px}
+.wizard-content .media-row .btn{padding:4px 6px;min-height:34px}
+.product-assets{display:grid;gap:20px;min-width:0}
+.product-cover-grid,.product-gallery-grid{display:grid;align-items:start;gap:12px;min-width:0}
+.product-cover-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.product-gallery-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,168px),1fr))}
+.product-asset{display:grid;align-content:start;gap:8px;min-width:0}
+.product-cover-grid .product-asset > :first-child{min-height:56px}
+.photo-stage{position:relative;display:grid;place-items:center;width:100%;height:194px;min-width:0;overflow:hidden;
+  border:1px solid var(--line);border-radius:var(--radius);background:white}
+.photo-preview{display:block;padding:0}
+.photo-preview:hover,.photo-file:hover{border-color:var(--blue)}
+.photo-preview img{width:100%;height:100%;object-fit:contain}
+.portrait-stage{height:220px}
+.portrait-stage img{object-fit:cover;object-position:center top}
+.photo-open{position:absolute;right:8px;bottom:8px;padding:3px 8px;border:1px solid var(--line);border-radius:6px;
+  background:white;color:var(--ink);font-size:12px}
+.photo-empty{place-content:center;gap:5px;border-style:dashed;background:var(--soft);color:var(--blue);font-weight:600}
+.photo-plus{display:grid;place-items:center;width:32px;height:32px;border:1px solid var(--line);border-radius:50%;
+  background:white;font-size:22px;line-height:1}
+.photo-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.photo-file{position:relative;overflow:hidden;cursor:pointer}
+.photo-file input{position:absolute;inset:0;width:100%;height:100%;padding:0;opacity:0;cursor:inherit}
+.photo-file:focus-within,.photo-viewer:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.photo-file:has(input[aria-invalid=true]){border-color:var(--error)}
+.photo-file:has(input:disabled){opacity:.55;cursor:not-allowed}
+.photo-viewer{max-height:70dvh;overflow:auto;overscroll-behavior:contain;background:var(--soft);border-radius:var(--radius)}
+.photo-viewer img{max-width:100%;max-height:70dvh;object-fit:contain;margin-inline:auto}
+.photo-viewer-portrait img{width:100%;max-height:none;height:auto}
+.wizard-content .editor-place{gap:6px}
+.wizard-content .editor-place h2{font-size:15px}
+.wizard-content :deep(.place-cascader .el-input__inner){border:0;background:transparent;padding:0}
+:global(.product-place-popper){max-width:calc(100dvw - 24px)}
+:global(.product-place-popper .el-cascader-panel){overflow-x:auto}
+.wizard-footer{flex:none;padding:12px var(--form-inset);border-top:1px solid var(--line);background:var(--soft)}
+.wizard-footer .inline-error{margin:0 0 10px;max-height:4.5em;overflow:auto}
+.wizard-actions,.wizard-nav{display:flex;align-items:center;gap:8px}
+.wizard-actions{flex-wrap:wrap}
+.wizard-nav{margin-left:auto}
+@media(max-width:560px){
+  .wizard-content .form-grid,.wizard-content .editor-assets{grid-template-columns:minmax(0,1fr)}
+  .product-cover-grid{grid-template-columns:minmax(0,1fr)}
+  .product-cover-grid .product-asset > :first-child{min-height:0}
+  .wizard-content{padding-block:14px}
+  .wizard-steps li{padding-inline:6px;gap:4px;font-size:12px}
+  .wizard-steps .step-marker{width:18px;height:18px;font-size:11px}
+  .wizard-actions .btn{min-height:40px}
+  .wizard-actions small{order:1;flex-basis:100%}
+  :global(.product-place-popper .el-cascader-menu){min-width:0;width:calc((100dvw - 32px)/3)}
+  :global(.product-place-popper .el-cascader-node){padding-inline:8px}
+  :global(.product-place-popper .el-cascader-node__label){padding-inline:5px}
+}
+</style>

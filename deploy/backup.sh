@@ -51,6 +51,9 @@ source, stage = map(Path, sys.argv[1:])
 assets = stage / 'assets'
 assets.mkdir()
 for p in source.iterdir():
+    # Thumbnails are regenerated from the original, so keep the restore archive format unchanged.
+    if p.name == '.thumbnails' and not p.is_symlink() and p.is_dir():
+        continue
     if p.is_symlink() or not p.is_file() or len(p.name) != 32 or any(c not in '0123456789abcdef' for c in p.name):
         raise SystemExit('Refusing an unexpected asset entry')
     shutil.copyfile(p, assets / p.name)

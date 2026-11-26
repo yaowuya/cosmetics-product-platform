@@ -41,8 +41,9 @@ CONFIG_FIELDS = {
     "directory": {"nodes": [{"id": "id", "parent_id": "id", "level": str, "name": str,
                              "icon_asset_id": "id", "enabled": bool, "sort_order": int}]},
     "case_header": {"background_asset_id": "id", "title": str, "intro": str, "filters": [{"key": str, "label": str}]},
-    "services": {"intro": str, "cards": [{"image_asset_id": "id", "title": str, "description": str}]},
-    "business_contact": {"title": str, "intro": str, "qr_asset_id": "id", "wechat_id": str, "phone": str, "email": str},
+    "services": {"page_title": str, "intro": str, "section_title": str, "sample_label": str, "consult_label": str,
+                 "cards": [{"image_asset_id": "id", "title": str, "description": str, "eyebrow": str, "headline": str, "points": str}]},
+    "business_contact": {"qr_asset_id": "id", "wechat_id": str, "phone": str, "email": str},
 }
 DIRECTORY_LEVELS = ("board", "category", "subcategory")
 
@@ -50,7 +51,8 @@ _ITEM_FIELDS = {
     "product": {
         "name": str, "short_benefit": str, "benefit": str, "ingredients": str, "highlights": str,
         "formula_no": str, "english_name": str, "thumbnail_asset_id": "id", "cover_asset_id": "id",
-        "detail_asset_id": "id", "production_status": frozenset({"已生产", "未生产", "待确认"}),
+        "detail_asset_id": "id", "detail_asset_ids": "gallery_ids",
+        "production_status": frozenset({"已生产", "未生产", "待确认"}),
     },
     "case": {
         "brand_name": str, "product_name": str, "highlight": str, "series": str, "description": str,
@@ -58,11 +60,30 @@ _ITEM_FIELDS = {
     },
 }
 
+_REQUIRED_ITEM_FIELDS = {
+    "product": ("name", "short_benefit", "benefit", "ingredients", "highlights", "formula_no", "production_status",
+                "cover_asset_id"),
+    "case": ("brand_name", "product_name", "highlight", "image_asset_id"),
+}
+
+
+def missing_item_fields(kind: str, body: dict, *, has_placement: bool) -> list[str]:
+    """Report normal product and case omissions in an already normalized body."""
+    missing = [field for field in _REQUIRED_ITEM_FIELDS.get(kind, ()) if field not in body]
+    if kind == "product":
+        # An explicit empty gallery removes the old single image; absence preserves legacy drafts.
+        gallery_field = "detail_asset_ids" if "detail_asset_ids" in body else "detail_asset_id"
+        if not body.get(gallery_field):
+            missing.append(gallery_field)
+        if not has_placement:
+            missing.append("place_ids")
+    return missing
+
 
 def _list_value(value: Any, rule: Any, field: str) -> list:
-    if not isinstance(value, list):
+    if not isinstance(value, list) or (rule == "gallery_ids" and len(value) > 3):
         raise invalid(field)
-    if rule == "ids":
+    if rule in ("ids", "gallery_ids"):
         for index, ident in enumerate(value):
             parse_id(ident, f"{field}.{index}")
         return value
@@ -72,7 +93,7 @@ def _list_value(value: Any, rule: Any, field: str) -> list:
 def _field_value(value: Any, rule: Any, field: str) -> Any:
     if rule == "id":
         parse_id(value, field)
-    elif rule == "ids" or isinstance(rule, list):
+    elif rule in ("ids", "gallery_ids") or isinstance(rule, list):
         return _list_value(value, rule, field)
     elif isinstance(rule, frozenset):
         if not isinstance(value, str) or value not in rule:
@@ -93,9 +114,28 @@ def _shape_object(source: dict, fields: dict, path: str = "") -> dict:
             raise invalid(field)
         if isinstance(value, str):
             value = value.strip()
-        if value is not None and value != "":
+        # A provided gallery must be an array. Empty means remove every selected long image.
+        if (value is not None and value != "") or fields[key] == "gallery_ids":
             clean[key] = _field_value(value, fields[key], field)
     return clean
+
+
+def effective_product_body(body: dict) -> dict:
+    """Use the explicit gallery, including an empty one, ahead of the legacy single image."""
+    if "detail_asset_ids" in body and "detail_asset_id" in body:
+        return {field: value for field, value in body.items() if field != "detail_asset_id"}
+    return body
+
+
+def catalog_image_id(body: dict) -> str | None:
+    """Return the independent card image without ever substituting the wide detail cover."""
+    square = body.get("thumbnail_asset_id")
+    return square if square and square != body.get("cover_asset_id") else None
+
+
+def catalog_thumbnail_source(body: dict) -> str | None:
+    """Choose input for a square derivative, preferring the independent catalog image."""
+    return catalog_image_id(body) or body.get("cover_asset_id")
 
 
 def shape_body(kind: str, config_slot: str | None, body: dict) -> dict:
@@ -103,7 +143,12 @@ def shape_body(kind: str, config_slot: str | None, body: dict) -> dict:
     if kind == "config":
         if config_slot not in CONFIG_FIELDS:
             raise invalid("config_slot")
-        return _shape_object(body, CONFIG_FIELDS[config_slot])
+        source = body
+        if config_slot == "business_contact":
+            allowed = CONFIG_FIELDS[config_slot]
+            source = {key: value for key, value in body.items() if key in allowed}
+        return _shape_object(source, CONFIG_FIELDS[config_slot])
     if kind not in _ITEM_FIELDS or config_slot is not None:
         raise invalid("kind")
-    return _shape_object(body, _ITEM_FIELDS[kind])
+    source = effective_product_body(body) if kind == "product" and isinstance(body, dict) else body
+    return _shape_object(source, _ITEM_FIELDS[kind])
